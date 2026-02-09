@@ -56,7 +56,8 @@ Go-based Gmail, Google Calendar, Google Docs, Google Tasks, and Google Drive MCP
 | Tool | Description | Status |
 |------|-------------|--------|
 | `gmail_search` | Search with Gmail query syntax | ✅ Complete |
-| `gmail_get_message` | Get full message content | ✅ Complete |
+| `gmail_get` | Get full message content | ✅ Complete |
+| `gmail_get_message` | Alias for `gmail_get` | ✅ Complete |
 | `gmail_get_messages` | Batch retrieve messages | ✅ Complete |
 | `gmail_get_thread` | Get full conversation | ✅ Complete |
 | `gmail_send` | Send emails with attachments | ✅ Complete |

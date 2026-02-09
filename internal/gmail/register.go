@@ -12,16 +12,25 @@ func RegisterTools(s *server.MCPServer) {
 
 	// gmail_search - Search messages with query
 	s.AddTool(mcp.NewTool("gmail_search",
-		mcp.WithDescription("Search Gmail messages with query. Returns message IDs for use with gmail_get_message/gmail_get_messages."),
+		mcp.WithDescription("Search Gmail messages with query. Returns message IDs for use with gmail_get/gmail_get_messages."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Gmail search query (e.g., 'is:unread', 'from:amazon newer_than:7d')")),
 		mcp.WithNumber("max_results", mcp.Description("Maximum results to return (1-100, default 20)")),
 		common.WithPageToken(),
 		common.WithAccountParam(),
 	), HandleGmailSearch)
 
-	// gmail_get_message - Read single message
-	s.AddTool(mcp.NewTool("gmail_get_message",
+	// gmail_get - Read single message (primary name, matches convention of other services)
+	s.AddTool(mcp.NewTool("gmail_get",
 		mcp.WithDescription("Get a single Gmail message by ID. Returns full message with headers and body."),
+		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
+		mcp.WithString("format", mcp.Description("Response format: full (default), metadata, minimal, raw")),
+		mcp.WithString("body_format", mcp.Description("Body content format: text (default, plain text for reduced tokens), html (full HTML), full (both text and html)")),
+		common.WithAccountParam(),
+	), HandleGmailGetMessage)
+
+	// gmail_get_message - Alias for gmail_get (backward compatibility)
+	s.AddTool(mcp.NewTool("gmail_get_message",
+		mcp.WithDescription("Alias for gmail_get. Get a single Gmail message by ID."),
 		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
 		mcp.WithString("format", mcp.Description("Response format: full (default), metadata, minimal, raw")),
 		mcp.WithString("body_format", mcp.Description("Body content format: text (default, plain text for reduced tokens), html (full HTML), full (both text and html)")),

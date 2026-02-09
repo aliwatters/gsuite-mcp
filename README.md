@@ -67,7 +67,8 @@ Contact management: list, search, create, update, delete, contact groups.
 | Tool | Description |
 |------|-------------|
 | `gmail_search` | Search messages with Gmail query syntax |
-| `gmail_get_message` | Get single message with full content |
+| `gmail_get` | Get single message with full content |
+| `gmail_get_message` | Alias for `gmail_get` |
 | `gmail_get_messages` | Batch get messages (max 25) |
 | `gmail_get_thread` | Get full conversation thread |
 | `gmail_send` | Send new email |
@@ -199,7 +200,7 @@ All tools accept an optional `account` parameter:
 
 ```
 1. gmail_search({"query": "is:unread", "account": "support"})
-2. gmail_get_messages({"message_ids": [...], "account": "support"})
+2. gmail_get({"message_id": "...", "account": "support"})
 3. gmail_reply({"message_id": "...", "body": "Thanks for reaching out..."})
 4. gmail_batch_archive({"message_ids": [...]})
 ```
