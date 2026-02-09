@@ -1,0 +1,31 @@
+# Binaries
+/gsuite-mcp
+*.exe
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+
+# Test/debug
+*.log
+tmp/
+
+# MCP/Claude Code activity files
+.mcp-activity.json
+.workflow-state.*
+.workflow-reports/
+.ax/
+rod-mcp.yaml
+
+# Credentials (never commit)
+*.json
+!schemas/*.json
+credentials/
+.workflow-state.json
