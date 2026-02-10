@@ -10,10 +10,8 @@ import (
 	"google.golang.org/api/tasks/v1"
 )
 
-// Type aliases using generic types from common package.
+// Type alias using generic types from common package.
 type TasksHandlerDeps = common.HandlerDeps[TasksService]
-type TasksServiceFactory = common.ServiceFactory[TasksService]
-type MockTasksServiceFactory = common.MockServiceFactory[TasksService]
 
 // NewTasksService creates a TasksService from an authenticated HTTP client.
 func NewTasksService(ctx context.Context, client *http.Client) (TasksService, error) {

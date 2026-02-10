@@ -10,10 +10,8 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
-// Type aliases using generic types from common package.
+// Type alias using generic types from common package.
 type SheetsHandlerDeps = common.HandlerDeps[SheetsService]
-type SheetsServiceFactory = common.ServiceFactory[SheetsService]
-type MockSheetsServiceFactory = common.MockServiceFactory[SheetsService]
 
 // NewSheetsService creates a SheetsService from an authenticated HTTP client.
 func NewSheetsService(ctx context.Context, client *http.Client) (SheetsService, error) {

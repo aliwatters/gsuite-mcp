@@ -167,10 +167,3 @@ func createTestTask(id, title, notes, status, due, completed string) *tasks.Task
 
 	return task
 }
-
-// createTestTaskWithParent creates a Task with a parent (subtask).
-func createTestTaskWithParent(id, title, parentID string) *tasks.Task {
-	task := createTestTask(id, title, "", "needsAction", "", "")
-	task.Parent = parentID
-	return task
-}

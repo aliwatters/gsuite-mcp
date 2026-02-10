@@ -1,9 +1,7 @@
 package common
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/auth"
 	"github.com/aliwatters/gsuite-mcp/internal/config"
@@ -26,20 +24,6 @@ func SetDeps(d *Deps) {
 // GetDeps returns the global dependencies.
 func GetDeps() *Deps {
 	return deps
-}
-
-// GetAuthenticatedClient resolves the account from the request and returns
-// an authenticated HTTP client ready for Google API calls.
-func GetAuthenticatedClient(ctx context.Context, request mcp.CallToolRequest) (*http.Client, error) {
-	email, err := ResolveAccountFromRequest(request)
-	if err != nil {
-		return nil, err
-	}
-	client, err := GetDeps().AuthManager.GetClientOrAuthenticate(ctx, email, false)
-	if err != nil {
-		return nil, fmt.Errorf("authentication error: %w", err)
-	}
-	return client, nil
 }
 
 // ResolveAccountFromRequest extracts and validates the account parameter.
