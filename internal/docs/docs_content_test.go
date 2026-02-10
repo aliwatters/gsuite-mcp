@@ -57,7 +57,7 @@ func TestHandleDocsCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsCreate(context.Background(), request, fixtures.Deps)
 
 			if err != nil {
@@ -151,7 +151,7 @@ func TestHandleDocsGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsGet(context.Background(), request, fixtures.Deps)
 
 			if err != nil {
@@ -226,7 +226,7 @@ func TestHandleDocsGetMetadata(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsGetMetadata(context.Background(), request, fixtures.Deps)
 
 			if err != nil {
@@ -307,7 +307,7 @@ func TestHandleDocsAppendText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsAppendText(context.Background(), request, fixtures.Deps)
 
 			if err != nil {
@@ -393,7 +393,7 @@ func TestHandleDocsInsertText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsInsertText(context.Background(), request, fixtures.Deps)
 
 			if err != nil {
@@ -467,7 +467,7 @@ func TestDocsServiceErrors(t *testing.T) {
 		fixtures.MockService.Errors.Create = errors.New("API quota exceeded")
 		defer func() { fixtures.MockService.Errors.Create = nil }()
 
-		request := MakeDocsRequest(map[string]any{
+		request := common.CreateMCPRequest(map[string]any{
 			"title": "Test Doc",
 		})
 		result, err := testableDocsCreate(context.Background(), request, fixtures.Deps)
@@ -490,7 +490,7 @@ func TestDocsServiceErrors(t *testing.T) {
 		fixtures.MockService.Errors.GetDocument = errors.New("permission denied")
 		defer func() { fixtures.MockService.Errors.GetDocument = nil }()
 
-		request := MakeDocsRequest(map[string]any{
+		request := common.CreateMCPRequest(map[string]any{
 			"document_id": "test-doc-1",
 		})
 		result, err := testableDocsGet(context.Background(), request, fixtures.Deps)
@@ -576,7 +576,7 @@ func TestHandleDocsReplaceText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsReplaceText(context.Background(), request, fixtures.Deps)
 
 			if err != nil {
@@ -681,7 +681,7 @@ func TestHandleDocsDeleteText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsDeleteText(context.Background(), request, fixtures.Deps)
 
 			if err != nil {

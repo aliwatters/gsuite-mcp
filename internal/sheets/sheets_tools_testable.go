@@ -10,6 +10,29 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
+// extractRequiredSpreadsheetID extracts, validates, and normalizes the spreadsheet_id parameter.
+// Returns the cleaned ID or an error result if missing.
+func extractRequiredSpreadsheetID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
+	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
+	if spreadsheetID == "" {
+		return "", mcp.NewToolResultError("spreadsheet_id parameter is required")
+	}
+	return common.ExtractSpreadsheetID(spreadsheetID), nil
+}
+
+// parseValueInputOption extracts the value_input_option from request args,
+// defaulting to USER_ENTERED. Only RAW and USER_ENTERED are accepted.
+func parseValueInputOption(args map[string]any) string {
+	valueInputOption := common.ValueInputUserEntered
+	if opt, ok := args["value_input_option"].(string); ok && opt != "" {
+		opt = strings.ToUpper(opt)
+		if opt == common.ValueInputRaw || opt == common.ValueInputUserEntered {
+			valueInputOption = opt
+		}
+	}
+	return valueInputOption
+}
+
 // === Testable Sheets Tool Handlers ===
 // These functions accept SheetsHandlerDeps for dependency injection.
 
@@ -20,11 +43,10 @@ func TestableSheetsGet(ctx context.Context, request mcp.CallToolRequest, deps *S
 		return errResult, nil
 	}
 
-	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
-	if spreadsheetID == "" {
-		return mcp.NewToolResultError("spreadsheet_id parameter is required"), nil
+	spreadsheetID, idErrResult := extractRequiredSpreadsheetID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	spreadsheetID = common.ExtractSpreadsheetID(spreadsheetID)
 
 	spreadsheet, err := srv.GetSpreadsheet(ctx, spreadsheetID)
 	if err != nil {
@@ -66,11 +88,10 @@ func TestableSheetsRead(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
-	if spreadsheetID == "" {
-		return mcp.NewToolResultError("spreadsheet_id parameter is required"), nil
+	spreadsheetID, idErrResult := extractRequiredSpreadsheetID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	spreadsheetID = common.ExtractSpreadsheetID(spreadsheetID)
 
 	readRange, _ := request.Params.Arguments["range"].(string)
 	if readRange == "" {
@@ -109,11 +130,10 @@ func TestableSheetsWrite(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
-	if spreadsheetID == "" {
-		return mcp.NewToolResultError("spreadsheet_id parameter is required"), nil
+	spreadsheetID, idErrResult := extractRequiredSpreadsheetID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	spreadsheetID = common.ExtractSpreadsheetID(spreadsheetID)
 
 	writeRange, _ := request.Params.Arguments["range"].(string)
 	if writeRange == "" {
@@ -130,13 +150,7 @@ func TestableSheetsWrite(ctx context.Context, request mcp.CallToolRequest, deps 
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid values format: %v", err)), nil
 	}
 
-	valueInputOption := common.ValueInputUserEntered
-	if opt, ok := request.Params.Arguments["value_input_option"].(string); ok && opt != "" {
-		opt = strings.ToUpper(opt)
-		if opt == common.ValueInputRaw || opt == common.ValueInputUserEntered {
-			valueInputOption = opt
-		}
-	}
+	valueInputOption := parseValueInputOption(request.Params.Arguments)
 
 	resp, err := srv.UpdateValues(ctx, spreadsheetID, writeRange, values, valueInputOption)
 	if err != nil {
@@ -163,11 +177,10 @@ func TestableSheetsAppend(ctx context.Context, request mcp.CallToolRequest, deps
 		return errResult, nil
 	}
 
-	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
-	if spreadsheetID == "" {
-		return mcp.NewToolResultError("spreadsheet_id parameter is required"), nil
+	spreadsheetID, idErrResult := extractRequiredSpreadsheetID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	spreadsheetID = common.ExtractSpreadsheetID(spreadsheetID)
 
 	appendRange, _ := request.Params.Arguments["range"].(string)
 	if appendRange == "" {
@@ -184,13 +197,7 @@ func TestableSheetsAppend(ctx context.Context, request mcp.CallToolRequest, deps
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid values format: %v", err)), nil
 	}
 
-	valueInputOption := common.ValueInputUserEntered
-	if opt, ok := request.Params.Arguments["value_input_option"].(string); ok && opt != "" {
-		opt = strings.ToUpper(opt)
-		if opt == common.ValueInputRaw || opt == common.ValueInputUserEntered {
-			valueInputOption = opt
-		}
-	}
+	valueInputOption := parseValueInputOption(request.Params.Arguments)
 
 	resp, err := srv.AppendValues(ctx, spreadsheetID, appendRange, values, valueInputOption)
 	if err != nil {
@@ -249,11 +256,10 @@ func TestableSheetsBatchRead(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
-	if spreadsheetID == "" {
-		return mcp.NewToolResultError("spreadsheet_id parameter is required"), nil
+	spreadsheetID, idErrResult := extractRequiredSpreadsheetID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	spreadsheetID = common.ExtractSpreadsheetID(spreadsheetID)
 
 	rangesRaw, ok := request.Params.Arguments["ranges"].([]any)
 	if !ok || len(rangesRaw) == 0 {
@@ -301,24 +307,17 @@ func TestableSheetsBatchWrite(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
-	if spreadsheetID == "" {
-		return mcp.NewToolResultError("spreadsheet_id parameter is required"), nil
+	spreadsheetID, idErrResult := extractRequiredSpreadsheetID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	spreadsheetID = common.ExtractSpreadsheetID(spreadsheetID)
 
 	dataRaw, ok := request.Params.Arguments["data"].([]any)
 	if !ok || len(dataRaw) == 0 {
 		return mcp.NewToolResultError("data parameter is required (array of {range, values} objects)"), nil
 	}
 
-	valueInputOption := common.ValueInputUserEntered
-	if opt, ok := request.Params.Arguments["value_input_option"].(string); ok && opt != "" {
-		opt = strings.ToUpper(opt)
-		if opt == common.ValueInputRaw || opt == common.ValueInputUserEntered {
-			valueInputOption = opt
-		}
-	}
+	valueInputOption := parseValueInputOption(request.Params.Arguments)
 
 	var data []*sheets.ValueRange
 	for i, entry := range dataRaw {
@@ -368,11 +367,10 @@ func TestableSheetsClear(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
-	if spreadsheetID == "" {
-		return mcp.NewToolResultError("spreadsheet_id parameter is required"), nil
+	spreadsheetID, idErrResult := extractRequiredSpreadsheetID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	spreadsheetID = common.ExtractSpreadsheetID(spreadsheetID)
 
 	clearRange, _ := request.Params.Arguments["range"].(string)
 	if clearRange == "" {

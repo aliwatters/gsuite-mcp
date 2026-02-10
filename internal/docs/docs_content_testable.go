@@ -14,6 +14,16 @@ import (
 // docsEditURLFormat is the URL template for Google Docs edit links.
 const docsEditURLFormat = "https://docs.google.com/document/d/%s/edit"
 
+// extractRequiredDocID extracts, validates, and normalizes the document_id parameter.
+// Returns the cleaned ID or an error result if missing.
+func extractRequiredDocID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
+	docID, _ := request.Params.Arguments["document_id"].(string)
+	if docID == "" {
+		return "", mcp.NewToolResultError("document_id parameter is required")
+	}
+	return common.ExtractGoogleResourceID(docID), nil
+}
+
 // extractIndexRange extracts and validates start_index and end_index from a request.
 // Both must be present, start_index >= 1, and end_index > start_index.
 func extractIndexRange(request mcp.CallToolRequest) (startIndex, endIndex int64, errResult *mcp.CallToolResult) {
@@ -71,12 +81,10 @@ func TestableDocsGet(ctx context.Context, request mcp.CallToolRequest, deps *Doc
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	doc, err := srv.GetDocument(ctx, docID)
 	if err != nil {
@@ -102,12 +110,10 @@ func TestableDocsGetMetadata(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	doc, err := srv.GetDocument(ctx, docID)
 	if err != nil {
@@ -138,17 +144,15 @@ func TestableDocsAppendText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	text, _ := request.Params.Arguments["text"].(string)
 	if text == "" {
 		return mcp.NewToolResultError("text parameter is required"), nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	// First get the document to find the end index
 	doc, err := srv.GetDocument(ctx, docID)
@@ -200,9 +204,9 @@ func TestableDocsInsertText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	text, _ := request.Params.Arguments["text"].(string)
@@ -218,8 +222,6 @@ func TestableDocsInsertText(ctx context.Context, request mcp.CallToolRequest, de
 	if index < 1 {
 		return mcp.NewToolResultError("index must be at least 1"), nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	requests := []*docs.Request{{
 		InsertText: &docs.InsertTextRequest{
@@ -249,9 +251,9 @@ func TestableDocsReplaceText(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	findText, _ := request.Params.Arguments["find_text"].(string)
@@ -264,8 +266,6 @@ func TestableDocsReplaceText(ctx context.Context, request mcp.CallToolRequest, d
 
 	matchCase, _ := request.Params.Arguments["match_case"].(bool)
 	// Default to false if not specified
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	replaceReq := &docs.ReplaceAllTextRequest{
 		ContainsText: &docs.SubstringMatchCriteria{
@@ -305,17 +305,15 @@ func TestableDocsDeleteText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
-	}
-
-	startIndex, endIndex, errResult := extractIndexRange(request)
+	docID, errResult := extractRequiredDocID(request)
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	docID = common.ExtractGoogleResourceID(docID)
+	startIndex, endIndex, idxErrResult := extractIndexRange(request)
+	if idxErrResult != nil {
+		return idxErrResult, nil
+	}
 
 	requests := []*docs.Request{{
 		DeleteContentRange: &docs.DeleteContentRangeRequest{
@@ -347,17 +345,15 @@ func TestableDocsBatchUpdate(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	requestsJSON, _ := request.Params.Arguments["requests"].(string)
 	if requestsJSON == "" {
 		return mcp.NewToolResultError("requests parameter is required (JSON array of batch update requests)"), nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	// Parse the JSON into Docs API request objects
 	var docsRequests []*docs.Request

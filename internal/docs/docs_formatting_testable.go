@@ -125,17 +125,15 @@ func TestableDocsFormatText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
-	}
-
-	startIndex, endIndex, errResult := extractIndexRange(request)
+	docID, errResult := extractRequiredDocID(request)
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	docID = common.ExtractGoogleResourceID(docID)
+	startIndex, endIndex, idxErrResult := extractIndexRange(request)
+	if idxErrResult != nil {
+		return idxErrResult, nil
+	}
 
 	fields, validationErr := collectFields(request.Params.Arguments, textFormatFields)
 	if validationErr != nil {
@@ -179,17 +177,15 @@ func TestableDocsClearFormatting(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
-	}
-
-	startIndex, endIndex, errResult := extractIndexRange(request)
+	docID, errResult := extractRequiredDocID(request)
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	docID = common.ExtractGoogleResourceID(docID)
+	startIndex, endIndex, idxErrResult := extractIndexRange(request)
+	if idxErrResult != nil {
+		return idxErrResult, nil
+	}
 
 	requests := []*docs.Request{{
 		UpdateTextStyle: &docs.UpdateTextStyleRequest{
@@ -223,17 +219,15 @@ func TestableDocsSetParagraphStyle(ctx context.Context, request mcp.CallToolRequ
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
-	}
-
-	startIndex, endIndex, errResult := extractIndexRange(request)
+	docID, errResult := extractRequiredDocID(request)
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	docID = common.ExtractGoogleResourceID(docID)
+	startIndex, endIndex, idxErrResult := extractIndexRange(request)
+	if idxErrResult != nil {
+		return idxErrResult, nil
+	}
 
 	fields, validationErr := collectFields(request.Params.Arguments, paragraphStyleFields)
 	if validationErr != nil {
@@ -277,14 +271,14 @@ func TestableDocsCreateList(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
-	}
-
-	startIndex, endIndex, errResult := extractIndexRange(request)
+	docID, errResult := extractRequiredDocID(request)
 	if errResult != nil {
 		return errResult, nil
+	}
+
+	startIndex, endIndex, idxErrResult := extractIndexRange(request)
+	if idxErrResult != nil {
+		return idxErrResult, nil
 	}
 
 	bulletPreset := "BULLET_DISC_CIRCLE_SQUARE"
@@ -311,8 +305,6 @@ func TestableDocsCreateList(ctx context.Context, request mcp.CallToolRequest, de
 		}
 		bulletPreset = preset
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	requests := []*docs.Request{{
 		CreateParagraphBullets: &docs.CreateParagraphBulletsRequest{
@@ -352,17 +344,15 @@ func TestableDocsRemoveList(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
-	}
-
-	startIndex, endIndex, errResult := extractIndexRange(request)
+	docID, errResult := extractRequiredDocID(request)
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	docID = common.ExtractGoogleResourceID(docID)
+	startIndex, endIndex, idxErrResult := extractIndexRange(request)
+	if idxErrResult != nil {
+		return idxErrResult, nil
+	}
 
 	requests := []*docs.Request{{
 		DeleteParagraphBullets: &docs.DeleteParagraphBulletsRequest{

@@ -50,21 +50,6 @@ func NewDocsTestFixtures() *DocsTestFixtures {
 	}
 }
 
-// MakeDocsRequest creates a CallToolRequest with the given arguments.
-func MakeDocsRequest(args map[string]any) mcp.CallToolRequest {
-	return mcp.CallToolRequest{
-		Params: struct {
-			Name      string         `json:"name"`
-			Arguments map[string]any `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
-			Arguments: args,
-		},
-	}
-}
-
 // AddTestDocument adds a test document to the mock service.
 func (f *DocsTestFixtures) AddTestDocument(id, title, content string) {
 	f.MockService.Documents[id] = &docs.Document{
