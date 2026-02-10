@@ -6,6 +6,7 @@ import (
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/mark3labs/mcp-go/mcp"
+	"google.golang.org/api/docs/v1"
 )
 
 // TestableDocsInsertTable is the testable version of HandleDocsInsertTable.
@@ -43,7 +44,14 @@ func TestableDocsInsertTable(ctx context.Context, request mcp.CallToolRequest, d
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		InsertTable: &docs.InsertTableRequest{
+			Rows:     rows,
+			Columns:  columns,
+			Location: &docs.Location{Index: index},
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -93,7 +101,37 @@ func TestableDocsInsertLink(ctx context.Context, request mcp.CallToolRequest, de
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	// Calculate text length in UTF-16 code units (Google Docs uses UTF-16 indexing)
+	textLen := int64(0)
+	for _, r := range text {
+		if r >= 0x10000 {
+			textLen += 2
+		} else {
+			textLen++
+		}
+	}
+
+	requests := []*docs.Request{
+		{
+			InsertText: &docs.InsertTextRequest{
+				Text:     text,
+				Location: &docs.Location{Index: index},
+			},
+		},
+		{
+			UpdateTextStyle: &docs.UpdateTextStyleRequest{
+				Range: &docs.Range{
+					StartIndex: index,
+					EndIndex:   index + textLen,
+				},
+				TextStyle: &docs.TextStyle{
+					Link: &docs.Link{Url: linkURL},
+				},
+				Fields: "link",
+			},
+		},
+	}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -133,7 +171,12 @@ func TestableDocsInsertPageBreak(ctx context.Context, request mcp.CallToolReques
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		InsertPageBreak: &docs.InsertPageBreakRequest{
+			Location: &docs.Location{Index: index},
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -176,7 +219,13 @@ func TestableDocsInsertImage(ctx context.Context, request mcp.CallToolRequest, d
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	resp, err := srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		InsertInlineImage: &docs.InsertInlineImageRequest{
+			Uri:      imageURI,
+			Location: &docs.Location{Index: index},
+		},
+	}}
+	resp, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -217,7 +266,19 @@ func handleDocsCreateHeaderOrFooter(ctx context.Context, request mcp.CallToolReq
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	resp, err := srv.BatchUpdate(ctx, docID, nil)
+	var createRequests []*docs.Request
+	switch sectionType {
+	case "header":
+		createRequests = []*docs.Request{{
+			CreateHeader: &docs.CreateHeaderRequest{Type: "DEFAULT"},
+		}}
+	case "footer":
+		createRequests = []*docs.Request{{
+			CreateFooter: &docs.CreateFooterRequest{Type: "DEFAULT"},
+		}}
+	}
+
+	resp, err := srv.BatchUpdate(ctx, docID, createRequests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -239,7 +300,16 @@ func handleDocsCreateHeaderOrFooter(ctx context.Context, request mcp.CallToolReq
 	// Optionally insert content
 	content, hasContent := request.Params.Arguments["content"].(string)
 	if hasContent && content != "" && sectionID != "" {
-		_, err = srv.BatchUpdate(ctx, docID, nil)
+		contentRequests := []*docs.Request{{
+			InsertText: &docs.InsertTextRequest{
+				Text: content,
+				Location: &docs.Location{
+					SegmentId: sectionID,
+					Index:     0,
+				},
+			},
+		}}
+		_, err = srv.BatchUpdate(ctx, docID, contentRequests)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Docs API error inserting %s content: %v", sectionType, err)), nil
 		}
