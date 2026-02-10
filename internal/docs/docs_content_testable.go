@@ -8,6 +8,7 @@ import (
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/mark3labs/mcp-go/mcp"
+	"google.golang.org/api/docs/v1"
 )
 
 // docsEditURLFormat is the URL template for Google Docs edit links.
@@ -171,9 +172,13 @@ func TestableDocsAppendText(ctx context.Context, request mcp.CallToolRequest, de
 		insertIndex = 1
 	}
 
-	// For testable version, we don't need to actually construct requests
-	// since we're using the mock service which tracks BatchUpdate calls
-	_, err = srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		InsertText: &docs.InsertTextRequest{
+			Text:     text,
+			Location: &docs.Location{Index: insertIndex},
+		},
+	}}
+	_, err = srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -216,7 +221,13 @@ func TestableDocsInsertText(ctx context.Context, request mcp.CallToolRequest, de
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		InsertText: &docs.InsertTextRequest{
+			Text:     text,
+			Location: &docs.Location{Index: index},
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -256,15 +267,29 @@ func TestableDocsReplaceText(ctx context.Context, request mcp.CallToolRequest, d
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	replaceReq := &docs.ReplaceAllTextRequest{
+		ContainsText: &docs.SubstringMatchCriteria{
+			Text:      findText,
+			MatchCase: matchCase,
+		},
+		ReplaceText:     replaceText,
+		ForceSendFields: []string{"ReplaceText"},
+	}
+	requests := []*docs.Request{{ReplaceAllText: replaceReq}}
+	resp, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
+	}
+
+	replacementsCount := int64(0)
+	if resp != nil && resp.Replies != nil && len(resp.Replies) > 0 && resp.Replies[0].ReplaceAllText != nil {
+		replacementsCount = resp.Replies[0].ReplaceAllText.OccurrencesChanged
 	}
 
 	result := map[string]any{
 		"success":            true,
 		"document_id":        docID,
-		"replacements_count": 1, // Mock assumes 1 replacement
+		"replacements_count": replacementsCount,
 		"match_case":         matchCase,
 		"message":            fmt.Sprintf("Replaced occurrences of '%s' with '%s'", findText, replaceText),
 		"url":                fmt.Sprintf(docsEditURLFormat, docID),
@@ -292,7 +317,15 @@ func TestableDocsDeleteText(ctx context.Context, request mcp.CallToolRequest, de
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		DeleteContentRange: &docs.DeleteContentRangeRequest{
+			Range: &docs.Range{
+				StartIndex: startIndex,
+				EndIndex:   endIndex,
+			},
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -326,27 +359,32 @@ func TestableDocsBatchUpdate(ctx context.Context, request mcp.CallToolRequest, d
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	// Parse the JSON to validate it
-	var requests []any
-	if err := json.Unmarshal([]byte(requestsJSON), &requests); err != nil {
+	// Parse the JSON into Docs API request objects
+	var docsRequests []*docs.Request
+	if err := json.Unmarshal([]byte(requestsJSON), &docsRequests); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to parse requests JSON: %v", err)), nil
 	}
 
-	if len(requests) == 0 {
+	if len(docsRequests) == 0 {
 		return mcp.NewToolResultError("requests array cannot be empty"), nil
 	}
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	resp, err := srv.BatchUpdate(ctx, docID, docsRequests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
+	}
+
+	repliesCount := 0
+	if resp != nil && resp.Replies != nil {
+		repliesCount = len(resp.Replies)
 	}
 
 	result := map[string]any{
 		"success":        true,
 		"document_id":    docID,
-		"requests_count": len(requests),
-		"replies_count":  len(requests),
-		"message":        fmt.Sprintf("Successfully executed %d batch update request(s)", len(requests)),
+		"requests_count": len(docsRequests),
+		"replies_count":  repliesCount,
+		"message":        fmt.Sprintf("Successfully executed %d batch update request(s)", len(docsRequests)),
 		"url":            fmt.Sprintf(docsEditURLFormat, docID),
 	}
 

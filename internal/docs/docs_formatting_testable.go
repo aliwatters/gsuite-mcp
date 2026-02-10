@@ -7,6 +7,7 @@ import (
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/mark3labs/mcp-go/mcp"
+	"google.golang.org/api/docs/v1"
 )
 
 // textFormatFields defines the parameter-to-field mapping for text formatting.
@@ -144,7 +145,18 @@ func TestableDocsFormatText(ctx context.Context, request mcp.CallToolRequest, de
 		return mcp.NewToolResultError("at least one formatting option must be specified"), nil
 	}
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	textStyle := buildTextStyle(request.Params.Arguments)
+	requests := []*docs.Request{{
+		UpdateTextStyle: &docs.UpdateTextStyleRequest{
+			Range: &docs.Range{
+				StartIndex: startIndex,
+				EndIndex:   endIndex,
+			},
+			TextStyle: textStyle,
+			Fields:    strings.Join(fields, ","),
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -179,7 +191,17 @@ func TestableDocsClearFormatting(ctx context.Context, request mcp.CallToolReques
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		UpdateTextStyle: &docs.UpdateTextStyleRequest{
+			Range: &docs.Range{
+				StartIndex: startIndex,
+				EndIndex:   endIndex,
+			},
+			TextStyle: &docs.TextStyle{},
+			Fields:    "*",
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -221,7 +243,18 @@ func TestableDocsSetParagraphStyle(ctx context.Context, request mcp.CallToolRequ
 		return mcp.NewToolResultError("at least one paragraph style option must be specified"), nil
 	}
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	paraStyle := buildParagraphStyle(request.Params.Arguments)
+	requests := []*docs.Request{{
+		UpdateParagraphStyle: &docs.UpdateParagraphStyleRequest{
+			Range: &docs.Range{
+				StartIndex: startIndex,
+				EndIndex:   endIndex,
+			},
+			ParagraphStyle: paraStyle,
+			Fields:         strings.Join(fields, ","),
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -281,7 +314,16 @@ func TestableDocsCreateList(ctx context.Context, request mcp.CallToolRequest, de
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		CreateParagraphBullets: &docs.CreateParagraphBulletsRequest{
+			Range: &docs.Range{
+				StartIndex: startIndex,
+				EndIndex:   endIndex,
+			},
+			BulletPreset: bulletPreset,
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -322,7 +364,15 @@ func TestableDocsRemoveList(ctx context.Context, request mcp.CallToolRequest, de
 
 	docID = common.ExtractGoogleResourceID(docID)
 
-	_, err := srv.BatchUpdate(ctx, docID, nil)
+	requests := []*docs.Request{{
+		DeleteParagraphBullets: &docs.DeleteParagraphBulletsRequest{
+			Range: &docs.Range{
+				StartIndex: startIndex,
+				EndIndex:   endIndex,
+			},
+		},
+	}}
+	_, err := srv.BatchUpdate(ctx, docID, requests)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -335,4 +385,93 @@ func TestableDocsRemoveList(ctx context.Context, request mcp.CallToolRequest, de
 	}
 
 	return common.MarshalToolResult(result)
+}
+
+// buildTextStyle constructs a docs.TextStyle from the provided arguments.
+func buildTextStyle(args map[string]any) *docs.TextStyle {
+	style := &docs.TextStyle{}
+	if v, ok := args["bold"].(bool); ok {
+		style.Bold = v
+		if !v {
+			style.ForceSendFields = append(style.ForceSendFields, "Bold")
+		}
+	}
+	if v, ok := args["italic"].(bool); ok {
+		style.Italic = v
+		if !v {
+			style.ForceSendFields = append(style.ForceSendFields, "Italic")
+		}
+	}
+	if v, ok := args["underline"].(bool); ok {
+		style.Underline = v
+		if !v {
+			style.ForceSendFields = append(style.ForceSendFields, "Underline")
+		}
+	}
+	if v, ok := args["strikethrough"].(bool); ok {
+		style.Strikethrough = v
+		if !v {
+			style.ForceSendFields = append(style.ForceSendFields, "Strikethrough")
+		}
+	}
+	if v, ok := args["small_caps"].(bool); ok {
+		style.SmallCaps = v
+		if !v {
+			style.ForceSendFields = append(style.ForceSendFields, "SmallCaps")
+		}
+	}
+	if v, ok := args["font_family"].(string); ok && v != "" {
+		style.WeightedFontFamily = &docs.WeightedFontFamily{FontFamily: v}
+	}
+	if v, ok := args["font_size"].(float64); ok && v > 0 {
+		style.FontSize = &docs.Dimension{Magnitude: v, Unit: "PT"}
+	}
+	if v, ok := args["foreground_color"].(string); ok && v != "" {
+		if r, g, b, err := parseColor(v); err == nil {
+			style.ForegroundColor = &docs.OptionalColor{
+				Color: &docs.Color{RgbColor: &docs.RgbColor{Red: r, Green: g, Blue: b}},
+			}
+		}
+	}
+	if v, ok := args["background_color"].(string); ok && v != "" {
+		if r, g, b, err := parseColor(v); err == nil {
+			style.BackgroundColor = &docs.OptionalColor{
+				Color: &docs.Color{RgbColor: &docs.RgbColor{Red: r, Green: g, Blue: b}},
+			}
+		}
+	}
+	if v, ok := args["baseline_offset"].(string); ok && v != "" {
+		style.BaselineOffset = v
+	}
+	return style
+}
+
+// buildParagraphStyle constructs a docs.ParagraphStyle from the provided arguments.
+func buildParagraphStyle(args map[string]any) *docs.ParagraphStyle {
+	style := &docs.ParagraphStyle{}
+	if v, ok := args["alignment"].(string); ok && v != "" {
+		style.Alignment = v
+	}
+	if v, ok := args["named_style_type"].(string); ok && v != "" {
+		style.NamedStyleType = v
+	}
+	if v, ok := args["line_spacing"].(float64); ok && v > 0 {
+		style.LineSpacing = v
+	}
+	if v, ok := args["indent_start"].(float64); ok {
+		style.IndentStart = &docs.Dimension{Magnitude: v, Unit: "PT"}
+	}
+	if v, ok := args["indent_end"].(float64); ok {
+		style.IndentEnd = &docs.Dimension{Magnitude: v, Unit: "PT"}
+	}
+	if v, ok := args["indent_first_line"].(float64); ok {
+		style.IndentFirstLine = &docs.Dimension{Magnitude: v, Unit: "PT"}
+	}
+	if v, ok := args["space_above"].(float64); ok {
+		style.SpaceAbove = &docs.Dimension{Magnitude: v, Unit: "PT"}
+	}
+	if v, ok := args["space_below"].(float64); ok {
+		style.SpaceBelow = &docs.Dimension{Magnitude: v, Unit: "PT"}
+	}
+	return style
 }
