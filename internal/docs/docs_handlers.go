@@ -10,10 +10,8 @@ import (
 	"google.golang.org/api/option"
 )
 
-// Type aliases using generic types from common package.
+// Type alias using generic types from common package.
 type DocsHandlerDeps = common.HandlerDeps[DocsService]
-type DocsServiceFactory = common.ServiceFactory[DocsService]
-type MockDocsServiceFactory = common.MockServiceFactory[DocsService]
 
 // NewDocsService creates a DocsService from an authenticated HTTP client.
 func NewDocsService(ctx context.Context, client *http.Client) (DocsService, error) {

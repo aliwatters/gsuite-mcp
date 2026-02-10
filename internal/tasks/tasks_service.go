@@ -34,18 +34,16 @@ type ListTaskListsOptions struct {
 
 // ListTasksOptions contains optional parameters for listing tasks.
 type ListTasksOptions struct {
-	MaxResults         int64
-	PageToken          string
-	ShowCompleted      bool
-	ShowHidden         bool
-	ShowDeleted        bool
-	DueMin             string // RFC 3339 timestamp
-	DueMax             string // RFC 3339 timestamp
-	CompletedMin       string // RFC 3339 timestamp
-	CompletedMax       string // RFC 3339 timestamp
-	UpdatedMin         string // RFC 3339 timestamp
-	ShowAssigned       bool
-	ShowOnlyAssignedMe bool
+	MaxResults    int64
+	PageToken     string
+	ShowCompleted bool
+	ShowHidden    bool
+	ShowDeleted   bool
+	DueMin        string // RFC 3339 timestamp
+	DueMax        string // RFC 3339 timestamp
+	CompletedMin  string // RFC 3339 timestamp
+	CompletedMax  string // RFC 3339 timestamp
+	UpdatedMin    string // RFC 3339 timestamp
 }
 
 // CreateTaskOptions contains optional parameters for creating a task.

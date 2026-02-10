@@ -9,15 +9,6 @@ func ParseStringArg(args map[string]any, key string, defaultVal string) string {
 	return defaultVal
 }
 
-// ParseInt64Arg extracts a number argument and converts it to int64.
-// Returns defaultVal if the argument is missing or invalid.
-func ParseInt64Arg(args map[string]any, key string, defaultVal int64) int64 {
-	if val, ok := args[key].(float64); ok {
-		return int64(val)
-	}
-	return defaultVal
-}
-
 // ParseBoolArg extracts a boolean argument.
 // Returns defaultVal if the argument is missing or invalid.
 func ParseBoolArg(args map[string]any, key string, defaultVal bool) bool {

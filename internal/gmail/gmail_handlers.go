@@ -10,10 +10,8 @@ import (
 	"google.golang.org/api/option"
 )
 
-// Type aliases using generic types from common package.
+// Type alias using generic types from common package.
 type GmailHandlerDeps = common.HandlerDeps[GmailService]
-type GmailServiceFactory = common.ServiceFactory[GmailService]
-type MockGmailServiceFactory = common.MockServiceFactory[GmailService]
 
 // NewGmailService creates a GmailService from an authenticated HTTP client.
 func NewGmailService(ctx context.Context, client *http.Client) (GmailService, error) {

@@ -8,15 +8,6 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-// Gmail API field constants for optimized responses.
-// These reduce response payload size by only requesting needed fields.
-const (
-	// GmailLabelListFields contains fields for label listings
-	GmailLabelListFields = "labels(id,name,type,messagesTotal,messagesUnread,threadsTotal,threadsUnread)"
-	// GmailMessageListFields contains fields for message listings (search results)
-	GmailMessageListFields = "nextPageToken,resultSizeEstimate,messages(id,threadId)"
-)
-
 // === Handle functions - generated via WrapHandler ===
 
 var (

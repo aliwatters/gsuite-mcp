@@ -10,10 +10,8 @@ import (
 	"google.golang.org/api/option"
 )
 
-// Type aliases using generic types from common package.
+// Type alias using generic types from common package.
 type CalendarHandlerDeps = common.HandlerDeps[CalendarService]
-type CalendarServiceFactory = common.ServiceFactory[CalendarService]
-type MockCalendarServiceFactory = common.MockServiceFactory[CalendarService]
 
 // NewCalendarService creates a CalendarService from an authenticated HTTP client.
 func NewCalendarService(ctx context.Context, client *http.Client) (CalendarService, error) {

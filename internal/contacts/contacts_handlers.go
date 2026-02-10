@@ -10,10 +10,8 @@ import (
 	"google.golang.org/api/people/v1"
 )
 
-// Type aliases using generic types from common package.
+// Type alias using generic types from common package.
 type ContactsHandlerDeps = common.HandlerDeps[ContactsService]
-type ContactsServiceFactory = common.ServiceFactory[ContactsService]
-type MockContactsServiceFactory = common.MockServiceFactory[ContactsService]
 
 // NewContactsService creates a ContactsService from an authenticated HTTP client.
 func NewContactsService(ctx context.Context, client *http.Client) (ContactsService, error) {

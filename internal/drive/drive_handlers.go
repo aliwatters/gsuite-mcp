@@ -10,10 +10,8 @@ import (
 	"google.golang.org/api/option"
 )
 
-// Type aliases using generic types from common package.
+// Type alias using generic types from common package.
 type DriveHandlerDeps = common.HandlerDeps[DriveService]
-type DriveServiceFactory = common.ServiceFactory[DriveService]
-type MockDriveServiceFactory = common.MockServiceFactory[DriveService]
 
 // NewDriveService creates a DriveService from an authenticated HTTP client.
 func NewDriveService(ctx context.Context, client *http.Client) (DriveService, error) {

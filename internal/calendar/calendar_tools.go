@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
-	"google.golang.org/api/calendar/v3"
 )
 
 // Calendar API field constants for optimized responses.
@@ -41,6 +40,3 @@ var (
 	HandleCalendarListInstances  = common.WrapHandler[CalendarService](TestableCalendarListInstances)
 	HandleCalendarUpdateInstance = common.WrapHandler[CalendarService](TestableCalendarUpdateInstance)
 )
-
-// Suppressing unused import/variable warnings
-var _ = calendar.Event{}
