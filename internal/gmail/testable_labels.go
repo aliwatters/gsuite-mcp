@@ -9,6 +9,23 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
+// extractRequiredMessageIDs extracts and validates the message_ids parameter from the request.
+// Returns the raw slice for early validation and the parsed string IDs.
+func extractRequiredMessageIDs(request mcp.CallToolRequest) ([]string, *mcp.CallToolResult) {
+	messageIDsRaw, ok := request.Params.Arguments["message_ids"].([]any)
+	if !ok || len(messageIDsRaw) == 0 {
+		return nil, mcp.NewToolResultError("message_ids parameter is required (array)")
+	}
+
+	var ids []string
+	for _, id := range messageIDsRaw {
+		if s, ok := id.(string); ok {
+			ids = append(ids, s)
+		}
+	}
+	return ids, nil
+}
+
 // TestableGmailListLabels lists all labels.
 func TestableGmailListLabels(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
@@ -240,21 +257,14 @@ func TestableGmailModifyThread(ctx context.Context, request mcp.CallToolRequest,
 
 // TestableGmailBatchModify modifies labels on multiple messages.
 func TestableGmailBatchModify(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageIDsRaw, ok := request.Params.Arguments["message_ids"].([]any)
-	if !ok || len(messageIDsRaw) == 0 {
-		return mcp.NewToolResultError("message_ids parameter is required (array)"), nil
+	ids, errResult := extractRequiredMessageIDs(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
 	if !ok {
 		return errResult, nil
-	}
-
-	var ids []string
-	for _, id := range messageIDsRaw {
-		if s, ok := id.(string); ok {
-			ids = append(ids, s)
-		}
 	}
 
 	var addLabels, removeLabels []string
@@ -294,21 +304,14 @@ func TestableGmailBatchModify(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailBatchTrash moves multiple messages to trash.
 func TestableGmailBatchTrash(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageIDsRaw, ok := request.Params.Arguments["message_ids"].([]any)
-	if !ok || len(messageIDsRaw) == 0 {
-		return mcp.NewToolResultError("message_ids parameter is required (array)"), nil
+	ids, errResult := extractRequiredMessageIDs(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
 	if !ok {
 		return errResult, nil
-	}
-
-	var ids []string
-	for _, id := range messageIDsRaw {
-		if s, ok := id.(string); ok {
-			ids = append(ids, s)
-		}
 	}
 
 	req := &gmail.BatchModifyMessagesRequest{
@@ -333,21 +336,14 @@ func TestableGmailBatchTrash(ctx context.Context, request mcp.CallToolRequest, d
 
 // TestableGmailBatchArchive archives multiple messages.
 func TestableGmailBatchArchive(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageIDsRaw, ok := request.Params.Arguments["message_ids"].([]any)
-	if !ok || len(messageIDsRaw) == 0 {
-		return mcp.NewToolResultError("message_ids parameter is required (array)"), nil
+	ids, errResult := extractRequiredMessageIDs(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
 	if !ok {
 		return errResult, nil
-	}
-
-	var ids []string
-	for _, id := range messageIDsRaw {
-		if s, ok := id.(string); ok {
-			ids = append(ids, s)
-		}
 	}
 
 	req := &gmail.BatchModifyMessagesRequest{

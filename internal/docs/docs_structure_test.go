@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/aliwatters/gsuite-mcp/internal/common"
 )
 
 func TestHandleDocsInsertTable(t *testing.T) {
@@ -90,7 +92,7 @@ func TestHandleDocsInsertTable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsInsertTable(context.Background(), request, fixtures.Deps)
 
 			if err != nil {
@@ -190,7 +192,7 @@ func TestHandleDocsInsertLink(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsInsertLink(context.Background(), request, fixtures.Deps)
 
 			if err != nil {
@@ -294,7 +296,7 @@ func TestHandleDocsBatchUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := MakeDocsRequest(tt.args)
+			request := common.CreateMCPRequest(tt.args)
 			result, err := testableDocsBatchUpdate(context.Background(), request, fixtures.Deps)
 
 			if err != nil {

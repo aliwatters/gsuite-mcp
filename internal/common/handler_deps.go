@@ -21,8 +21,8 @@ type HandlerDeps[S any] struct {
 	ServiceFactory ServiceFactory[S]
 }
 
-// GetServiceWithDeps resolves the email from the request and creates a service.
-func GetServiceWithDeps[S any](ctx context.Context, request mcp.CallToolRequest, deps *HandlerDeps[S], defaultDeps *HandlerDeps[S]) (S, error) {
+// getServiceWithDeps resolves the email from the request and creates a service.
+func getServiceWithDeps[S any](ctx context.Context, request mcp.CallToolRequest, deps *HandlerDeps[S], defaultDeps *HandlerDeps[S]) (S, error) {
 	if deps == nil {
 		deps = defaultDeps
 	}
@@ -84,7 +84,7 @@ func (f *lazyServiceFactory[S]) CreateService(ctx context.Context, email string)
 // an MCP error result if resolution fails. Returns (service, nil, true) on success
 // or (zero, errorResult, false) on failure.
 func ResolveServiceOrError[S any](ctx context.Context, request mcp.CallToolRequest, deps *HandlerDeps[S], defaultDeps *HandlerDeps[S]) (S, *mcp.CallToolResult, bool) {
-	svc, err := GetServiceWithDeps(ctx, request, deps, defaultDeps)
+	svc, err := getServiceWithDeps(ctx, request, deps, defaultDeps)
 	if err != nil {
 		var zero S
 		return zero, mcp.NewToolResultError(err.Error()), false
@@ -102,12 +102,12 @@ func (f *MockServiceFactory[S]) CreateService(ctx context.Context, email string)
 	return f.MockService, nil
 }
 
-// TestableFunc is a handler function that accepts deps for dependency injection.
-type TestableFunc[S any] func(ctx context.Context, request mcp.CallToolRequest, deps *HandlerDeps[S]) (*mcp.CallToolResult, error)
+// testableFunc is a handler function that accepts deps for dependency injection.
+type testableFunc[S any] func(ctx context.Context, request mcp.CallToolRequest, deps *HandlerDeps[S]) (*mcp.CallToolResult, error)
 
-// WrapHandler wraps a TestableFunc into a standard MCP handler by passing nil deps,
+// WrapHandler wraps a testableFunc into a standard MCP handler by passing nil deps,
 // which causes the testable function to resolve production dependencies.
-func WrapHandler[S any](fn TestableFunc[S]) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func WrapHandler[S any](fn testableFunc[S]) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return fn(ctx, request, nil)
 	}

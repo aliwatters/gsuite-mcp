@@ -16,9 +16,9 @@ func TestableDocsInsertTable(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	rowsFloat, ok := request.Params.Arguments["rows"].(float64)
@@ -41,8 +41,6 @@ func TestableDocsInsertTable(ctx context.Context, request mcp.CallToolRequest, d
 			return mcp.NewToolResultError("index must be at least 1"), nil
 		}
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	requests := []*docs.Request{{
 		InsertTable: &docs.InsertTableRequest{
@@ -75,9 +73,9 @@ func TestableDocsInsertLink(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	text, _ := request.Params.Arguments["text"].(string)
@@ -98,8 +96,6 @@ func TestableDocsInsertLink(ctx context.Context, request mcp.CallToolRequest, de
 	if index < 1 {
 		return mcp.NewToolResultError("index must be at least 1"), nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	// Calculate text length in UTF-16 code units (Google Docs uses UTF-16 indexing)
 	textLen := int64(0)
@@ -155,9 +151,9 @@ func TestableDocsInsertPageBreak(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	indexFloat, ok := request.Params.Arguments["index"].(float64)
@@ -168,8 +164,6 @@ func TestableDocsInsertPageBreak(ctx context.Context, request mcp.CallToolReques
 	if index < 1 {
 		return mcp.NewToolResultError("index must be at least 1"), nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	requests := []*docs.Request{{
 		InsertPageBreak: &docs.InsertPageBreakRequest{
@@ -198,9 +192,9 @@ func TestableDocsInsertImage(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, errResult := extractRequiredDocID(request)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	imageURI, _ := request.Params.Arguments["uri"].(string)
@@ -216,8 +210,6 @@ func TestableDocsInsertImage(ctx context.Context, request mcp.CallToolRequest, d
 	if index < 1 {
 		return mcp.NewToolResultError("index must be at least 1"), nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	requests := []*docs.Request{{
 		InsertInlineImage: &docs.InsertInlineImageRequest{
@@ -259,12 +251,10 @@ func handleDocsCreateHeaderOrFooter(ctx context.Context, request mcp.CallToolReq
 		return errResult, nil
 	}
 
-	docID, _ := request.Params.Arguments["document_id"].(string)
-	if docID == "" {
-		return mcp.NewToolResultError("document_id parameter is required"), nil
+	docID, docErrResult := extractRequiredDocID(request)
+	if docErrResult != nil {
+		return docErrResult, nil
 	}
-
-	docID = common.ExtractGoogleResourceID(docID)
 
 	var createRequests []*docs.Request
 	switch sectionType {
