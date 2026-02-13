@@ -5,10 +5,12 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net"
 	"net/http"
@@ -21,6 +23,17 @@ import (
 	"github.com/aliwatters/gsuite-mcp/internal/config"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+)
+
+//go:embed templates/error.html
+var errorTemplateFS embed.FS
+
+//go:embed templates/success.html
+var successTemplateFS embed.FS
+
+var (
+	errorTmpl   = template.Must(template.ParseFS(errorTemplateFS, "templates/error.html"))
+	successTmpl = template.Must(template.ParseFS(successTemplateFS, "templates/success.html"))
 )
 
 // ErrNoCredentials indicates that credentials are missing for an account.
@@ -46,101 +59,26 @@ const (
 	credentialFileMode = 0600
 )
 
+// googleUserInfoURL is the Google OAuth2 userinfo endpoint.
+const googleUserInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
 // authResult carries the result of a successful authentication to be displayed to the user.
 type authResult struct {
 	email         string
 	otherAccounts []string
 }
 
-const errorPageTemplate = `<!DOCTYPE html>
-<html>
-<head><title>Authentication Error</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    display: flex; justify-content: center; align-items: center;
-    min-height: 100vh; background: linear-gradient(135deg, #ef4444 0%%, #dc2626 100%%);
-  }
-  .card {
-    text-align: center; padding: 48px 64px; background: white;
-    border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  }
-  .icon {
-    width: 80px; height: 80px; margin: 0 auto 24px;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    border-radius: 50%%; display: flex; align-items: center; justify-content: center;
-    font-size: 40px; color: white;
-  }
-  h1 { font-size: 24px; font-weight: 500; color: #1a1a1a; margin-bottom: 12px; }
-  .message { font-size: 14px; color: #666; margin-bottom: 16px; }
-  .hint { font-size: 13px; color: #999; }
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="icon">✕</div>
-  <h1>%s</h1>
-  <p class="message">%s</p>
-  <p class="hint">Please try again. You can close this window.</p>
-</div>
-</body>
-</html>`
+// errorPageData holds the template data for the error page.
+type errorPageData struct {
+	Title   string
+	Message string
+}
 
-const successPageTemplate = `<!DOCTYPE html>
-<html>
-<head>
-<title>Authentication Successful</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    display: flex; justify-content: center; align-items: center;
-    min-height: 100vh; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-  }
-  .card {
-    text-align: center; padding: 48px 64px; background: white;
-    border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    animation: slideUp 0.5s ease-out;
-  }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .checkmark {
-    width: 80px; height: 80px; margin: 0 auto 24px;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    border-radius: 50%%; display: flex; align-items: center; justify-content: center;
-    animation: pop 0.4s ease-out 0.2s both;
-  }
-  @keyframes pop {
-    0%% { transform: scale(0); }
-    80%% { transform: scale(1.1); }
-    100%% { transform: scale(1); }
-  }
-  .checkmark svg { width: 40px; height: 40px; stroke: white; stroke-width: 3; fill: none; }
-  .checkmark svg path { stroke-dasharray: 50; stroke-dashoffset: 50; animation: draw 0.5s ease-out 0.5s forwards; }
-  @keyframes draw { to { stroke-dashoffset: 0; } }
-  h1 { font-size: 28px; font-weight: 500; color: #1a1a1a; margin-bottom: 8px; }
-  .saved { font-size: 14px; color: #888; margin-bottom: 8px; }
-  .email { font-size: 20px; color: #4285f4; font-weight: 500; margin-bottom: 20px; }
-  .others { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
-  .others-label { font-size: 12px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .other-email { font-size: 14px; color: #666; margin: 4px 0; }
-  .hint { font-size: 14px; color: #999; margin-top: 20px; }
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="checkmark"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
-  <h1>Authentication Successful</h1>
-  <p class="saved">Saved token for</p>
-  <p class="email">%s</p>
-  %s
-  <p class="hint">You can close this window</p>
-</div>
-</body>
-</html>`
+// successPageData holds the template data for the success page.
+type successPageData struct {
+	Email         string
+	OtherAccounts []string
+}
 
 // DefaultScopes are the OAuth scopes required for Gmail, Calendar, Docs, Tasks, Drive, Sheets, and Contacts operations.
 var DefaultScopes = []string{
@@ -199,7 +137,7 @@ func NewManager() (*Manager, error) {
 
 // getAuthenticatedEmail fetches the email address of the authenticated user.
 func getAuthenticatedEmail(ctx context.Context, client *http.Client) (string, error) {
-	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	resp, err := client.Get(googleUserInfoURL)
 	if err != nil {
 		return "", fmt.Errorf("fetching userinfo: %w", err)
 	}
@@ -455,7 +393,7 @@ func openBrowser(url string) error {
 func sendOAuthError(w http.ResponseWriter, title, message string) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusBadRequest)
-	fmt.Fprintf(w, errorPageTemplate, title, message)
+	errorTmpl.Execute(w, errorPageData{Title: title, Message: message})
 }
 
 // handleOAuthCallback returns a handler function for the OAuth2 callback.
@@ -485,17 +423,11 @@ func handleOAuthCallback(state string, codeCh chan<- string, errCh chan<- error,
 
 		select {
 		case result := <-resultCh:
-			var otherAccountsHTML string
-			if len(result.otherAccounts) > 0 {
-				otherAccountsHTML = `<div class="others"><p class="others-label">Other authenticated accounts:</p>`
-				for _, email := range result.otherAccounts {
-					otherAccountsHTML += fmt.Sprintf(`<p class="other-email">%s</p>`, email)
-				}
-				otherAccountsHTML += `</div>`
-			}
-
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, successPageTemplate, result.email, otherAccountsHTML)
+			successTmpl.Execute(w, successPageData{
+				Email:         result.email,
+				OtherAccounts: result.otherAccounts,
+			})
 
 		case <-time.After(oauthResultTimeout):
 			sendOAuthError(w, "Timeout", "Token exchange took too long")
