@@ -199,29 +199,8 @@ func TestableCalendarUpdateInstance(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Update times if provided
-	if startTime := common.ParseStringArg(request.Params.Arguments, "start_time", ""); startTime != "" {
-		if event.Start.Date != "" {
-			// All-day event
-			startDate, err := extractDateFromDateTime(startTime)
-			if err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("Invalid start_time for all-day event: %v", err)), nil
-			}
-			event.Start = &calendar.EventDateTime{Date: startDate}
-		} else {
-			event.Start = &calendar.EventDateTime{DateTime: startTime}
-		}
-	}
-	if endTime := common.ParseStringArg(request.Params.Arguments, "end_time", ""); endTime != "" {
-		if event.End.Date != "" {
-			// All-day event
-			endDate, err := extractDateFromDateTime(endTime)
-			if err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("Invalid end_time for all-day event: %v", err)), nil
-			}
-			event.End = &calendar.EventDateTime{Date: endDate}
-		} else {
-			event.End = &calendar.EventDateTime{DateTime: endTime}
-		}
+	if errResult := updateEventTimes(event, request.Params.Arguments); errResult != nil {
+		return errResult, nil
 	}
 
 	updated, err := srv.UpdateEvent(ctx, calendarID, instanceID, event)
