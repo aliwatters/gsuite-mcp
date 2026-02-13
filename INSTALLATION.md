@@ -15,7 +15,7 @@ Get from zero to working in under 10 minutes.
 # Clone and build
 git clone https://github.com/aliwatters/gsuite-mcp.git
 cd gsuite-mcp
-go build -o gsuite-mcp
+go build -o gsuite-mcp ./cmd/gsuite-mcp/
 
 # Move to your PATH
 mv gsuite-mcp ~/.local/bin/
