@@ -3,7 +3,6 @@ package contacts
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -81,10 +80,7 @@ func TestableContactsGet(ctx context.Context, request mcp.CallToolRequest, deps 
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
 
-	// Ensure proper prefix
-	if !strings.HasPrefix(resourceName, "people/") {
-		resourceName = "people/" + resourceName
-	}
+	resourceName = ensurePrefix(resourceName, PeoplePrefix)
 
 	// Person fields
 	personFields := DefaultPersonFields
@@ -159,66 +155,6 @@ func TestableContactsSearch(ctx context.Context, request mcp.CallToolRequest, de
 	return common.MarshalToolResult(result)
 }
 
-// === Contact Field Parsers ===
-
-// parseEmailsFromRequest parses email addresses from request arguments.
-// Supports both singular "email" (string) and plural "emails" (array of strings or {value, type} maps).
-// Returns nil if no email arguments are present; returns a non-nil (possibly empty) slice
-// if "emails" key is present, to allow callers to distinguish "not provided" from "clear all".
-func parseEmailsFromRequest(args map[string]any) []*people.EmailAddress {
-	if emailsRaw, ok := args["emails"].([]any); ok {
-		emails := make([]*people.EmailAddress, 0, len(emailsRaw))
-		for _, e := range emailsRaw {
-			if emailStr, ok := e.(string); ok {
-				emails = append(emails, &people.EmailAddress{Value: emailStr})
-			} else if emailMap, ok := e.(map[string]any); ok {
-				email := &people.EmailAddress{}
-				if value, ok := emailMap["value"].(string); ok {
-					email.Value = value
-				}
-				if emailType, ok := emailMap["type"].(string); ok {
-					email.Type = emailType
-				}
-				emails = append(emails, email)
-			}
-		}
-		return emails
-	}
-	if email, ok := args["email"].(string); ok && email != "" {
-		return []*people.EmailAddress{{Value: email}}
-	}
-	return nil
-}
-
-// parsePhonesFromRequest parses phone numbers from request arguments.
-// Supports both singular "phone" (string) and plural "phones" (array of strings or {value, type} maps).
-// Returns nil if no phone arguments are present; returns a non-nil (possibly empty) slice
-// if "phones" key is present, to allow callers to distinguish "not provided" from "clear all".
-func parsePhonesFromRequest(args map[string]any) []*people.PhoneNumber {
-	if phonesRaw, ok := args["phones"].([]any); ok {
-		phones := make([]*people.PhoneNumber, 0, len(phonesRaw))
-		for _, p := range phonesRaw {
-			if phoneStr, ok := p.(string); ok {
-				phones = append(phones, &people.PhoneNumber{Value: phoneStr})
-			} else if phoneMap, ok := p.(map[string]any); ok {
-				phone := &people.PhoneNumber{}
-				if value, ok := phoneMap["value"].(string); ok {
-					phone.Value = value
-				}
-				if phoneType, ok := phoneMap["type"].(string); ok {
-					phone.Type = phoneType
-				}
-				phones = append(phones, phone)
-			}
-		}
-		return phones
-	}
-	if phone, ok := args["phone"].(string); ok && phone != "" {
-		return []*people.PhoneNumber{{Value: phone}}
-	}
-	return nil
-}
-
 // === Phase 2: Write Operations ===
 
 // TestableContactsCreate is the testable version of handleContactsCreate.
@@ -287,74 +223,14 @@ func TestableContactsUpdate(ctx context.Context, request mcp.CallToolRequest, de
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
 
-	// Ensure proper prefix
-	if !strings.HasPrefix(resourceName, "people/") {
-		resourceName = "people/" + resourceName
-	}
+	resourceName = ensurePrefix(resourceName, PeoplePrefix)
 
-	// First, get the existing contact to get the etag
 	existing, err := srv.GetContact(ctx, resourceName, &GetContactOptions{PersonFields: DefaultPersonFields})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to get contact: %v", err)), nil
 	}
 
-	// Build update person fields list
-	var updateFields []string
-
-	// Update names if provided
-	if givenName, ok := request.Params.Arguments["given_name"].(string); ok {
-		if existing.Names == nil || len(existing.Names) == 0 {
-			existing.Names = []*people.Name{{}}
-		}
-		existing.Names[0].GivenName = givenName
-		updateFields = append(updateFields, "names")
-	}
-	if familyName, ok := request.Params.Arguments["family_name"].(string); ok {
-		if existing.Names == nil || len(existing.Names) == 0 {
-			existing.Names = []*people.Name{{}}
-		}
-		existing.Names[0].FamilyName = familyName
-		if !slices.Contains(updateFields, "names") {
-			updateFields = append(updateFields, "names")
-		}
-	}
-
-	// Update emails if provided
-	if emails := parseEmailsFromRequest(request.Params.Arguments); emails != nil {
-		existing.EmailAddresses = emails
-		updateFields = append(updateFields, "emailAddresses")
-	}
-
-	// Update phones if provided
-	if phones := parsePhonesFromRequest(request.Params.Arguments); phones != nil {
-		existing.PhoneNumbers = phones
-		updateFields = append(updateFields, "phoneNumbers")
-	}
-
-	// Update organization if provided
-	if company, ok := request.Params.Arguments["company"].(string); ok {
-		if existing.Organizations == nil || len(existing.Organizations) == 0 {
-			existing.Organizations = []*people.Organization{{}}
-		}
-		existing.Organizations[0].Name = company
-		updateFields = append(updateFields, "organizations")
-	}
-	if title, ok := request.Params.Arguments["job_title"].(string); ok {
-		if existing.Organizations == nil || len(existing.Organizations) == 0 {
-			existing.Organizations = []*people.Organization{{}}
-		}
-		existing.Organizations[0].Title = title
-		if !slices.Contains(updateFields, "organizations") {
-			updateFields = append(updateFields, "organizations")
-		}
-	}
-
-	// Update notes if provided
-	if notes, ok := request.Params.Arguments["notes"].(string); ok {
-		existing.Biographies = []*people.Biography{{Value: notes}}
-		updateFields = append(updateFields, "biographies")
-	}
-
+	updateFields := applyContactUpdates(existing, request.Params.Arguments)
 	if len(updateFields) == 0 {
 		return mcp.NewToolResultError("No fields to update - provide at least one field to modify"), nil
 	}
@@ -382,10 +258,7 @@ func TestableContactsDelete(ctx context.Context, request mcp.CallToolRequest, de
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
 
-	// Ensure proper prefix
-	if !strings.HasPrefix(resourceName, "people/") {
-		resourceName = "people/" + resourceName
-	}
+	resourceName = ensurePrefix(resourceName, PeoplePrefix)
 
 	err := srv.DeleteContact(ctx, resourceName)
 	if err != nil {
@@ -463,10 +336,7 @@ func TestableContactsGetGroup(ctx context.Context, request mcp.CallToolRequest, 
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
 
-	// Ensure proper prefix
-	if !strings.HasPrefix(resourceName, "contactGroups/") {
-		resourceName = "contactGroups/" + resourceName
-	}
+	resourceName = ensurePrefix(resourceName, ContactGroupsPrefix)
 
 	opts := &GetContactGroupOptions{}
 
@@ -532,10 +402,7 @@ func TestableContactsUpdateGroup(ctx context.Context, request mcp.CallToolReques
 		return mcp.NewToolResultError("name parameter is required"), nil
 	}
 
-	// Ensure proper prefix
-	if !strings.HasPrefix(resourceName, "contactGroups/") {
-		resourceName = "contactGroups/" + resourceName
-	}
+	resourceName = ensurePrefix(resourceName, ContactGroupsPrefix)
 
 	group, err := srv.UpdateContactGroup(ctx, resourceName, name)
 	if err != nil {
@@ -560,10 +427,7 @@ func TestableContactsDeleteGroup(ctx context.Context, request mcp.CallToolReques
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
 
-	// Ensure proper prefix
-	if !strings.HasPrefix(resourceName, "contactGroups/") {
-		resourceName = "contactGroups/" + resourceName
-	}
+	resourceName = ensurePrefix(resourceName, ContactGroupsPrefix)
 
 	err := srv.DeleteContactGroup(ctx, resourceName)
 	if err != nil {
@@ -591,10 +455,7 @@ func TestableContactsModifyGroupMembers(ctx context.Context, request mcp.CallToo
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
 
-	// Ensure proper prefix
-	if !strings.HasPrefix(resourceName, "contactGroups/") {
-		resourceName = "contactGroups/" + resourceName
-	}
+	resourceName = ensurePrefix(resourceName, ContactGroupsPrefix)
 
 	var addMembers, removeMembers []string
 
@@ -603,10 +464,7 @@ func TestableContactsModifyGroupMembers(ctx context.Context, request mcp.CallToo
 		addMembers = make([]string, 0, len(addRaw))
 		for _, m := range addRaw {
 			if memberStr, ok := m.(string); ok {
-				if !strings.HasPrefix(memberStr, "people/") {
-					memberStr = "people/" + memberStr
-				}
-				addMembers = append(addMembers, memberStr)
+				addMembers = append(addMembers, ensurePrefix(memberStr, PeoplePrefix))
 			}
 		}
 	}
@@ -616,10 +474,7 @@ func TestableContactsModifyGroupMembers(ctx context.Context, request mcp.CallToo
 		removeMembers = make([]string, 0, len(removeRaw))
 		for _, m := range removeRaw {
 			if memberStr, ok := m.(string); ok {
-				if !strings.HasPrefix(memberStr, "people/") {
-					memberStr = "people/" + memberStr
-				}
-				removeMembers = append(removeMembers, memberStr)
+				removeMembers = append(removeMembers, ensurePrefix(memberStr, PeoplePrefix))
 			}
 		}
 	}
