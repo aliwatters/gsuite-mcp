@@ -1,15 +1,51 @@
 package gmail
 
 import (
+	"context"
+
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// simpleMessageTool defines a tool that takes only message_id + account parameters.
+type simpleMessageTool struct {
+	name    string
+	desc    string
+	handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+}
+
+// registerSimpleMessageTools registers tools that only require message_id + account.
+func registerSimpleMessageTools(s *server.MCPServer, tools []simpleMessageTool) {
+	for _, t := range tools {
+		s.AddTool(mcp.NewTool(t.name,
+			mcp.WithDescription(t.desc),
+			mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
+			common.WithAccountParam(),
+		), t.handler)
+	}
+}
+
+// newGetMessageTool creates the gmail_get / gmail_get_message tool definition.
+func newGetMessageTool(name, desc string) mcp.Tool {
+	return mcp.NewTool(name,
+		mcp.WithDescription(desc),
+		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
+		mcp.WithString("format", mcp.Description("Response format: full (default), metadata, minimal, raw")),
+		mcp.WithString("body_format", mcp.Description("Body content format: text (default, plain text for reduced tokens), html (full HTML), full (both text and html)")),
+		common.WithAccountParam(),
+	)
+}
+
 // RegisterTools registers all Gmail tools with the MCP server.
 func RegisterTools(s *server.MCPServer) {
-	// === Phase 1: Gmail Core ===
+	registerCoreTools(s)
+	registerManagementTools(s)
+	registerExtendedTools(s)
+}
 
+// registerCoreTools registers Phase 1: Gmail Core tools (search, read, send, reply, draft, labels).
+func registerCoreTools(s *server.MCPServer) {
 	// gmail_search - Search messages with query
 	s.AddTool(mcp.NewTool("gmail_search",
 		mcp.WithDescription("Search Gmail messages with query. Returns message IDs for use with gmail_get/gmail_get_messages."),
@@ -19,22 +55,13 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleGmailSearch)
 
-	// gmail_get - Read single message (primary name, matches convention of other services)
-	s.AddTool(mcp.NewTool("gmail_get",
-		mcp.WithDescription("Get a single Gmail message by ID. Returns full message with headers and body."),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		mcp.WithString("format", mcp.Description("Response format: full (default), metadata, minimal, raw")),
-		mcp.WithString("body_format", mcp.Description("Body content format: text (default, plain text for reduced tokens), html (full HTML), full (both text and html)")),
-		common.WithAccountParam(),
+	// gmail_get / gmail_get_message - Read single message
+	s.AddTool(newGetMessageTool("gmail_get",
+		"Get a single Gmail message by ID. Returns full message with headers and body.",
 	), HandleGmailGetMessage)
 
-	// gmail_get_message - Alias for gmail_get (backward compatibility)
-	s.AddTool(mcp.NewTool("gmail_get_message",
-		mcp.WithDescription("Alias for gmail_get. Get a single Gmail message by ID."),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		mcp.WithString("format", mcp.Description("Response format: full (default), metadata, minimal, raw")),
-		mcp.WithString("body_format", mcp.Description("Body content format: text (default, plain text for reduced tokens), html (full HTML), full (both text and html)")),
-		common.WithAccountParam(),
+	s.AddTool(newGetMessageTool("gmail_get_message",
+		"Alias for gmail_get. Get a single Gmail message by ID.",
 	), HandleGmailGetMessage)
 
 	// gmail_get_messages - Read batch of messages
@@ -94,9 +121,10 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithDescription("List all Gmail labels for an account with message/thread counts."),
 		common.WithAccountParam(),
 	), HandleGmailListLabels)
+}
 
-	// === Phase 2: Gmail Management ===
-
+// registerManagementTools registers Phase 2: Gmail Management tools (modify, trash, archive, star, etc.).
+func registerManagementTools(s *server.MCPServer) {
 	// gmail_modify_message - Add/remove labels from a message
 	s.AddTool(mcp.NewTool("gmail_modify_message",
 		mcp.WithDescription("Modify Gmail message labels (archive, mark read/unread, star, trash)"),
@@ -115,26 +143,18 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithArray("remove_labels", mcp.Description("Labels to remove from all messages")),
 	), HandleGmailBatchModify)
 
-	// gmail_trash - Move message to trash
-	s.AddTool(mcp.NewTool("gmail_trash",
-		mcp.WithDescription("Move Gmail message to trash"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailTrash)
-
-	// gmail_archive - Archive message (remove from inbox)
-	s.AddTool(mcp.NewTool("gmail_archive",
-		mcp.WithDescription("Archive Gmail message (remove INBOX label)"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailArchive)
-
-	// gmail_mark_read - Mark message as read
-	s.AddTool(mcp.NewTool("gmail_mark_read",
-		mcp.WithDescription("Mark Gmail message as read (remove UNREAD label)"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailMarkRead)
+	// Simple message-ID tools (table-driven)
+	registerSimpleMessageTools(s, []simpleMessageTool{
+		{"gmail_trash", "Move Gmail message to trash", HandleGmailTrash},
+		{"gmail_archive", "Archive Gmail message (remove INBOX label)", HandleGmailArchive},
+		{"gmail_mark_read", "Mark Gmail message as read (remove UNREAD label)", HandleGmailMarkRead},
+		{"gmail_untrash", "Restore Gmail message from trash", HandleGmailUntrash},
+		{"gmail_mark_unread", "Mark Gmail message as unread (add UNREAD label)", HandleGmailMarkUnread},
+		{"gmail_star", "Star a Gmail message (add STARRED label)", HandleGmailStar},
+		{"gmail_unstar", "Unstar a Gmail message (remove STARRED label)", HandleGmailUnstar},
+		{"gmail_spam", "Move message to spam", HandleGmailSpam},
+		{"gmail_not_spam", "Remove message from spam and move to inbox", HandleGmailNotSpam},
+	})
 
 	// gmail_batch_archive - Archive multiple messages
 	s.AddTool(mcp.NewTool("gmail_batch_archive",
@@ -149,37 +169,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 		mcp.WithArray("message_ids", mcp.Required(), mcp.Description("List of Gmail message IDs")),
 	), HandleGmailBatchTrash)
+}
 
-	// gmail_untrash - Restore message from trash
-	s.AddTool(mcp.NewTool("gmail_untrash",
-		mcp.WithDescription("Restore Gmail message from trash"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailUntrash)
-
-	// gmail_mark_unread - Mark message as unread
-	s.AddTool(mcp.NewTool("gmail_mark_unread",
-		mcp.WithDescription("Mark Gmail message as unread (add UNREAD label)"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailMarkUnread)
-
-	// gmail_star - Star a message
-	s.AddTool(mcp.NewTool("gmail_star",
-		mcp.WithDescription("Star a Gmail message (add STARRED label)"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailStar)
-
-	// gmail_unstar - Unstar a message
-	s.AddTool(mcp.NewTool("gmail_unstar",
-		mcp.WithDescription("Unstar a Gmail message (remove STARRED label)"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailUnstar)
-
-	// === Phase 3: Gmail Extended ===
-
+// registerExtendedTools registers Phase 3: Gmail Extended tools (attachments, filters, labels, drafts, threads, settings).
+func registerExtendedTools(s *server.MCPServer) {
 	// gmail_get_attachment - Download attachment
 	s.AddTool(mcp.NewTool("gmail_get_attachment",
 		mcp.WithDescription("Download attachment content by ID. Returns base64-encoded data."),
@@ -338,18 +331,4 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("end_time", mcp.Description("End time (Unix timestamp in ms)")),
 		common.WithAccountParam(),
 	), HandleGmailSetVacation)
-
-	// gmail_spam - Mark as spam
-	s.AddTool(mcp.NewTool("gmail_spam",
-		mcp.WithDescription("Move message to spam"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailSpam)
-
-	// gmail_not_spam - Remove from spam
-	s.AddTool(mcp.NewTool("gmail_not_spam",
-		mcp.WithDescription("Remove message from spam and move to inbox"),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID")),
-		common.WithAccountParam(),
-	), HandleGmailNotSpam)
 }
