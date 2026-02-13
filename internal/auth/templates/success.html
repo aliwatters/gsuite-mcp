@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Authentication Successful</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  .card {
+    text-align: center; padding: 48px 64px; background: white;
+    border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: slideUp 0.5s ease-out;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .checkmark {
+    width: 80px; height: 80px; margin: 0 auto 24px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    animation: pop 0.4s ease-out 0.2s both;
+  }
+  @keyframes pop {
+    0% { transform: scale(0); }
+    80% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+  .checkmark svg { width: 40px; height: 40px; stroke: white; stroke-width: 3; fill: none; }
+  .checkmark svg path { stroke-dasharray: 50; stroke-dashoffset: 50; animation: draw 0.5s ease-out 0.5s forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  h1 { font-size: 28px; font-weight: 500; color: #1a1a1a; margin-bottom: 8px; }
+  .saved { font-size: 14px; color: #888; margin-bottom: 8px; }
+  .email { font-size: 20px; color: #4285f4; font-weight: 500; margin-bottom: 20px; }
+  .others { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+  .others-label { font-size: 12px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .other-email { font-size: 14px; color: #666; margin: 4px 0; }
+  .hint { font-size: 14px; color: #999; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="checkmark"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+  <h1>Authentication Successful</h1>
+  <p class="saved">Saved token for</p>
+  <p class="email">{{.Email}}</p>
+  {{if .OtherAccounts}}
+  <div class="others">
+    <p class="others-label">Other authenticated accounts:</p>
+    {{range .OtherAccounts}}
+    <p class="other-email">{{.}}</p>
+    {{end}}
+  </div>
+  {{end}}
+  <p class="hint">You can close this window</p>
+</div>
+</body>
+</html>
