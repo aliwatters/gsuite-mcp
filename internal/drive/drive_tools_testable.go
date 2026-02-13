@@ -13,6 +13,72 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
+// googleWorkspaceExportMIME maps Google Workspace MIME types to their export formats.
+var googleWorkspaceExportMIME = map[string]string{
+	"application/vnd.google-apps.document":     "text/plain",
+	"application/vnd.google-apps.spreadsheet":  "text/csv",
+	"application/vnd.google-apps.presentation": "text/plain",
+}
+
+// extractRequiredFileID extracts, validates, and normalizes the file_id parameter.
+// Returns the cleaned ID or an error result if missing.
+func extractRequiredFileID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
+	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
+	if fileID == "" {
+		return "", mcp.NewToolResultError("file_id parameter is required")
+	}
+	return common.ExtractGoogleResourceID(fileID), nil
+}
+
+// readLimited reads up to DriveMaxFileSize+1 bytes to detect oversized responses
+// (Google Workspace files may report Size=0 in metadata).
+func readLimited(r io.Reader) ([]byte, error) {
+	limited := io.LimitReader(r, common.DriveMaxFileSize+1)
+	data, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > common.DriveMaxFileSize {
+		return nil, fmt.Errorf("response body exceeds maximum size of %d bytes", common.DriveMaxFileSize)
+	}
+	return data, nil
+}
+
+// downloadFileContent handles the download or export of a file, returning raw bytes
+// and the export MIME type (empty for non-Workspace files).
+func downloadFileContent(ctx context.Context, srv DriveService, fileID string, file *drive.File) ([]byte, string, *mcp.CallToolResult) {
+	if strings.HasPrefix(file.MimeType, "application/vnd.google-apps.") {
+		exportMimeType, ok := googleWorkspaceExportMIME[file.MimeType]
+		if !ok {
+			return nil, "", mcp.NewToolResultError(fmt.Sprintf("Cannot download Google Workspace file of type: %s", file.MimeType))
+		}
+
+		body, err := srv.ExportFile(ctx, fileID, exportMimeType)
+		if err != nil {
+			return nil, "", mcp.NewToolResultError(fmt.Sprintf("Drive API error exporting file: %v", err))
+		}
+		defer body.Close()
+
+		content, err := readLimited(body)
+		if err != nil {
+			return nil, "", mcp.NewToolResultError(fmt.Sprintf("Error reading file content: %v", err))
+		}
+		return content, exportMimeType, nil
+	}
+
+	body, err := srv.DownloadFile(ctx, fileID)
+	if err != nil {
+		return nil, "", mcp.NewToolResultError(fmt.Sprintf("Drive API error downloading file: %v", err))
+	}
+	defer body.Close()
+
+	content, err := readLimited(body)
+	if err != nil {
+		return nil, "", mcp.NewToolResultError(fmt.Sprintf("Error reading file content: %v", err))
+	}
+	return content, "", nil
+}
+
 // TestableDriveSearch searches files with query syntax.
 func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps *DriveHandlerDeps) (*mcp.CallToolResult, error) {
 	srv, errResult, ok := ResolveDriveServiceOrError(ctx, request, deps)
@@ -59,11 +125,10 @@ func TestableDriveGet(ctx context.Context, request mcp.CallToolRequest, deps *Dr
 		return errResult, nil
 	}
 
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
-	if fileID == "" {
-		return mcp.NewToolResultError("file_id parameter is required"), nil
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	fileID = common.ExtractGoogleResourceID(fileID)
 
 	file, err := srv.GetFile(ctx, fileID, DriveFileGetFields)
 	if err != nil {
@@ -80,74 +145,23 @@ func TestableDriveDownload(ctx context.Context, request mcp.CallToolRequest, dep
 		return errResult, nil
 	}
 
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
-	if fileID == "" {
-		return mcp.NewToolResultError("file_id parameter is required"), nil
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	fileID = common.ExtractGoogleResourceID(fileID)
 
-	// First get file metadata to check size and type
 	file, err := srv.GetFile(ctx, fileID, DriveFileDownloadFields)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Drive API error getting file info: %v", err)), nil
 	}
 
-	// Check file size limit
 	if file.Size > common.DriveMaxFileSize {
 		return mcp.NewToolResultError(fmt.Sprintf("File too large (%d bytes). Maximum supported size is %d bytes", file.Size, common.DriveMaxFileSize)), nil
 	}
 
-	// readLimited reads up to DriveMaxFileSize+1 bytes to detect oversized responses
-	// (Google Workspace files may report Size=0 in metadata).
-	readLimited := func(r io.Reader) ([]byte, error) {
-		limited := io.LimitReader(r, common.DriveMaxFileSize+1)
-		data, err := io.ReadAll(limited)
-		if err != nil {
-			return nil, err
-		}
-		if int64(len(data)) > common.DriveMaxFileSize {
-			return nil, fmt.Errorf("response body exceeds maximum size of %d bytes", common.DriveMaxFileSize)
-		}
-		return data, nil
-	}
-
-	// For Google Workspace files (Docs, Sheets, Slides), use export
-	var content []byte
-	exportMimeType := ""
-
-	if strings.HasPrefix(file.MimeType, "application/vnd.google-apps.") {
-		switch file.MimeType {
-		case "application/vnd.google-apps.document":
-			exportMimeType = "text/plain"
-		case "application/vnd.google-apps.spreadsheet":
-			exportMimeType = "text/csv"
-		case "application/vnd.google-apps.presentation":
-			exportMimeType = "text/plain"
-		default:
-			return mcp.NewToolResultError(fmt.Sprintf("Cannot download Google Workspace file of type: %s", file.MimeType)), nil
-		}
-
-		body, err := srv.ExportFile(ctx, fileID, exportMimeType)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Drive API error exporting file: %v", err)), nil
-		}
-		defer body.Close()
-
-		content, err = readLimited(body)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Error reading file content: %v", err)), nil
-		}
-	} else {
-		body, err := srv.DownloadFile(ctx, fileID)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Drive API error downloading file: %v", err)), nil
-		}
-		defer body.Close()
-
-		content, err = readLimited(body)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Error reading file content: %v", err)), nil
-		}
+	content, exportMimeType, dlErrResult := downloadFileContent(ctx, srv, fileID, file)
+	if dlErrResult != nil {
+		return dlErrResult, nil
 	}
 
 	isText := isTextMimeType(file.MimeType) || exportMimeType != ""
@@ -336,11 +350,10 @@ func TestableDriveMove(ctx context.Context, request mcp.CallToolRequest, deps *D
 		return errResult, nil
 	}
 
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
-	if fileID == "" {
-		return mcp.NewToolResultError("file_id parameter is required"), nil
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	fileID = common.ExtractGoogleResourceID(fileID)
 
 	newParentID := common.ParseStringArg(request.Params.Arguments, "new_parent_id", "")
 	if newParentID == "" {
@@ -380,11 +393,10 @@ func TestableDriveCopy(ctx context.Context, request mcp.CallToolRequest, deps *D
 		return errResult, nil
 	}
 
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
-	if fileID == "" {
-		return mcp.NewToolResultError("file_id parameter is required"), nil
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	fileID = common.ExtractGoogleResourceID(fileID)
 
 	copyFile := &drive.File{}
 
@@ -421,11 +433,10 @@ func TestableDriveTrash(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
-	if fileID == "" {
-		return mcp.NewToolResultError("file_id parameter is required"), nil
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	fileID = common.ExtractGoogleResourceID(fileID)
 
 	updated, err := srv.UpdateFile(ctx, fileID, &drive.File{Trashed: true})
 	if err != nil {
@@ -450,11 +461,10 @@ func TestableDriveDelete(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
-	if fileID == "" {
-		return mcp.NewToolResultError("file_id parameter is required"), nil
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	fileID = common.ExtractGoogleResourceID(fileID)
 
 	err := srv.DeleteFile(ctx, fileID)
 	if err != nil {
@@ -477,11 +487,10 @@ func TestableDriveShare(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
-	if fileID == "" {
-		return mcp.NewToolResultError("file_id parameter is required"), nil
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	fileID = common.ExtractGoogleResourceID(fileID)
 
 	email := common.ParseStringArg(request.Params.Arguments, "email", "")
 	if email == "" {
@@ -524,11 +533,10 @@ func TestableDriveGetPermissions(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
-	if fileID == "" {
-		return mcp.NewToolResultError("file_id parameter is required"), nil
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
 	}
-	fileID = common.ExtractGoogleResourceID(fileID)
 
 	resp, err := srv.ListPermissions(ctx, fileID)
 	if err != nil {
