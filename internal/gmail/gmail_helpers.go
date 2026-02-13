@@ -14,6 +14,41 @@ import (
 // emailContentType is the default Content-Type header for plain text emails.
 const emailContentType = "Content-Type: text/plain; charset=\"UTF-8\""
 
+// parseBodyFormat parses the "body_format" argument from a request and returns the
+// corresponding BodyFormat. Defaults to BodyFormatText if not specified.
+func parseBodyFormat(args map[string]any) BodyFormat {
+	bf := common.ParseStringArg(args, "body_format", "")
+	switch bf {
+	case "html":
+		return BodyFormatHTML
+	case "full":
+		return BodyFormatFull
+	default:
+		return BodyFormatText
+	}
+}
+
+// extractAddRemoveLabels extracts "add_labels" and "remove_labels" string arrays
+// from request arguments using extractStringArray.
+func extractAddRemoveLabels(args map[string]any) (addLabels, removeLabels []string) {
+	addLabels = extractStringArray(args["add_labels"])
+	removeLabels = extractStringArray(args["remove_labels"])
+	return
+}
+
+// buildMessageFromArgs builds a gmail.Message with a raw RFC 2822 body from common
+// email arguments (to, subject, body, cc, bcc).
+func buildMessageFromArgs(args map[string]any) *gmail.Message {
+	raw := buildEmailMessage(EmailMessage{
+		To:      common.ParseStringArg(args, "to", ""),
+		Cc:      common.ParseStringArg(args, "cc", ""),
+		Bcc:     common.ParseStringArg(args, "bcc", ""),
+		Subject: common.ParseStringArg(args, "subject", ""),
+		Body:    common.ParseStringArg(args, "body", ""),
+	})
+	return &gmail.Message{Raw: raw}
+}
+
 // EmailMessage holds the components for building an RFC 2822 email message.
 type EmailMessage struct {
 	To           string

@@ -93,26 +93,8 @@ func TestableGmailUpdateDraft(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	to := common.ParseStringArg(request.Params.Arguments, "to", "")
-	subject := common.ParseStringArg(request.Params.Arguments, "subject", "")
-	body := common.ParseStringArg(request.Params.Arguments, "body", "")
-	cc := common.ParseStringArg(request.Params.Arguments, "cc", "")
-	bcc := common.ParseStringArg(request.Params.Arguments, "bcc", "")
-
-	raw := buildEmailMessage(EmailMessage{
-		To:      to,
-		Cc:      cc,
-		Bcc:     bcc,
-		Subject: subject,
-		Body:    body,
-	})
-
-	message := &gmail.Message{
-		Raw: raw,
-	}
-
 	draft := &gmail.Draft{
-		Message: message,
+		Message: buildMessageFromArgs(request.Params.Arguments),
 	}
 
 	updated, err := svc.UpdateDraft(ctx, draftID, draft)
@@ -193,23 +175,7 @@ func TestableGmailDraft(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	to := common.ParseStringArg(request.Params.Arguments, "to", "")
-	subject := common.ParseStringArg(request.Params.Arguments, "subject", "")
-	body := common.ParseStringArg(request.Params.Arguments, "body", "")
-	cc := common.ParseStringArg(request.Params.Arguments, "cc", "")
-	bcc := common.ParseStringArg(request.Params.Arguments, "bcc", "")
-
-	raw := buildEmailMessage(EmailMessage{
-		To:      to,
-		Cc:      cc,
-		Bcc:     bcc,
-		Subject: subject,
-		Body:    body,
-	})
-
-	message := &gmail.Message{
-		Raw: raw,
-	}
+	message := buildMessageFromArgs(request.Params.Arguments)
 
 	// Support creating draft as reply
 	if threadID := common.ParseStringArg(request.Params.Arguments, "thread_id", ""); threadID != "" {

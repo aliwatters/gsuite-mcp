@@ -71,20 +71,7 @@ func TestableGmailGetMessage(ctx context.Context, request mcp.CallToolRequest, d
 		return mcp.NewToolResultError(fmt.Sprintf("Gmail API error: %v", err)), nil
 	}
 
-	// Parse body_format parameter (defaults to "text" for reduced token usage)
-	bodyFormat := BodyFormatText
-	if bf := common.ParseStringArg(request.Params.Arguments, "body_format", ""); bf != "" {
-		switch bf {
-		case "html":
-			bodyFormat = BodyFormatHTML
-		case "full":
-			bodyFormat = BodyFormatFull
-		default:
-			bodyFormat = BodyFormatText
-		}
-	}
-
-	result := FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: bodyFormat})
+	result := FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: parseBodyFormat(request.Params.Arguments)})
 	return common.MarshalToolResult(result)
 }
 
@@ -109,20 +96,7 @@ func TestableGmailGetMessages(ctx context.Context, request mcp.CallToolRequest, 
 	messages := make([]map[string]any, 0, len(messageIDsRaw))
 	var errors []string
 
-	// Parse body_format parameter (defaults to "text" for reduced token usage)
-	bodyFormat := BodyFormatText
-	if bf := common.ParseStringArg(request.Params.Arguments, "body_format", ""); bf != "" {
-		switch bf {
-		case "html":
-			bodyFormat = BodyFormatHTML
-		case "full":
-			bodyFormat = BodyFormatFull
-		default:
-			bodyFormat = BodyFormatText
-		}
-	}
-
-	opts := FormatMessageOptions{BodyFormat: bodyFormat}
+	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.Params.Arguments)}
 	for _, idRaw := range messageIDsRaw {
 		messageID, ok := idRaw.(string)
 		if !ok {
@@ -161,22 +135,7 @@ func TestableGmailSend(ctx context.Context, request mcp.CallToolRequest, deps *G
 		return errResult, nil
 	}
 
-	subject := common.ParseStringArg(request.Params.Arguments, "subject", "")
-	body := common.ParseStringArg(request.Params.Arguments, "body", "")
-	cc := common.ParseStringArg(request.Params.Arguments, "cc", "")
-	bcc := common.ParseStringArg(request.Params.Arguments, "bcc", "")
-
-	raw := buildEmailMessage(EmailMessage{
-		To:      to,
-		Cc:      cc,
-		Bcc:     bcc,
-		Subject: subject,
-		Body:    body,
-	})
-
-	message := &gmail.Message{
-		Raw: raw,
-	}
+	message := buildMessageFromArgs(request.Params.Arguments)
 
 	sent, err := svc.SendMessage(ctx, message)
 	if err != nil {
