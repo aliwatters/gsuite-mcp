@@ -73,6 +73,38 @@ func (m *MockGmailService) Reset() {
 	m.Error = nil
 }
 
+// modifyLabels applies add/remove label operations to a label set.
+// It first removes any labels in the remove list, then adds any in the add list
+// (deduplicating against existing labels).
+func modifyLabels(current, add, remove []string) []string {
+	result := make([]string, 0, len(current))
+	for _, label := range current {
+		keep := true
+		for _, r := range remove {
+			if label == r {
+				keep = false
+				break
+			}
+		}
+		if keep {
+			result = append(result, label)
+		}
+	}
+	for _, a := range add {
+		found := false
+		for _, label := range result {
+			if label == a {
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, a)
+		}
+	}
+	return result
+}
+
 // === Messages ===
 
 func (m *MockGmailService) ListMessages(ctx context.Context, query string, maxResults int64, pageToken string) (*gmail.ListMessagesResponse, error) {
@@ -139,36 +171,7 @@ func (m *MockGmailService) ModifyMessage(ctx context.Context, messageID string, 
 		return nil, fmt.Errorf("message not found: %s", messageID)
 	}
 
-	// Remove labels
-	newLabels := []string{}
-	for _, label := range msg.LabelIds {
-		keep := true
-		for _, remove := range req.RemoveLabelIds {
-			if label == remove {
-				keep = false
-				break
-			}
-		}
-		if keep {
-			newLabels = append(newLabels, label)
-		}
-	}
-
-	// Add labels
-	for _, add := range req.AddLabelIds {
-		found := false
-		for _, existing := range newLabels {
-			if existing == add {
-				found = true
-				break
-			}
-		}
-		if !found {
-			newLabels = append(newLabels, add)
-		}
-	}
-
-	msg.LabelIds = newLabels
+	msg.LabelIds = modifyLabels(msg.LabelIds, req.AddLabelIds, req.RemoveLabelIds)
 	return msg, nil
 }
 
@@ -232,34 +235,7 @@ func (m *MockGmailService) BatchModifyMessages(ctx context.Context, req *gmail.B
 
 	for _, id := range req.Ids {
 		if msg, ok := m.Messages[id]; ok {
-			// Remove labels
-			newLabels := []string{}
-			for _, label := range msg.LabelIds {
-				keep := true
-				for _, remove := range req.RemoveLabelIds {
-					if label == remove {
-						keep = false
-						break
-					}
-				}
-				if keep {
-					newLabels = append(newLabels, label)
-				}
-			}
-			// Add labels
-			for _, add := range req.AddLabelIds {
-				found := false
-				for _, existing := range newLabels {
-					if existing == add {
-						found = true
-						break
-					}
-				}
-				if !found {
-					newLabels = append(newLabels, add)
-				}
-			}
-			msg.LabelIds = newLabels
+			msg.LabelIds = modifyLabels(msg.LabelIds, req.AddLabelIds, req.RemoveLabelIds)
 		}
 	}
 	return nil
@@ -291,36 +267,8 @@ func (m *MockGmailService) ModifyThread(ctx context.Context, threadID string, re
 		return nil, fmt.Errorf("thread not found: %s", threadID)
 	}
 
-	// Modify labels on all messages in thread
 	for _, msg := range thread.Messages {
-		// Remove labels
-		newLabels := []string{}
-		for _, label := range msg.LabelIds {
-			keep := true
-			for _, remove := range req.RemoveLabelIds {
-				if label == remove {
-					keep = false
-					break
-				}
-			}
-			if keep {
-				newLabels = append(newLabels, label)
-			}
-		}
-		// Add labels
-		for _, add := range req.AddLabelIds {
-			found := false
-			for _, existing := range newLabels {
-				if existing == add {
-					found = true
-					break
-				}
-			}
-			if !found {
-				newLabels = append(newLabels, add)
-			}
-		}
-		msg.LabelIds = newLabels
+		msg.LabelIds = modifyLabels(msg.LabelIds, req.AddLabelIds, req.RemoveLabelIds)
 	}
 
 	return thread, nil
