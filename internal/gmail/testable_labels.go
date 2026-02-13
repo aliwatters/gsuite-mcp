@@ -195,22 +195,7 @@ func TestableGmailModifyMessage(ctx context.Context, request mcp.CallToolRequest
 		return errResult, nil
 	}
 
-	var addLabels, removeLabels []string
-	if add, ok := request.Params.Arguments["add_labels"].([]any); ok {
-		for _, l := range add {
-			if s, ok := l.(string); ok {
-				addLabels = append(addLabels, s)
-			}
-		}
-	}
-	if remove, ok := request.Params.Arguments["remove_labels"].([]any); ok {
-		for _, l := range remove {
-			if s, ok := l.(string); ok {
-				removeLabels = append(removeLabels, s)
-			}
-		}
-	}
-
+	addLabels, removeLabels := extractAddRemoveLabels(request.Params.Arguments)
 	return modifyMessageLabels(ctx, svc, request, addLabels, removeLabels)
 }
 
@@ -226,22 +211,7 @@ func TestableGmailModifyThread(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	var addLabels, removeLabels []string
-	if add, ok := request.Params.Arguments["add_labels"].([]any); ok {
-		for _, l := range add {
-			if s, ok := l.(string); ok {
-				addLabels = append(addLabels, s)
-			}
-		}
-	}
-	if remove, ok := request.Params.Arguments["remove_labels"].([]any); ok {
-		for _, l := range remove {
-			if s, ok := l.(string); ok {
-				removeLabels = append(removeLabels, s)
-			}
-		}
-	}
-
+	addLabels, removeLabels := extractAddRemoveLabels(request.Params.Arguments)
 	modifyRequest := &gmail.ModifyThreadRequest{
 		AddLabelIds:    addLabels,
 		RemoveLabelIds: removeLabels,
@@ -267,22 +237,7 @@ func TestableGmailBatchModify(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	var addLabels, removeLabels []string
-	if add, ok := request.Params.Arguments["add_labels"].([]any); ok {
-		for _, l := range add {
-			if s, ok := l.(string); ok {
-				addLabels = append(addLabels, s)
-			}
-		}
-	}
-	if remove, ok := request.Params.Arguments["remove_labels"].([]any); ok {
-		for _, l := range remove {
-			if s, ok := l.(string); ok {
-				removeLabels = append(removeLabels, s)
-			}
-		}
-	}
-
+	addLabels, removeLabels := extractAddRemoveLabels(request.Params.Arguments)
 	req := &gmail.BatchModifyMessagesRequest{
 		Ids:            ids,
 		AddLabelIds:    addLabels,
