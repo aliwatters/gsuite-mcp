@@ -1,0 +1,26 @@
+name: Auto-Update PR Branches
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: auto-update-branches
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+jobs:
+  update-branches:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: aliwatters/auto-update-branches@v1
+        with:
+          update-mode: "next"
+          cancel-stale-ci: "true"
+          conflict-label: "needs-rebase"
