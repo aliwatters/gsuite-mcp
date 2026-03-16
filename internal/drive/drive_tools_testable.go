@@ -285,6 +285,7 @@ func TestableDriveList(ctx context.Context, request mcp.CallToolRequest, deps *D
 		PageToken: pageToken,
 		OrderBy:   orderBy,
 		Fields:    DriveFileListFields,
+		Corpora:   "allDrives",
 	})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Drive API error: %v", err)), nil
