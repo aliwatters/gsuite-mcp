@@ -20,6 +20,9 @@ type MockDriveService struct {
 	DownloadFileFunc func(ctx context.Context, fileID string) (io.ReadCloser, error)
 	ExportFileFunc   func(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error)
 
+	// Drives
+	GetDriveFunc func(ctx context.Context, driveID string) (*drive.Drive, error)
+
 	// Permissions
 	ListPermissionsFunc  func(ctx context.Context, fileID string) (*drive.PermissionList, error)
 	CreatePermissionFunc func(ctx context.Context, fileID string, permission *drive.Permission, sendNotification bool) (*drive.Permission, error)
@@ -89,6 +92,15 @@ func (m *MockDriveService) ExportFile(ctx context.Context, fileID string, mimeTy
 		return m.ExportFileFunc(ctx, fileID, mimeType)
 	}
 	return nil, nil
+}
+
+// Drive methods
+
+func (m *MockDriveService) GetDrive(ctx context.Context, driveID string) (*drive.Drive, error) {
+	if m.GetDriveFunc != nil {
+		return m.GetDriveFunc(ctx, driveID)
+	}
+	return &drive.Drive{}, nil
 }
 
 // Permission methods

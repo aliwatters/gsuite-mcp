@@ -106,9 +106,14 @@ func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 		return mcp.NewToolResultError(fmt.Sprintf("Drive API error: %v", err)), nil
 	}
 
+	resolver := NewPathResolver(srv)
 	files := make([]map[string]any, 0, len(resp.Files))
 	for _, f := range resp.Files {
-		files = append(files, formatFile(f))
+		fm := formatFile(f)
+		if path := resolver.ResolvePath(ctx, f.Parents); path != "" {
+			fm["path"] = path
+		}
+		files = append(files, fm)
 	}
 
 	result := map[string]any{
@@ -137,7 +142,13 @@ func TestableDriveGet(ctx context.Context, request mcp.CallToolRequest, deps *Dr
 		return mcp.NewToolResultError(fmt.Sprintf("Drive API error: %v", err)), nil
 	}
 
-	return common.MarshalToolResult(formatFileFull(file))
+	result := formatFileFull(file)
+	resolver := NewPathResolver(srv)
+	if path := resolver.ResolvePath(ctx, file.Parents); path != "" {
+		result["path"] = path
+	}
+
+	return common.MarshalToolResult(result)
 }
 
 // TestableDriveDownload downloads file content.
@@ -291,9 +302,14 @@ func TestableDriveList(ctx context.Context, request mcp.CallToolRequest, deps *D
 		return mcp.NewToolResultError(fmt.Sprintf("Drive API error: %v", err)), nil
 	}
 
+	resolver := NewPathResolver(srv)
 	files := make([]map[string]any, 0, len(resp.Files))
 	for _, f := range resp.Files {
-		files = append(files, formatFile(f))
+		fm := formatFile(f)
+		if path := resolver.ResolvePath(ctx, f.Parents); path != "" {
+			fm["path"] = path
+		}
+		files = append(files, fm)
 	}
 
 	result := map[string]any{
