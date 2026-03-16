@@ -94,7 +94,7 @@ func argPresent(args map[string]any, name string, kind fieldKind) bool {
 // validateColor returns a validation function that parses a hex color argument.
 func validateColor(argName string) func(args map[string]any) *mcp.CallToolResult {
 	return func(args map[string]any) *mcp.CallToolResult {
-		color := args[argName].(string)
+		color, _ := args[argName].(string)
 		if _, _, _, err := parseColor(color); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid %s: %v", argName, err))
 		}
@@ -110,7 +110,7 @@ func validateEnum(argName string, allowed ...string) func(args map[string]any) *
 	}
 	errMsg := fmt.Sprintf("%s must be one of: %s", argName, strings.Join(allowed, ", "))
 	return func(args map[string]any) *mcp.CallToolResult {
-		val := args[argName].(string)
+		val, _ := args[argName].(string)
 		if !valid[val] {
 			return mcp.NewToolResultError(errMsg)
 		}

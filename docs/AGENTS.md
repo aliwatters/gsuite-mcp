@@ -86,7 +86,7 @@ All tools accept an optional `account` parameter. Resolution order:
 
 ```go
 func handleTool(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-    accountParam, _ := request.Params.Arguments["account"].(string)
+    accountParam := common.ParseStringArg(request.Params.Arguments, "account", "")
     account, err := appConfig.ResolveAccount(accountParam)
     if err != nil {
         return mcp.NewToolResultError(err.Error()), nil

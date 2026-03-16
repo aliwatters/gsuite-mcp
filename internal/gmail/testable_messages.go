@@ -12,7 +12,7 @@ import (
 
 // TestableGmailSearch performs a Gmail search using the provided service.
 func TestableGmailSearch(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	query, _ := request.Params.Arguments["query"].(string)
+	query := common.ParseStringArg(request.Params.Arguments, "query", "")
 	if query == "" {
 		return mcp.NewToolResultError("query parameter is required"), nil
 	}

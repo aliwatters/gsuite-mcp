@@ -13,7 +13,7 @@ import (
 // extractRequiredSpreadsheetID extracts, validates, and normalizes the spreadsheet_id parameter.
 // Returns the cleaned ID or an error result if missing.
 func extractRequiredSpreadsheetID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
-	spreadsheetID, _ := request.Params.Arguments["spreadsheet_id"].(string)
+	spreadsheetID := common.ParseStringArg(request.Params.Arguments, "spreadsheet_id", "")
 	if spreadsheetID == "" {
 		return "", mcp.NewToolResultError("spreadsheet_id parameter is required")
 	}
@@ -93,7 +93,7 @@ func TestableSheetsRead(ctx context.Context, request mcp.CallToolRequest, deps *
 		return idErrResult, nil
 	}
 
-	readRange, _ := request.Params.Arguments["range"].(string)
+	readRange := common.ParseStringArg(request.Params.Arguments, "range", "")
 	if readRange == "" {
 		return mcp.NewToolResultError("range parameter is required (A1 notation, e.g., 'Sheet1!A1:C10')"), nil
 	}
@@ -135,7 +135,7 @@ func TestableSheetsWrite(ctx context.Context, request mcp.CallToolRequest, deps 
 		return idErrResult, nil
 	}
 
-	writeRange, _ := request.Params.Arguments["range"].(string)
+	writeRange := common.ParseStringArg(request.Params.Arguments, "range", "")
 	if writeRange == "" {
 		return mcp.NewToolResultError("range parameter is required (A1 notation, e.g., 'Sheet1!A1:C3')"), nil
 	}
@@ -182,7 +182,7 @@ func TestableSheetsAppend(ctx context.Context, request mcp.CallToolRequest, deps
 		return idErrResult, nil
 	}
 
-	appendRange, _ := request.Params.Arguments["range"].(string)
+	appendRange := common.ParseStringArg(request.Params.Arguments, "range", "")
 	if appendRange == "" {
 		return mcp.NewToolResultError("range parameter is required (A1 notation for table to append to, e.g., 'Sheet1!A:C')"), nil
 	}
@@ -228,7 +228,7 @@ func TestableSheetsCreate(ctx context.Context, request mcp.CallToolRequest, deps
 		return errResult, nil
 	}
 
-	title, _ := request.Params.Arguments["title"].(string)
+	title := common.ParseStringArg(request.Params.Arguments, "title", "")
 	if title == "" {
 		return mcp.NewToolResultError("title parameter is required"), nil
 	}
@@ -372,7 +372,7 @@ func TestableSheetsClear(ctx context.Context, request mcp.CallToolRequest, deps 
 		return idErrResult, nil
 	}
 
-	clearRange, _ := request.Params.Arguments["range"].(string)
+	clearRange := common.ParseStringArg(request.Params.Arguments, "range", "")
 	if clearRange == "" {
 		return mcp.NewToolResultError("range parameter is required (A1 notation, e.g., 'Sheet1!A1:C10')"), nil
 	}

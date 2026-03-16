@@ -28,7 +28,7 @@ func GetDeps() *Deps {
 
 // ResolveAccountFromRequest extracts and validates the account parameter.
 func ResolveAccountFromRequest(request mcp.CallToolRequest) (string, error) {
-	accountParam, _ := request.Params.Arguments["account"].(string)
+	accountParam := ParseStringArg(request.Params.Arguments, "account", "")
 
 	if accountParam == "" {
 		// No account specified - use first authenticated email
