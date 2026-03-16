@@ -35,6 +35,7 @@ type ListFilesOptions struct {
 	PageToken string
 	OrderBy   string
 	Fields    string
+	Corpora   string
 }
 
 // RealDriveService wraps the Drive API client and implements DriveService.
@@ -49,7 +50,9 @@ func NewRealDriveService(service *drive.Service) *RealDriveService {
 
 // ListFiles lists files matching the query.
 func (s *RealDriveService) ListFiles(ctx context.Context, opts *ListFilesOptions) (*drive.FileList, error) {
-	call := s.service.Files.List().Context(ctx)
+	call := s.service.Files.List().Context(ctx).
+		IncludeItemsFromAllDrives(true).
+		SupportsAllDrives(true)
 
 	if opts != nil {
 		if opts.Query != "" {
@@ -67,6 +70,9 @@ func (s *RealDriveService) ListFiles(ctx context.Context, opts *ListFilesOptions
 		if opts.Fields != "" {
 			call = call.Fields(googleapi.Field(opts.Fields))
 		}
+		if opts.Corpora != "" {
+			call = call.Corpora(opts.Corpora)
+		}
 	}
 
 	return call.Do()
@@ -74,7 +80,8 @@ func (s *RealDriveService) ListFiles(ctx context.Context, opts *ListFilesOptions
 
 // GetFile gets a file by ID.
 func (s *RealDriveService) GetFile(ctx context.Context, fileID string, fields string) (*drive.File, error) {
-	call := s.service.Files.Get(fileID).Context(ctx)
+	call := s.service.Files.Get(fileID).Context(ctx).
+		SupportsAllDrives(true)
 	if fields != "" {
 		call = call.Fields(googleapi.Field(fields))
 	}
@@ -83,7 +90,8 @@ func (s *RealDriveService) GetFile(ctx context.Context, fileID string, fields st
 
 // CreateFile creates a new file.
 func (s *RealDriveService) CreateFile(ctx context.Context, file *drive.File, content io.Reader) (*drive.File, error) {
-	call := s.service.Files.Create(file).Context(ctx)
+	call := s.service.Files.Create(file).Context(ctx).
+		SupportsAllDrives(true)
 	if content != nil {
 		call = call.Media(content)
 	}
@@ -92,13 +100,15 @@ func (s *RealDriveService) CreateFile(ctx context.Context, file *drive.File, con
 
 // UpdateFile updates an existing file's metadata.
 func (s *RealDriveService) UpdateFile(ctx context.Context, fileID string, file *drive.File) (*drive.File, error) {
-	return s.service.Files.Update(fileID, file).Context(ctx).Do()
+	return s.service.Files.Update(fileID, file).Context(ctx).
+		SupportsAllDrives(true).Do()
 }
 
 // MoveFile moves a file to a new folder.
 func (s *RealDriveService) MoveFile(ctx context.Context, fileID string, newParentID string, previousParents string) (*drive.File, error) {
 	return s.service.Files.Update(fileID, nil).
 		Context(ctx).
+		SupportsAllDrives(true).
 		AddParents(newParentID).
 		RemoveParents(previousParents).
 		Fields("id, name, parents, webViewLink").
@@ -107,17 +117,20 @@ func (s *RealDriveService) MoveFile(ctx context.Context, fileID string, newParen
 
 // CopyFile creates a copy of a file.
 func (s *RealDriveService) CopyFile(ctx context.Context, fileID string, file *drive.File) (*drive.File, error) {
-	return s.service.Files.Copy(fileID, file).Context(ctx).Do()
+	return s.service.Files.Copy(fileID, file).Context(ctx).
+		SupportsAllDrives(true).Do()
 }
 
 // DeleteFile permanently deletes a file.
 func (s *RealDriveService) DeleteFile(ctx context.Context, fileID string) error {
-	return s.service.Files.Delete(fileID).Context(ctx).Do()
+	return s.service.Files.Delete(fileID).Context(ctx).
+		SupportsAllDrives(true).Do()
 }
 
 // DownloadFile downloads a file's content.
 func (s *RealDriveService) DownloadFile(ctx context.Context, fileID string) (io.ReadCloser, error) {
-	resp, err := s.service.Files.Get(fileID).Context(ctx).Download()
+	resp, err := s.service.Files.Get(fileID).Context(ctx).
+		SupportsAllDrives(true).Download()
 	if err != nil {
 		return nil, err
 	}
@@ -135,18 +148,21 @@ func (s *RealDriveService) ExportFile(ctx context.Context, fileID string, mimeTy
 
 // ListPermissions lists a file's permissions.
 func (s *RealDriveService) ListPermissions(ctx context.Context, fileID string) (*drive.PermissionList, error) {
-	return s.service.Permissions.List(fileID).Context(ctx).Do()
+	return s.service.Permissions.List(fileID).Context(ctx).
+		SupportsAllDrives(true).Do()
 }
 
 // CreatePermission creates a permission for a file.
 func (s *RealDriveService) CreatePermission(ctx context.Context, fileID string, permission *drive.Permission, sendNotification bool) (*drive.Permission, error) {
 	return s.service.Permissions.Create(fileID, permission).
 		Context(ctx).
+		SupportsAllDrives(true).
 		SendNotificationEmail(sendNotification).
 		Do()
 }
 
 // DeletePermission deletes a permission from a file.
 func (s *RealDriveService) DeletePermission(ctx context.Context, fileID string, permissionID string) error {
-	return s.service.Permissions.Delete(fileID, permissionID).Context(ctx).Do()
+	return s.service.Permissions.Delete(fileID, permissionID).Context(ctx).
+		SupportsAllDrives(true).Do()
 }
