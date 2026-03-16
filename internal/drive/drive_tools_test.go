@@ -443,6 +443,78 @@ func TestDriveServiceCreatePermission(t *testing.T) {
 	}
 }
 
+// TestDriveSearchCorpora tests that TestableDriveSearch passes the corpora parameter correctly.
+func TestDriveSearchCorpora(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        map[string]any
+		wantCorpora string
+	}{
+		{
+			name:        "default corpora is allDrives",
+			args:        map[string]any{"query": "test"},
+			wantCorpora: "allDrives",
+		},
+		{
+			name:        "explicit corpora user",
+			args:        map[string]any{"query": "test", "corpora": "user"},
+			wantCorpora: "user",
+		},
+		{
+			name:        "explicit corpora domain",
+			args:        map[string]any{"query": "test", "corpora": "domain"},
+			wantCorpora: "domain",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixtures := NewDriveTestFixtures()
+			var capturedOpts *ListFilesOptions
+			fixtures.MockService.ListFilesFunc = func(_ context.Context, opts *ListFilesOptions) (*drive.FileList, error) {
+				capturedOpts = opts
+				return &drive.FileList{}, nil
+			}
+
+			request := common.CreateMCPRequest(tt.args)
+			_, err := TestableDriveSearch(context.Background(), request, fixtures.Deps)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if capturedOpts == nil {
+				t.Fatal("ListFiles was not called")
+			}
+			if capturedOpts.Corpora != tt.wantCorpora {
+				t.Errorf("got corpora %q, want %q", capturedOpts.Corpora, tt.wantCorpora)
+			}
+		})
+	}
+}
+
+// TestDriveListCorpora tests that TestableDriveList passes corpora for shared drive support.
+func TestDriveListCorpora(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	var capturedOpts *ListFilesOptions
+	fixtures.MockService.ListFilesFunc = func(_ context.Context, opts *ListFilesOptions) (*drive.FileList, error) {
+		capturedOpts = opts
+		return &drive.FileList{}, nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{})
+	_, err := TestableDriveList(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if capturedOpts == nil {
+		t.Fatal("ListFiles was not called")
+	}
+	if capturedOpts.Corpora != "allDrives" {
+		t.Errorf("got corpora %q, want %q", capturedOpts.Corpora, "allDrives")
+	}
+}
+
 // TestExtractFileID tests the common.ExtractGoogleResourceID helper function (formerly extractFileID).
 func TestExtractFileID(t *testing.T) {
 	tests := []struct {

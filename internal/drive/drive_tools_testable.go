@@ -93,12 +93,14 @@ func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 
 	maxResults := common.ParseMaxResults(request.Params.Arguments, common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
 	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	corpora := common.ParseStringArg(request.Params.Arguments, "corpora", "allDrives")
 
 	resp, err := srv.ListFiles(ctx, &ListFilesOptions{
 		Query:     query,
 		PageSize:  maxResults,
 		PageToken: pageToken,
 		Fields:    DriveFileListFields,
+		Corpora:   corpora,
 	})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Drive API error: %v", err)), nil
@@ -283,6 +285,7 @@ func TestableDriveList(ctx context.Context, request mcp.CallToolRequest, deps *D
 		PageToken: pageToken,
 		OrderBy:   orderBy,
 		Fields:    DriveFileListFields,
+		Corpora:   "allDrives",
 	})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Drive API error: %v", err)), nil
