@@ -131,6 +131,11 @@ func setupDefaultDriveMockData(mock *MockDriveService) {
 	mock.DeletePermissionFunc = func(_ context.Context, fileID string, permissionID string) error {
 		return nil
 	}
+
+	// Set up GetDrive to return a shared drive
+	mock.GetDriveFunc = func(_ context.Context, driveID string) (*drive.Drive, error) {
+		return &drive.Drive{Id: driveID, Name: "Shared Drive"}, nil
+	}
 }
 
 // createTestFile creates a File with standard fields.

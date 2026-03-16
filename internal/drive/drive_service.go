@@ -22,6 +22,9 @@ type DriveService interface {
 	DownloadFile(ctx context.Context, fileID string) (io.ReadCloser, error)
 	ExportFile(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error)
 
+	// Drives
+	GetDrive(ctx context.Context, driveID string) (*drive.Drive, error)
+
 	// Permissions
 	ListPermissions(ctx context.Context, fileID string) (*drive.PermissionList, error)
 	CreatePermission(ctx context.Context, fileID string, permission *drive.Permission, sendNotification bool) (*drive.Permission, error)
@@ -144,6 +147,11 @@ func (s *RealDriveService) ExportFile(ctx context.Context, fileID string, mimeTy
 		return nil, err
 	}
 	return resp.Body, nil
+}
+
+// GetDrive gets a shared drive by ID.
+func (s *RealDriveService) GetDrive(ctx context.Context, driveID string) (*drive.Drive, error) {
+	return s.service.Drives.Get(driveID).Context(ctx).Fields("id,name").Do()
 }
 
 // ListPermissions lists a file's permissions.

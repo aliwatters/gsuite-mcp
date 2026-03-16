@@ -11,9 +11,9 @@ import (
 // These reduce response payload size by only requesting needed fields.
 const (
 	// DriveFileListFields contains fields for file listings (search, list)
-	DriveFileListFields = "nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,webViewLink)"
+	DriveFileListFields = "nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,driveId,webViewLink)"
 	// DriveFileGetFields contains fields for single file retrieval (full metadata)
-	DriveFileGetFields = "id,name,mimeType,size,createdTime,modifiedTime,parents,webViewLink,webContentLink,description,starred,trashed,owners,permissions"
+	DriveFileGetFields = "id,name,mimeType,size,createdTime,modifiedTime,parents,driveId,webViewLink,webContentLink,description,starred,trashed,owners,permissions"
 	// DriveFileDownloadFields contains minimal fields for download operations
 	DriveFileDownloadFields = "id,name,mimeType,size"
 	// DriveFileCreateFields contains fields for file creation responses
