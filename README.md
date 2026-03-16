@@ -4,7 +4,7 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Complete Google Workspace MCP server — Gmail, Calendar, Docs, Tasks, Sheets, and Contacts. Single Go binary with true multi-account support.
+Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, and Contacts. Single Go binary with true multi-account support.
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ gsuite-mcp auth personal
 ## Why gsuite-mcp?
 
 - **Multi-account**: Switch accounts per-operation with `"account": "work"`
-- **Complete coverage**: Gmail, Calendar, Docs, Tasks, Sheets, Contacts
+- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Contacts
 - **Single binary**: No Python, no Node, no runtime dependencies
 - **MCP native**: JSON Schema 2020-12, proper tool descriptions
 
@@ -47,6 +47,9 @@ Full inbox management: search, read, send, reply, archive, trash, labels, filter
 
 ### Calendar (10 tools)
 Complete calendar control: list events, create/update/delete, recurring events, free/busy queries, Google Meet integration.
+
+### Drive (12 tools)
+File management with shared drive support: search, upload, download, list, create folders, move, copy, trash, delete, share, permissions.
 
 ### Docs (16 tools)
 Document creation and editing: create, read, append, insert, replace, delete, formatting (bold, italic, headings), lists, tables, images, headers/footers.
@@ -117,6 +120,22 @@ Contact management: list, search, create, update, delete, contact groups.
 | `calendar_free_busy` | Query availability |
 | `calendar_list_instances` | List recurring event instances |
 | `calendar_update_instance` | Update single recurrence |
+
+#### Drive
+| Tool | Description |
+|------|-------------|
+| `drive_search` | Search files with query syntax (includes shared drives) |
+| `drive_get` | Get file metadata |
+| `drive_download` | Download file content (text or base64) |
+| `drive_upload` | Upload new file |
+| `drive_list` | List files in folder |
+| `drive_create_folder` | Create folder |
+| `drive_move` | Move file to different folder |
+| `drive_copy` | Copy a file |
+| `drive_trash` | Move file to trash |
+| `drive_delete` | Permanently delete file |
+| `drive_share` | Share file with users |
+| `drive_get_permissions` | Get file permissions |
 
 #### Docs
 | Tool | Description |
