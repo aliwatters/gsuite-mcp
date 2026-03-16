@@ -12,8 +12,8 @@ func RegisterTools(s *server.MCPServer) {
 
 	// drive_search - Search files with query syntax
 	s.AddTool(mcp.NewTool("drive_search",
-		mcp.WithDescription("Search Google Drive files with query syntax. Use queries like \"name contains 'report'\" or \"mimeType = 'application/pdf'\"."),
-		mcp.WithString("query", mcp.Required(), mcp.Description("Drive search query (e.g., \"name contains 'budget'\", \"mimeType = 'application/pdf'\")")),
+		mcp.WithDescription("Search Google Drive files with query syntax. Supports metadata queries like \"name contains 'report'\" and full-text content search with \"fullText contains 'keyword'\" (searches inside PDFs, Docs, Sheets, Slides, Office files). Combine with \"and\"/\"or\" operators."),
+		mcp.WithString("query", mcp.Required(), mcp.Description("Drive search query. Examples: \"name contains 'budget'\", \"mimeType = 'application/pdf'\", \"fullText contains 'keyword'\" (searches file content), \"fullText contains 'quarterly' and mimeType = 'application/pdf'\"")),
 		mcp.WithNumber("max_results", mcp.Description("Maximum results to return (1-100, default 20)")),
 		common.WithPageToken(),
 		common.WithAccountParam(),

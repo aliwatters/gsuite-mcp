@@ -144,7 +144,10 @@ func getAuthenticatedEmail(ctx context.Context, client *http.Client) (string, er
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return "", fmt.Errorf("reading userinfo response: %w", readErr)
+		}
 		return "", fmt.Errorf("userinfo API error: %s - %s", resp.Status, string(body))
 	}
 
