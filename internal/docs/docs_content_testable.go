@@ -17,7 +17,7 @@ const docsEditURLFormat = "https://docs.google.com/document/d/%s/edit"
 // extractRequiredDocID extracts, validates, and normalizes the document_id parameter.
 // Returns the cleaned ID or an error result if missing.
 func extractRequiredDocID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
-	docID, _ := request.Params.Arguments["document_id"].(string)
+	docID := common.ParseStringArg(request.Params.Arguments, "document_id", "")
 	if docID == "" {
 		return "", mcp.NewToolResultError("document_id parameter is required")
 	}
@@ -55,7 +55,7 @@ func TestableDocsCreate(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	title, _ := request.Params.Arguments["title"].(string)
+	title := common.ParseStringArg(request.Params.Arguments, "title", "")
 	if title == "" {
 		return mcp.NewToolResultError("title parameter is required"), nil
 	}
@@ -149,7 +149,7 @@ func TestableDocsAppendText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text, _ := request.Params.Arguments["text"].(string)
+	text := common.ParseStringArg(request.Params.Arguments, "text", "")
 	if text == "" {
 		return mcp.NewToolResultError("text parameter is required"), nil
 	}
@@ -209,7 +209,7 @@ func TestableDocsInsertText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text, _ := request.Params.Arguments["text"].(string)
+	text := common.ParseStringArg(request.Params.Arguments, "text", "")
 	if text == "" {
 		return mcp.NewToolResultError("text parameter is required"), nil
 	}
@@ -256,16 +256,15 @@ func TestableDocsReplaceText(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	findText, _ := request.Params.Arguments["find_text"].(string)
+	findText := common.ParseStringArg(request.Params.Arguments, "find_text", "")
 	if findText == "" {
 		return mcp.NewToolResultError("find_text parameter is required"), nil
 	}
 
-	replaceText, _ := request.Params.Arguments["replace_text"].(string)
+	replaceText := common.ParseStringArg(request.Params.Arguments, "replace_text", "")
 	// replace_text can be empty (to delete matched text)
 
-	matchCase, _ := request.Params.Arguments["match_case"].(bool)
-	// Default to false if not specified
+	matchCase := common.ParseBoolArg(request.Params.Arguments, "match_case", false)
 
 	replaceReq := &docs.ReplaceAllTextRequest{
 		ContainsText: &docs.SubstringMatchCriteria{
@@ -350,7 +349,7 @@ func TestableDocsBatchUpdate(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	requestsJSON, _ := request.Params.Arguments["requests"].(string)
+	requestsJSON := common.ParseStringArg(request.Params.Arguments, "requests", "")
 	if requestsJSON == "" {
 		return mcp.NewToolResultError("requests parameter is required (JSON array of batch update requests)"), nil
 	}

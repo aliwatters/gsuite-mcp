@@ -75,7 +75,7 @@ func TestableContactsGet(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	resourceName, _ := request.Params.Arguments["resource_name"].(string)
+	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
 	if resourceName == "" {
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
@@ -109,7 +109,7 @@ func TestableContactsSearch(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	query, _ := request.Params.Arguments["query"].(string)
+	query := common.ParseStringArg(request.Params.Arguments, "query", "")
 	if query == "" {
 		return mcp.NewToolResultError("query parameter is required"), nil
 	}
@@ -167,7 +167,7 @@ func TestableContactsCreate(ctx context.Context, request mcp.CallToolRequest, de
 	person := &people.Person{}
 
 	// Names (given_name is required)
-	givenName, _ := request.Params.Arguments["given_name"].(string)
+	givenName := common.ParseStringArg(request.Params.Arguments, "given_name", "")
 	if givenName == "" {
 		return mcp.NewToolResultError("given_name parameter is required"), nil
 	}
@@ -218,7 +218,7 @@ func TestableContactsUpdate(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	resourceName, _ := request.Params.Arguments["resource_name"].(string)
+	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
 	if resourceName == "" {
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
@@ -253,7 +253,7 @@ func TestableContactsDelete(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	resourceName, _ := request.Params.Arguments["resource_name"].(string)
+	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
 	if resourceName == "" {
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
@@ -331,7 +331,7 @@ func TestableContactsGetGroup(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	resourceName, _ := request.Params.Arguments["resource_name"].(string)
+	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
 	if resourceName == "" {
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
@@ -369,7 +369,7 @@ func TestableContactsCreateGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	name, _ := request.Params.Arguments["name"].(string)
+	name := common.ParseStringArg(request.Params.Arguments, "name", "")
 	if name == "" {
 		return mcp.NewToolResultError("name parameter is required"), nil
 	}
@@ -392,12 +392,12 @@ func TestableContactsUpdateGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	resourceName, _ := request.Params.Arguments["resource_name"].(string)
+	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
 	if resourceName == "" {
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
 
-	name, _ := request.Params.Arguments["name"].(string)
+	name := common.ParseStringArg(request.Params.Arguments, "name", "")
 	if name == "" {
 		return mcp.NewToolResultError("name parameter is required"), nil
 	}
@@ -422,7 +422,7 @@ func TestableContactsDeleteGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	resourceName, _ := request.Params.Arguments["resource_name"].(string)
+	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
 	if resourceName == "" {
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}
@@ -450,7 +450,7 @@ func TestableContactsModifyGroupMembers(ctx context.Context, request mcp.CallToo
 		return errResult, nil
 	}
 
-	resourceName, _ := request.Params.Arguments["resource_name"].(string)
+	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
 	if resourceName == "" {
 		return mcp.NewToolResultError("resource_name parameter is required"), nil
 	}

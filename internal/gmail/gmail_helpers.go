@@ -91,7 +91,7 @@ func buildEmailMessage(msg EmailMessage) string {
 // operations (archive, star, mark read, spam, etc.). It extracts message_id from
 // the request, applies the specified label changes, and returns a standard result.
 func modifyMessageLabels(ctx context.Context, svc GmailService, request mcp.CallToolRequest, addLabels, removeLabels []string) (*mcp.CallToolResult, error) {
-	messageID, _ := request.Params.Arguments["message_id"].(string)
+	messageID := common.ParseStringArg(request.Params.Arguments, "message_id", "")
 	if messageID == "" {
 		return mcp.NewToolResultError("message_id parameter is required"), nil
 	}

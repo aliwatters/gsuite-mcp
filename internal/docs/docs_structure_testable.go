@@ -78,12 +78,12 @@ func TestableDocsInsertLink(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text, _ := request.Params.Arguments["text"].(string)
+	text := common.ParseStringArg(request.Params.Arguments, "text", "")
 	if text == "" {
 		return mcp.NewToolResultError("text parameter is required"), nil
 	}
 
-	linkURL, _ := request.Params.Arguments["url"].(string)
+	linkURL := common.ParseStringArg(request.Params.Arguments, "url", "")
 	if linkURL == "" {
 		return mcp.NewToolResultError("url parameter is required"), nil
 	}
@@ -197,7 +197,7 @@ func TestableDocsInsertImage(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	imageURI, _ := request.Params.Arguments["uri"].(string)
+	imageURI := common.ParseStringArg(request.Params.Arguments, "uri", "")
 	if imageURI == "" {
 		return mcp.NewToolResultError("uri parameter is required (URL of the image)"), nil
 	}
