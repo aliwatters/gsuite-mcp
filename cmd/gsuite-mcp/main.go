@@ -36,6 +36,9 @@ func main() {
 		case "accounts":
 			runAccounts()
 			return
+		case "check":
+			runCheck()
+			return
 		case "help", "--help", "-h":
 			printUsage()
 			return
@@ -94,6 +97,7 @@ Usage:
   %s init         Create initial configuration
   %s auth         Authenticate a Google account (opens browser)
   %s accounts     List authenticated accounts
+  %s check        Verify setup (config, tokens, API access)
 
 No configuration required - just authenticate any Google account on demand.
 When tools request an account without credentials, auth flow is triggered automatically.
@@ -104,7 +108,7 @@ Configuration:
   Client secret:  %s
 
 For more information, see README.md
-`, serverName, serverName, serverName, serverName, serverName,
+`, serverName, serverName, serverName, serverName, serverName, serverName,
 		config.DefaultConfigDir(), config.CredentialsDir(), config.ClientSecretPath())
 }
 

@@ -180,6 +180,7 @@ go build -o gsuite-mcp
 ./gsuite-mcp init           # Create default config
 ./gsuite-mcp auth <label>   # Authenticate an account
 ./gsuite-mcp accounts       # List configured accounts
+./gsuite-mcp check          # Verify config, tokens, and API access
 ```
 
 ### Unit Tests

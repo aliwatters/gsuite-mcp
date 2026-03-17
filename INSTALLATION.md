@@ -127,6 +127,21 @@ Same configuration — edit Claude Desktop's config file:
 
 Most MCP clients use similar configuration. Check your client's documentation for the config file location.
 
+## Verify Your Setup
+
+Run the preflight check to validate your configuration, tokens, and API access in one command:
+
+```bash
+gsuite-mcp check
+```
+
+This checks:
+- `client_secret.json` exists and parses correctly
+- All authenticated account tokens are still valid
+- All 7 Google APIs are enabled for your GCP project
+
+Any issues include actionable fix instructions (re-auth commands, API enable links).
+
 ## Verify It Works
 
 Start a new Claude conversation and ask:
@@ -151,7 +166,7 @@ gsuite-mcp auth
 
 ### "API not enabled"
 
-Go back to Google Cloud Console → APIs & Services → Library and enable the required API.
+Run `gsuite-mcp check` to see which APIs are disabled — it provides direct enable links. Or go to Google Cloud Console → APIs & Services → Library and enable the required API.
 
 ### "Access denied" or "Insufficient scopes"
 

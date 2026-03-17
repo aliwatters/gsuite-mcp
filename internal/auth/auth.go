@@ -123,6 +123,11 @@ type Manager struct {
 	authMu sync.Mutex
 }
 
+// OAuthConfig returns the OAuth2 configuration (needed for reading ClientID).
+func (m *Manager) OAuthConfig() *oauth2.Config {
+	return m.oauthConfig
+}
+
 // NewManager creates a new auth manager.
 func NewManager() (*Manager, error) {
 	oauthCfg, err := loadOAuthConfig()
