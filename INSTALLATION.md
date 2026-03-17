@@ -30,56 +30,70 @@ gsuite-mcp --help
 
 You should see the help output with available commands.
 
-## 2. Get Google OAuth Credentials (5 minutes)
+## 2. Create a GCP Project (5 minutes)
 
-OAuth is just "Login with Google" for apps. You're creating credentials for *your own app* that will access *your own data*.
+### Step 1: Create or select a project
 
-### Step-by-Step
+- Visit [console.cloud.google.com](https://console.cloud.google.com) and sign in
+- Click the project dropdown at the top → "New Project"
+- Name it something like "gsuite-mcp" → "Create"
 
-1. **Go to Google Cloud Console**
-   - Visit [console.cloud.google.com](https://console.cloud.google.com)
-   - Sign in with your Google account
+### Step 2: Configure the OAuth consent screen
 
-2. **Create a new project** (or select existing)
-   - Click the project dropdown at the top
-   - Click "New Project"
-   - Name it something like "gsuite-mcp"
-   - Click "Create"
+Go to **APIs & Services → OAuth consent screen**.
 
-3. **Enable the APIs**
-   - Go to "APIs & Services" → "Library"
-   - Search for and enable each API you need:
-     - Gmail API
-     - Google Calendar API
-     - Google Docs API
-     - Google Sheets API
-     - Google Tasks API
-     - People API (for Contacts)
+**This has two independent settings that both must be correct:**
 
-   > **Tip**: You can enable just what you need. Start with Gmail and Calendar.
+| Setting | Google Workspace orgs | Personal Gmail |
+|---------|----------------------|----------------|
+| **User type** | Internal (no verification needed) | External |
+| **Publishing status** | Testing or In production | Testing or In production |
+| **Test users** | Not required for Internal | Add your email (required in Testing mode) |
 
-4. **Create OAuth credentials**
-   - Go to "APIs & Services" → "Credentials"
-   - Click "Create Credentials" → "OAuth client ID"
-   - If prompted, configure the OAuth consent screen first:
-     - Choose "External" (unless you're in a Workspace org)
-     - Fill in app name: "gsuite-mcp"
-     - Add your email as test user
-     - Save
-   - Back to credentials:
-     - Application type: "Desktop app"
-     - Name: "gsuite-mcp"
-     - Click "Create"
+- **User type**: Controls who can authenticate. "Internal" restricts to your org; "External" allows any Google account.
+- **Publishing status**: "Testing" works fine for personal use — just add yourself as a test user. Note that tokens in Testing mode expire every 7 days, requiring periodic re-auth. Switch to "In production" if that gets annoying.
 
-5. **Download the credentials**
-   - Click the download icon next to your new credential
-   - Save as `client_secret.json`
-   - Move to the config directory:
+Fill in the required fields:
+- App name: "gsuite-mcp"
+- User support email: your email
+- Developer contact email: your email
 
-   ```bash
-   mkdir -p ~/.config/gsuite-mcp
-   mv ~/Downloads/client_secret.json ~/.config/gsuite-mcp/
-   ```
+If using External + Testing mode, add yourself under "Test users" → "Add users".
+
+### Step 3: Enable the APIs
+
+Go to **APIs & Services → Library** and enable all 7 APIs:
+
+- Gmail API
+- Google Calendar API
+- Google Drive API
+- Google Docs API
+- Google Sheets API
+- Google Tasks API
+- People API (for Contacts)
+
+> **Tip**: You can enable just what you need now. `gsuite-mcp check` will tell you which are missing later.
+
+### Step 4: Create OAuth credentials
+
+- Go to **APIs & Services → Credentials**
+- Click **"Create Credentials" → "OAuth client ID"**
+- Application type: **"Desktop app"**
+- Name: "gsuite-mcp"
+- Click "Create"
+
+### Step 5: Download and install the credentials
+
+- Click the download icon next to your new credential
+- Save as `client_secret.json`
+- Move to the config directory:
+
+```bash
+mkdir -p ~/.config/gsuite-mcp
+mv ~/Downloads/client_secret.json ~/.config/gsuite-mcp/
+```
+
+> **How to verify you're in the right project**: The OAuth client ID starts with a number (e.g., `305192952884-...`). This is your GCP project number. If it doesn't match the project where you enabled APIs and configured the consent screen, things won't work.
 
 ## 3. Authenticate Your Account (2 minutes)
 
@@ -127,9 +141,9 @@ Same configuration — edit Claude Desktop's config file:
 
 Most MCP clients use similar configuration. Check your client's documentation for the config file location.
 
-## Verify Your Setup
+## 5. Verify Your Setup
 
-Run the preflight check to validate your configuration, tokens, and API access in one command:
+Run the preflight check to validate everything in one command:
 
 ```bash
 gsuite-mcp check
@@ -142,9 +156,7 @@ This checks:
 
 Any issues include actionable fix instructions (re-auth commands, API enable links).
 
-## Verify It Works
-
-Start a new Claude conversation and ask:
+Then start a new Claude conversation and ask:
 
 > "What's in my inbox?"
 
@@ -156,7 +168,17 @@ Claude should use gsuite-mcp to fetch your real data.
 
 ## Troubleshooting
 
-### "Token expired" or "Invalid credentials"
+### Quick Reference
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `403: access_denied` "not completed verification" | Not listed as test user in Testing mode | Add your email as a test user, or set publishing status to "In production" |
+| `400: redirect_uri_mismatch` | Redirect URI not registered | Not applicable for Desktop app type |
+| `403: SERVICE_DISABLED` | API not enabled in GCP project | Run `gsuite-mcp check` for enable links |
+| `invalid_grant` | Token expired or revoked | Run `gsuite-mcp auth` |
+| `401: invalid_client` | Wrong or corrupted client_secret.json | Re-download from GCP Console |
+
+### Token Expired or Invalid Credentials
 
 Re-run the auth command:
 
@@ -164,11 +186,13 @@ Re-run the auth command:
 gsuite-mcp auth
 ```
 
-### "API not enabled"
+### API Not Enabled
 
-Run `gsuite-mcp check` to see which APIs are disabled — it provides direct enable links. Or go to Google Cloud Console → APIs & Services → Library and enable the required API.
+Run `gsuite-mcp check` to see which APIs are disabled — it provides direct enable links.
 
-### "Access denied" or "Insufficient scopes"
+Or go to Google Cloud Console → APIs & Services → Library and enable the required API.
+
+### Access Denied or Insufficient Scopes
 
 Your token may have been created before you enabled all APIs. Delete your token and re-authenticate:
 
@@ -177,23 +201,52 @@ rm ~/.config/gsuite-mcp/credentials/<your-email>.json
 gsuite-mcp auth
 ```
 
-### "OAuth consent screen not configured"
+### OAuth Consent Screen Not Configured
 
-Complete the OAuth consent screen setup in Google Cloud Console before creating credentials.
+Complete the OAuth consent screen setup in Google Cloud Console before creating credentials. See [Step 2](#step-2-configure-the-oauth-consent-screen) above.
 
-### "User not in test users list"
+### "Not completed verification" / access_denied
 
-If using an external OAuth consent screen in "Testing" mode, add your email as a test user:
+This means you're not listed as a test user for an app in "Testing" mode. Either:
+
+1. **Add yourself as a test user**: Google Cloud Console → APIs & Services → OAuth consent screen → "Test users" → "Add users" → add your email
+2. **Or switch to "In production"**: Click "Publish App" on the OAuth consent screen (does not require Google verification for personal use)
+
+### User Not in Test Users List
+
+If using an External consent screen in "Testing" mode, add your email as a test user:
 - Google Cloud Console → APIs & Services → OAuth consent screen
 - Under "Test users", click "Add users"
 - Add your email address
 
-### Still stuck?
+Or switch to "In production" mode to avoid this entirely.
+
+### Re-authentication
+
+You may need to re-authenticate when:
+- A token expires or gets revoked
+- You enable additional API scopes
+- You switch GCP projects or OAuth clients
+
+For a clean re-auth:
+
+```bash
+rm ~/.config/gsuite-mcp/credentials/<your-email>.json
+gsuite-mcp auth
+```
+
+To check which accounts are authenticated:
+
+```bash
+gsuite-mcp accounts
+```
+
+### Still Stuck?
 
 Open an issue at [github.com/aliwatters/gsuite-mcp/issues](https://github.com/aliwatters/gsuite-mcp/issues) with:
 - The error message
 - Which step failed
-- Your OS and Go version
+- Output of `gsuite-mcp check`
 
 ## Configuration Reference
 
