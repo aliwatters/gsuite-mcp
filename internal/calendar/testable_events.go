@@ -120,54 +120,9 @@ func TestableCalendarCreateEvent(ctx context.Context, request mcp.CallToolReques
 		event.Location = loc
 	}
 
-	// Start time - required
-	startTime := common.ParseStringArg(request.Params.Arguments, "start_time", "")
-	if startTime == "" {
-		return mcp.NewToolResultError("start_time parameter is required (RFC3339 format, e.g., 2024-01-15T09:00:00-08:00)"), nil
-	}
-
-	// Check if all-day event (date only, no time component)
-	allDay := common.ParseBoolArg(request.Params.Arguments, "all_day", false)
-
-	if allDay {
-		// All-day events use Date field (YYYY-MM-DD format)
-		startDate, err := extractDateFromDateTime(startTime)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Invalid start_time for all-day event: %v", err)), nil
-		}
-		event.Start = &calendar.EventDateTime{Date: startDate}
-
-		endTime := common.ParseStringArg(request.Params.Arguments, "end_time", "")
-		if endTime != "" {
-			endDate, err := extractDateFromDateTime(endTime)
-			if err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("Invalid end_time for all-day event: %v", err)), nil
-			}
-			event.End = &calendar.EventDateTime{Date: endDate}
-		} else {
-			// Default to same day
-			event.End = &calendar.EventDateTime{Date: startDate}
-		}
-	} else {
-		// Timed events use DateTime field
-		event.Start = &calendar.EventDateTime{DateTime: startTime}
-		endTime := common.ParseStringArg(request.Params.Arguments, "end_time", "")
-		if endTime != "" {
-			event.End = &calendar.EventDateTime{DateTime: endTime}
-		} else {
-			// Default to 1 hour duration
-			t, err := time.Parse(time.RFC3339, startTime)
-			if err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("Invalid start_time format: %v", err)), nil
-			}
-			event.End = &calendar.EventDateTime{DateTime: t.Add(time.Hour).Format(time.RFC3339)}
-		}
-	}
-
-	// Time zone
-	if tz := common.ParseStringArg(request.Params.Arguments, "timezone", ""); tz != "" {
-		event.Start.TimeZone = tz
-		event.End.TimeZone = tz
+	// Set start/end times (required start_time, optional end_time/all_day/timezone)
+	if errResult := setNewEventTimes(event, request.Params.Arguments); errResult != nil {
+		return errResult, nil
 	}
 
 	// Attendees
@@ -184,6 +139,7 @@ func TestableCalendarCreateEvent(ctx context.Context, request mcp.CallToolReques
 	addConferencing := common.ParseBoolArg(request.Params.Arguments, "add_conferencing", false)
 
 	if addConferencing {
+		startTime := common.ParseStringArg(request.Params.Arguments, "start_time", "")
 		event.ConferenceData = buildConferenceData(calendarID, startTime, summary)
 	}
 
