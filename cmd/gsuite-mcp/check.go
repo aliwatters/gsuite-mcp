@@ -45,6 +45,16 @@ func runCheck() {
 		fmt.Printf("  ✓ OAuth client ID (project: %s)\n", projectNumber)
 	}
 
+	port, envOverride, err := auth.ResolveOAuthPort()
+	if err != nil {
+		fmt.Printf("  ✗ OAuth port: %v\n", err)
+		issues++
+	} else if envOverride {
+		fmt.Printf("  ✓ OAuth port: %d (env override)\n", port)
+	} else {
+		fmt.Printf("  ✓ OAuth port: %d\n", port)
+	}
+
 	// Stage 2: Accounts
 	fmt.Println("\nChecking accounts...")
 

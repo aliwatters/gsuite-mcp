@@ -58,10 +58,10 @@ gsuite-mcp/
 ### Configuration Files
 ```
 ~/.config/gsuite-mcp/
-├── config.json             # Account configuration
 ├── client_secret.json      # Google OAuth app credentials
+├── config.json             # Settings: oauth_port (optional — created by init)
 └── credentials/
-    └── {label}.json        # Per-account OAuth tokens
+    └── {email}.json        # Per-account OAuth tokens
 ```
 
 ## Key Rules
