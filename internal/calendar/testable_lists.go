@@ -126,9 +126,9 @@ func TestableCalendarListInstances(ctx context.Context, request mcp.CallToolRequ
 		return errResult, nil
 	}
 
-	eventID := common.ParseStringArg(request.Params.Arguments, "event_id", "")
-	if eventID == "" {
-		return mcp.NewToolResultError("event_id parameter is required"), nil
+	eventID, errResult := common.RequireStringArg(request.Params.Arguments, "event_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
@@ -174,9 +174,9 @@ func TestableCalendarUpdateInstance(ctx context.Context, request mcp.CallToolReq
 		return errResult, nil
 	}
 
-	instanceID := common.ParseStringArg(request.Params.Arguments, "instance_id", "")
-	if instanceID == "" {
-		return mcp.NewToolResultError("instance_id parameter is required"), nil
+	instanceID, errResult := common.RequireStringArg(request.Params.Arguments, "instance_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)

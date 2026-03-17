@@ -1,5 +1,16 @@
 package common
 
+import "github.com/mark3labs/mcp-go/mcp"
+
+// RequireStringArg extracts a required string argument from the request.
+// Returns the value and nil on success, or empty string and an error result if missing/empty.
+func RequireStringArg(args map[string]any, key string) (string, *mcp.CallToolResult) {
+	if val, ok := args[key].(string); ok && val != "" {
+		return val, nil
+	}
+	return "", mcp.NewToolResultError(key + " parameter is required")
+}
+
 // ParseStringArg extracts a string argument from the request.
 // Returns defaultVal if the argument is missing or empty.
 func ParseStringArg(args map[string]any, key string, defaultVal string) string {

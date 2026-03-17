@@ -53,9 +53,9 @@ func TestableGmailListDrafts(ctx context.Context, request mcp.CallToolRequest, d
 
 // TestableGmailGetDraft retrieves a draft by ID.
 func TestableGmailGetDraft(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	draftID := common.ParseStringArg(request.Params.Arguments, "draft_id", "")
-	if draftID == "" {
-		return mcp.NewToolResultError("draft_id parameter is required"), nil
+	draftID, errResult := common.RequireStringArg(request.Params.Arguments, "draft_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
@@ -83,9 +83,9 @@ func TestableGmailGetDraft(ctx context.Context, request mcp.CallToolRequest, dep
 
 // TestableGmailUpdateDraft updates an existing draft.
 func TestableGmailUpdateDraft(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	draftID := common.ParseStringArg(request.Params.Arguments, "draft_id", "")
-	if draftID == "" {
-		return mcp.NewToolResultError("draft_id parameter is required"), nil
+	draftID, errResult := common.RequireStringArg(request.Params.Arguments, "draft_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
@@ -115,9 +115,9 @@ func TestableGmailUpdateDraft(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailDeleteDraft deletes a draft.
 func TestableGmailDeleteDraft(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	draftID := common.ParseStringArg(request.Params.Arguments, "draft_id", "")
-	if draftID == "" {
-		return mcp.NewToolResultError("draft_id parameter is required"), nil
+	draftID, errResult := common.RequireStringArg(request.Params.Arguments, "draft_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
@@ -140,9 +140,9 @@ func TestableGmailDeleteDraft(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailSendDraft sends a draft.
 func TestableGmailSendDraft(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	draftID := common.ParseStringArg(request.Params.Arguments, "draft_id", "")
-	if draftID == "" {
-		return mcp.NewToolResultError("draft_id parameter is required"), nil
+	draftID, errResult := common.RequireStringArg(request.Params.Arguments, "draft_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)

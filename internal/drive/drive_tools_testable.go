@@ -86,9 +86,9 @@ func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	query := common.ParseStringArg(request.Params.Arguments, "query", "")
-	if query == "" {
-		return mcp.NewToolResultError("query parameter is required"), nil
+	query, errResult := common.RequireStringArg(request.Params.Arguments, "query")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	maxResults := common.ParseMaxResults(request.Params.Arguments, common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
@@ -208,14 +208,14 @@ func TestableDriveUpload(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	name := common.ParseStringArg(request.Params.Arguments, "name", "")
-	if name == "" {
-		return mcp.NewToolResultError("name parameter is required"), nil
+	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
-	contentStr := common.ParseStringArg(request.Params.Arguments, "content", "")
-	if contentStr == "" {
-		return mcp.NewToolResultError("content parameter is required"), nil
+	contentStr, errResult := common.RequireStringArg(request.Params.Arguments, "content")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	// Reject obviously oversized content before decoding
@@ -329,9 +329,9 @@ func TestableDriveCreateFolder(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	name := common.ParseStringArg(request.Params.Arguments, "name", "")
-	if name == "" {
-		return mcp.NewToolResultError("name parameter is required"), nil
+	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	folder := &drive.File{
@@ -374,9 +374,9 @@ func TestableDriveMove(ctx context.Context, request mcp.CallToolRequest, deps *D
 		return idErrResult, nil
 	}
 
-	newParentID := common.ParseStringArg(request.Params.Arguments, "new_parent_id", "")
-	if newParentID == "" {
-		return mcp.NewToolResultError("new_parent_id parameter is required"), nil
+	newParentID, errResult := common.RequireStringArg(request.Params.Arguments, "new_parent_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 	newParentID = common.ExtractGoogleResourceID(newParentID)
 
@@ -511,9 +511,9 @@ func TestableDriveShare(ctx context.Context, request mcp.CallToolRequest, deps *
 		return idErrResult, nil
 	}
 
-	email := common.ParseStringArg(request.Params.Arguments, "email", "")
-	if email == "" {
-		return mcp.NewToolResultError("email parameter is required"), nil
+	email, errResult := common.RequireStringArg(request.Params.Arguments, "email")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	role := common.ParseStringArg(request.Params.Arguments, "role", "reader")

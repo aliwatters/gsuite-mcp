@@ -75,9 +75,9 @@ func TestableContactsGet(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
-	if resourceName == "" {
-		return mcp.NewToolResultError("resource_name parameter is required"), nil
+	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	resourceName = ensurePrefix(resourceName, PeoplePrefix)
@@ -109,9 +109,9 @@ func TestableContactsSearch(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	query := common.ParseStringArg(request.Params.Arguments, "query", "")
-	if query == "" {
-		return mcp.NewToolResultError("query parameter is required"), nil
+	query, errResult := common.RequireStringArg(request.Params.Arguments, "query")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	opts := &SearchContactsOptions{}
@@ -167,9 +167,9 @@ func TestableContactsCreate(ctx context.Context, request mcp.CallToolRequest, de
 	person := &people.Person{}
 
 	// Names (given_name is required)
-	givenName := common.ParseStringArg(request.Params.Arguments, "given_name", "")
-	if givenName == "" {
-		return mcp.NewToolResultError("given_name parameter is required"), nil
+	givenName, errResult := common.RequireStringArg(request.Params.Arguments, "given_name")
+	if errResult != nil {
+		return errResult, nil
 	}
 	person.Names = []*people.Name{{GivenName: givenName}}
 	if familyName, ok := request.Params.Arguments["family_name"].(string); ok && familyName != "" {
@@ -218,9 +218,9 @@ func TestableContactsUpdate(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
-	if resourceName == "" {
-		return mcp.NewToolResultError("resource_name parameter is required"), nil
+	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	resourceName = ensurePrefix(resourceName, PeoplePrefix)
@@ -253,9 +253,9 @@ func TestableContactsDelete(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
-	if resourceName == "" {
-		return mcp.NewToolResultError("resource_name parameter is required"), nil
+	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	resourceName = ensurePrefix(resourceName, PeoplePrefix)
@@ -331,9 +331,9 @@ func TestableContactsGetGroup(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
-	if resourceName == "" {
-		return mcp.NewToolResultError("resource_name parameter is required"), nil
+	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	resourceName = ensurePrefix(resourceName, ContactGroupsPrefix)
@@ -369,9 +369,9 @@ func TestableContactsCreateGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	name := common.ParseStringArg(request.Params.Arguments, "name", "")
-	if name == "" {
-		return mcp.NewToolResultError("name parameter is required"), nil
+	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	group, err := srv.CreateContactGroup(ctx, name)
@@ -392,14 +392,14 @@ func TestableContactsUpdateGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
-	if resourceName == "" {
-		return mcp.NewToolResultError("resource_name parameter is required"), nil
+	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
-	name := common.ParseStringArg(request.Params.Arguments, "name", "")
-	if name == "" {
-		return mcp.NewToolResultError("name parameter is required"), nil
+	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	resourceName = ensurePrefix(resourceName, ContactGroupsPrefix)
@@ -422,9 +422,9 @@ func TestableContactsDeleteGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
-	if resourceName == "" {
-		return mcp.NewToolResultError("resource_name parameter is required"), nil
+	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	resourceName = ensurePrefix(resourceName, ContactGroupsPrefix)
@@ -450,9 +450,9 @@ func TestableContactsModifyGroupMembers(ctx context.Context, request mcp.CallToo
 		return errResult, nil
 	}
 
-	resourceName := common.ParseStringArg(request.Params.Arguments, "resource_name", "")
-	if resourceName == "" {
-		return mcp.NewToolResultError("resource_name parameter is required"), nil
+	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	resourceName = ensurePrefix(resourceName, ContactGroupsPrefix)
