@@ -638,6 +638,146 @@ func TestCalendarDeleteEvent(t *testing.T) {
 }
 
 // ============================================================================
+// setNewEventTimes tests
+// ============================================================================
+
+func TestSetNewEventTimes(t *testing.T) {
+	tests := []struct {
+		name       string
+		args       map[string]any
+		wantErr    bool
+		errContain string
+		validate   func(t *testing.T, event *calendar.Event)
+	}{
+		{
+			name: "timed event with explicit end",
+			args: map[string]any{
+				"start_time": "2024-03-01T10:00:00-08:00",
+				"end_time":   "2024-03-01T11:00:00-08:00",
+			},
+			validate: func(t *testing.T, event *calendar.Event) {
+				if event.Start.DateTime != "2024-03-01T10:00:00-08:00" {
+					t.Errorf("expected start DateTime, got %v", event.Start.DateTime)
+				}
+				if event.End.DateTime != "2024-03-01T11:00:00-08:00" {
+					t.Errorf("expected end DateTime, got %v", event.End.DateTime)
+				}
+			},
+		},
+		{
+			name: "timed event defaults end to start plus 1 hour",
+			args: map[string]any{
+				"start_time": "2024-03-01T14:00:00-08:00",
+			},
+			validate: func(t *testing.T, event *calendar.Event) {
+				if event.Start.DateTime != "2024-03-01T14:00:00-08:00" {
+					t.Errorf("expected start DateTime, got %v", event.Start.DateTime)
+				}
+				if event.End.DateTime != "2024-03-01T15:00:00-08:00" {
+					t.Errorf("expected end DateTime +1hr, got %v", event.End.DateTime)
+				}
+			},
+		},
+		{
+			name: "all-day event with explicit end",
+			args: map[string]any{
+				"start_time": "2024-03-15",
+				"end_time":   "2024-03-17",
+				"all_day":    true,
+			},
+			validate: func(t *testing.T, event *calendar.Event) {
+				if event.Start.Date != "2024-03-15" {
+					t.Errorf("expected start Date '2024-03-15', got %v", event.Start.Date)
+				}
+				if event.End.Date != "2024-03-17" {
+					t.Errorf("expected end Date '2024-03-17', got %v", event.End.Date)
+				}
+			},
+		},
+		{
+			name: "all-day event defaults end to start date",
+			args: map[string]any{
+				"start_time": "2024-03-15",
+				"all_day":    true,
+			},
+			validate: func(t *testing.T, event *calendar.Event) {
+				if event.Start.Date != "2024-03-15" {
+					t.Errorf("expected start Date, got %v", event.Start.Date)
+				}
+				if event.End.Date != "2024-03-15" {
+					t.Errorf("expected end Date same as start, got %v", event.End.Date)
+				}
+			},
+		},
+		{
+			name: "timezone applied to both start and end",
+			args: map[string]any{
+				"start_time": "2024-03-01T10:00:00-08:00",
+				"end_time":   "2024-03-01T11:00:00-08:00",
+				"timezone":   "America/New_York",
+			},
+			validate: func(t *testing.T, event *calendar.Event) {
+				if event.Start.TimeZone != "America/New_York" {
+					t.Errorf("expected start timezone, got %v", event.Start.TimeZone)
+				}
+				if event.End.TimeZone != "America/New_York" {
+					t.Errorf("expected end timezone, got %v", event.End.TimeZone)
+				}
+			},
+		},
+		{
+			name:       "missing start_time returns error",
+			args:       map[string]any{},
+			wantErr:    true,
+			errContain: "start_time parameter is required",
+		},
+		{
+			name: "invalid start_time format returns error",
+			args: map[string]any{
+				"start_time": "not-a-date",
+			},
+			wantErr:    true,
+			errContain: "Invalid start_time format",
+		},
+		{
+			name: "all-day with too-short start_time returns error",
+			args: map[string]any{
+				"start_time": "2024",
+				"all_day":    true,
+			},
+			wantErr:    true,
+			errContain: "Invalid start_time for all-day event",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event := &calendar.Event{}
+			result := setNewEventTimes(event, tt.args)
+
+			if tt.wantErr {
+				if result == nil {
+					t.Fatal("expected error result, got nil")
+				}
+				content := getCalendarTextContent(result)
+				if tt.errContain != "" && !strings.Contains(content, tt.errContain) {
+					t.Errorf("expected error containing %q, got %q", tt.errContain, content)
+				}
+				return
+			}
+
+			if result != nil {
+				t.Fatalf("unexpected error: %v", getCalendarTextContent(result))
+			}
+
+			if tt.validate != nil {
+				tt.validate(t, event)
+			}
+		})
+	}
+}
+
+// ============================================================================
 // Helper function tests
 // ============================================================================
 

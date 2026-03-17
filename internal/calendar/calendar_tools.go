@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -55,6 +56,56 @@ func updateEventTimes(event *calendar.Event, args map[string]any) *mcp.CallToolR
 			event.End = &calendar.EventDateTime{DateTime: endTime}
 		}
 	}
+	return nil
+}
+
+// setNewEventTimes sets start/end times on a new event from request arguments.
+// Requires start_time. Branches on all_day: all-day uses Date fields with same-day default,
+// timed uses DateTime fields with +1 hour default. Applies timezone to both Start and End.
+func setNewEventTimes(event *calendar.Event, args map[string]any) *mcp.CallToolResult {
+	startTime := common.ParseStringArg(args, "start_time", "")
+	if startTime == "" {
+		return mcp.NewToolResultError("start_time parameter is required (RFC3339 format, e.g., 2024-01-15T09:00:00-08:00)")
+	}
+
+	allDay := common.ParseBoolArg(args, "all_day", false)
+
+	if allDay {
+		startDate, err := extractDateFromDateTime(startTime)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid start_time for all-day event: %v", err))
+		}
+		event.Start = &calendar.EventDateTime{Date: startDate}
+
+		endTime := common.ParseStringArg(args, "end_time", "")
+		if endTime != "" {
+			endDate, err := extractDateFromDateTime(endTime)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid end_time for all-day event: %v", err))
+			}
+			event.End = &calendar.EventDateTime{Date: endDate}
+		} else {
+			event.End = &calendar.EventDateTime{Date: startDate}
+		}
+	} else {
+		event.Start = &calendar.EventDateTime{DateTime: startTime}
+		endTime := common.ParseStringArg(args, "end_time", "")
+		if endTime != "" {
+			event.End = &calendar.EventDateTime{DateTime: endTime}
+		} else {
+			t, err := time.Parse(time.RFC3339, startTime)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("Invalid start_time format: %v", err))
+			}
+			event.End = &calendar.EventDateTime{DateTime: t.Add(time.Hour).Format(time.RFC3339)}
+		}
+	}
+
+	if tz := common.ParseStringArg(args, "timezone", ""); tz != "" {
+		event.Start.TimeZone = tz
+		event.End.TimeZone = tz
+	}
+
 	return nil
 }
 
