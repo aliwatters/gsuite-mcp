@@ -88,9 +88,9 @@ func TestableTasksGet(ctx context.Context, request mcp.CallToolRequest, deps *Ta
 		return errResult, nil
 	}
 
-	taskID := common.ParseStringArg(request.Params.Arguments, "task_id", "")
-	if taskID == "" {
-		return mcp.NewToolResultError("task_id parameter is required"), nil
+	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
@@ -112,9 +112,9 @@ func TestableTasksCreate(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	title := common.ParseStringArg(request.Params.Arguments, "title", "")
-	if title == "" {
-		return mcp.NewToolResultError("title parameter is required"), nil
+	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
@@ -153,9 +153,9 @@ func TestableTasksUpdate(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	taskID := common.ParseStringArg(request.Params.Arguments, "task_id", "")
-	if taskID == "" {
-		return mcp.NewToolResultError("task_id parameter is required"), nil
+	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
@@ -208,9 +208,9 @@ func TestableTasksComplete(ctx context.Context, request mcp.CallToolRequest, dep
 		return errResult, nil
 	}
 
-	taskID := common.ParseStringArg(request.Params.Arguments, "task_id", "")
-	if taskID == "" {
-		return mcp.NewToolResultError("task_id parameter is required"), nil
+	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
@@ -242,9 +242,9 @@ func TestableTasksDelete(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	taskID := common.ParseStringArg(request.Params.Arguments, "task_id", "")
-	if taskID == "" {
-		return mcp.NewToolResultError("task_id parameter is required"), nil
+	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
@@ -273,9 +273,9 @@ func TestableTasksCreateTasklist(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	title := common.ParseStringArg(request.Params.Arguments, "title", "")
-	if title == "" {
-		return mcp.NewToolResultError("title parameter is required"), nil
+	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	taskList := &tasks.TaskList{
@@ -304,14 +304,14 @@ func TestableTasksUpdateTasklist(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", "")
-	if taskListID == "" {
-		return mcp.NewToolResultError("tasklist_id parameter is required"), nil
+	taskListID, errResult := common.RequireStringArg(request.Params.Arguments, "tasklist_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
-	title := common.ParseStringArg(request.Params.Arguments, "title", "")
-	if title == "" {
-		return mcp.NewToolResultError("title parameter is required"), nil
+	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	// Get the existing task list
@@ -345,9 +345,9 @@ func TestableTasksDeleteTasklist(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", "")
-	if taskListID == "" {
-		return mcp.NewToolResultError("tasklist_id parameter is required"), nil
+	taskListID, errResult := common.RequireStringArg(request.Params.Arguments, "tasklist_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	err := srv.DeleteTaskList(ctx, taskListID)
@@ -373,9 +373,9 @@ func TestableTasksMove(ctx context.Context, request mcp.CallToolRequest, deps *T
 		return errResult, nil
 	}
 
-	taskID := common.ParseStringArg(request.Params.Arguments, "task_id", "")
-	if taskID == "" {
-		return mcp.NewToolResultError("task_id parameter is required"), nil
+	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)

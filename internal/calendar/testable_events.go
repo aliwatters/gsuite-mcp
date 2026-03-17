@@ -77,9 +77,9 @@ func TestableCalendarGetEvent(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	eventID := common.ParseStringArg(request.Params.Arguments, "event_id", "")
-	if eventID == "" {
-		return mcp.NewToolResultError("event_id parameter is required"), nil
+	eventID, errResult := common.RequireStringArg(request.Params.Arguments, "event_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
@@ -101,9 +101,9 @@ func TestableCalendarCreateEvent(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	summary := common.ParseStringArg(request.Params.Arguments, "summary", "")
-	if summary == "" {
-		return mcp.NewToolResultError("summary parameter is required"), nil
+	summary, errResult := common.RequireStringArg(request.Params.Arguments, "summary")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
@@ -215,9 +215,9 @@ func TestableCalendarUpdateEvent(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	eventID := common.ParseStringArg(request.Params.Arguments, "event_id", "")
-	if eventID == "" {
-		return mcp.NewToolResultError("event_id parameter is required"), nil
+	eventID, errResult := common.RequireStringArg(request.Params.Arguments, "event_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
@@ -267,9 +267,9 @@ func TestableCalendarDeleteEvent(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	eventID := common.ParseStringArg(request.Params.Arguments, "event_id", "")
-	if eventID == "" {
-		return mcp.NewToolResultError("event_id parameter is required"), nil
+	eventID, errResult := common.RequireStringArg(request.Params.Arguments, "event_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
@@ -296,9 +296,9 @@ func TestableCalendarQuickAdd(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	text := common.ParseStringArg(request.Params.Arguments, "text", "")
-	if text == "" {
-		return mcp.NewToolResultError("text parameter is required"), nil
+	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)

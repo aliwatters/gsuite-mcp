@@ -228,9 +228,9 @@ func TestableSheetsCreate(ctx context.Context, request mcp.CallToolRequest, deps
 		return errResult, nil
 	}
 
-	title := common.ParseStringArg(request.Params.Arguments, "title", "")
-	if title == "" {
-		return mcp.NewToolResultError("title parameter is required"), nil
+	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	created, err := srv.CreateSpreadsheet(ctx, title)

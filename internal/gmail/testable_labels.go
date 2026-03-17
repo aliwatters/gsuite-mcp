@@ -83,9 +83,9 @@ func TestableGmailListLabels(ctx context.Context, request mcp.CallToolRequest, d
 
 // TestableGmailCreateLabel creates a new label.
 func TestableGmailCreateLabel(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	name := common.ParseStringArg(request.Params.Arguments, "name", "")
-	if name == "" {
-		return mcp.NewToolResultError("name parameter is required"), nil
+	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
@@ -120,9 +120,9 @@ func TestableGmailCreateLabel(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailDeleteLabel deletes a label.
 func TestableGmailDeleteLabel(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	labelID := common.ParseStringArg(request.Params.Arguments, "label_id", "")
-	if labelID == "" {
-		return mcp.NewToolResultError("label_id parameter is required"), nil
+	labelID, errResult := common.RequireStringArg(request.Params.Arguments, "label_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
@@ -145,9 +145,9 @@ func TestableGmailDeleteLabel(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailUpdateLabel updates a label.
 func TestableGmailUpdateLabel(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	labelID := common.ParseStringArg(request.Params.Arguments, "label_id", "")
-	if labelID == "" {
-		return mcp.NewToolResultError("label_id parameter is required"), nil
+	labelID, errResult := common.RequireStringArg(request.Params.Arguments, "label_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
@@ -185,9 +185,8 @@ func TestableGmailUpdateLabel(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailModifyMessage modifies labels on a message.
 func TestableGmailModifyMessage(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageID := common.ParseStringArg(request.Params.Arguments, "message_id", "")
-	if messageID == "" {
-		return mcp.NewToolResultError("message_id parameter is required"), nil
+	if _, errResult := common.RequireStringArg(request.Params.Arguments, "message_id"); errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
@@ -201,9 +200,9 @@ func TestableGmailModifyMessage(ctx context.Context, request mcp.CallToolRequest
 
 // TestableGmailModifyThread modifies labels on a thread.
 func TestableGmailModifyThread(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	threadID := common.ParseStringArg(request.Params.Arguments, "thread_id", "")
-	if threadID == "" {
-		return mcp.NewToolResultError("thread_id parameter is required"), nil
+	threadID, errResult := common.RequireStringArg(request.Params.Arguments, "thread_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)

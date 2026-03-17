@@ -55,9 +55,9 @@ func TestableDocsCreate(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	title := common.ParseStringArg(request.Params.Arguments, "title", "")
-	if title == "" {
-		return mcp.NewToolResultError("title parameter is required"), nil
+	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	created, err := srv.CreateDocument(ctx, title)
@@ -149,9 +149,9 @@ func TestableDocsAppendText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text := common.ParseStringArg(request.Params.Arguments, "text", "")
-	if text == "" {
-		return mcp.NewToolResultError("text parameter is required"), nil
+	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	// First get the document to find the end index
@@ -209,9 +209,9 @@ func TestableDocsInsertText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text := common.ParseStringArg(request.Params.Arguments, "text", "")
-	if text == "" {
-		return mcp.NewToolResultError("text parameter is required"), nil
+	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	indexFloat, ok := request.Params.Arguments["index"].(float64)
@@ -256,9 +256,9 @@ func TestableDocsReplaceText(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	findText := common.ParseStringArg(request.Params.Arguments, "find_text", "")
-	if findText == "" {
-		return mcp.NewToolResultError("find_text parameter is required"), nil
+	findText, errResult := common.RequireStringArg(request.Params.Arguments, "find_text")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	replaceText := common.ParseStringArg(request.Params.Arguments, "replace_text", "")

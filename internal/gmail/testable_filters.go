@@ -134,9 +134,9 @@ func TestableGmailCreateFilter(ctx context.Context, request mcp.CallToolRequest,
 
 // TestableGmailDeleteFilter deletes a filter.
 func TestableGmailDeleteFilter(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	filterID := common.ParseStringArg(request.Params.Arguments, "filter_id", "")
-	if filterID == "" {
-		return mcp.NewToolResultError("filter_id parameter is required"), nil
+	filterID, errResult := common.RequireStringArg(request.Params.Arguments, "filter_id")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)

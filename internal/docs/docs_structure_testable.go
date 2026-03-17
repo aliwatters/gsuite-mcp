@@ -78,14 +78,14 @@ func TestableDocsInsertLink(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text := common.ParseStringArg(request.Params.Arguments, "text", "")
-	if text == "" {
-		return mcp.NewToolResultError("text parameter is required"), nil
+	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	if errResult != nil {
+		return errResult, nil
 	}
 
-	linkURL := common.ParseStringArg(request.Params.Arguments, "url", "")
-	if linkURL == "" {
-		return mcp.NewToolResultError("url parameter is required"), nil
+	linkURL, errResult := common.RequireStringArg(request.Params.Arguments, "url")
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	indexFloat, ok := request.Params.Arguments["index"].(float64)
