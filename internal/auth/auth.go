@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
@@ -45,9 +46,6 @@ const (
 
 	// oauthCallbackTimeout is the maximum time to wait for OAuth flow completion.
 	oauthCallbackTimeout = 5 * time.Minute
-
-	// defaultOAuthPort is the default port for OAuth callback.
-	defaultOAuthPort = 8000
 
 	// oauthResultTimeout is the maximum time to wait for the main loop to process the result.
 	oauthResultTimeout = 10 * time.Second
@@ -185,20 +183,52 @@ func loadOAuthConfig() (*oauth2.Config, error) {
 	return cfg, nil
 }
 
+// resolveOAuthPort determines the OAuth callback port.
+// Resolution order: GSUITE_MCP_OAUTH_PORT env var → config.json → default (8100).
+func resolveOAuthPort() (int, error) {
+	if portStr := os.Getenv("GSUITE_MCP_OAUTH_PORT"); portStr != "" {
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port < 1 || port > 65535 {
+			return 0, fmt.Errorf("invalid GSUITE_MCP_OAUTH_PORT value %q: must be 1-65535", portStr)
+		}
+		return port, nil
+	}
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return 0, err
+	}
+
+	if cfg.OAuthPort < 1 || cfg.OAuthPort > 65535 {
+		return 0, fmt.Errorf("invalid oauth_port %d in %s: must be 1-65535", cfg.OAuthPort, config.ConfigPath())
+	}
+
+	return cfg.OAuthPort, nil
+}
+
+// ResolveOAuthPort returns the resolved OAuth callback port and whether it was overridden by env var.
+func ResolveOAuthPort() (port int, envOverride bool, err error) {
+	if os.Getenv("GSUITE_MCP_OAUTH_PORT") != "" {
+		p, err := resolveOAuthPort()
+		return p, true, err
+	}
+	p, err := resolveOAuthPort()
+	return p, false, err
+}
+
 // AuthenticateDynamic performs OAuth2 flow without requiring a pre-configured account.
 // It opens the browser, lets the user choose any Google account, and saves the credential
 // using the authenticated email as the identifier. Returns the authenticated email.
 func (m *Manager) AuthenticateDynamic(ctx context.Context) (string, error) {
-	oauthPort := defaultOAuthPort
-	if portStr := os.Getenv("GSUITE_MCP_OAUTH_PORT"); portStr != "" {
-		if p, err := fmt.Sscanf(portStr, "%d", &oauthPort); err != nil || p != 1 {
-			return "", fmt.Errorf("invalid GSUITE_MCP_OAUTH_PORT value: %s", portStr)
-		}
+	oauthPort, err := resolveOAuthPort()
+	if err != nil {
+		return "", err
 	}
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", oauthPort))
 	if err != nil {
-		return "", fmt.Errorf("failed to listen on port %d: %w", oauthPort, err)
+		return "", fmt.Errorf("port %d is in use — set a different port in %s (oauth_port) or via GSUITE_MCP_OAUTH_PORT env var: %w",
+			oauthPort, config.ConfigPath(), err)
 	}
 	defer listener.Close()
 

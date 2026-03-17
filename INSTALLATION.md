@@ -177,6 +177,7 @@ Claude should use gsuite-mcp to fetch your real data.
 | `403: SERVICE_DISABLED` | API not enabled in GCP project | Run `gsuite-mcp check` for enable links |
 | `invalid_grant` | Token expired or revoked | Run `gsuite-mcp auth` |
 | `401: invalid_client` | Wrong or corrupted client_secret.json | Re-download from GCP Console |
+| `port XXXX is in use` | OAuth callback port conflict | Set `oauth_port` in config.json or `GSUITE_MCP_OAUTH_PORT` env var |
 
 ### Token Expired or Invalid Credentials
 
@@ -254,11 +255,22 @@ All configuration lives in `~/.config/gsuite-mcp/`:
 
 ```
 ~/.config/gsuite-mcp/
-├── client_secret.json      # Your OAuth app credentials
+├── client_secret.json            # Your OAuth app credentials
+├── config.json                   # Settings (optional — created by `gsuite-mcp init`)
 └── credentials/
     ├── alice@gmail.com.json      # Token for alice@gmail.com
     └── bob@company.com.json      # Token for bob@company.com
 ```
+
+### config.json
+
+Optional configuration file created by `gsuite-mcp init`. Settings:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `oauth_port` | `8100` | Port for the OAuth callback server during `gsuite-mcp auth` |
+
+Override `oauth_port` via the `GSUITE_MCP_OAUTH_PORT` environment variable.
 
 ## Next Steps
 

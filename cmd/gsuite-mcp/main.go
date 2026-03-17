@@ -104,21 +104,38 @@ When tools request an account without credentials, auth flow is triggered automa
 
 Configuration:
   Config dir:     %s
+  Config file:    %s
   Credentials:    %s
   Client secret:  %s
 
+Environment variables:
+  GSUITE_MCP_OAUTH_PORT   Override OAuth callback port (default: %d)
+
 For more information, see README.md
 `, serverName, serverName, serverName, serverName, serverName, serverName,
-		config.DefaultConfigDir(), config.CredentialsDir(), config.ClientSecretPath())
+		config.DefaultConfigDir(), config.ConfigPath(), config.CredentialsDir(), config.ClientSecretPath(),
+		config.DefaultOAuthPort)
 }
 
-// runInit ensures config directory exists and shows setup instructions.
+// runInit ensures config directory exists, creates default config, and shows setup instructions.
 func runInit() {
 	if err := config.EnsureConfigDir(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating config directory: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("Config directory ready: %s\n", config.DefaultConfigDir())
+
+	created, err := config.WriteDefaultConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating config.json: %v\n", err)
+		os.Exit(1)
+	}
+	if created {
+		fmt.Printf("Created config.json:    %s\n", config.ConfigPath())
+	} else {
+		fmt.Printf("Config.json exists:     %s\n", config.ConfigPath())
+	}
+
 	fmt.Printf("\nSetup steps:\n")
 	fmt.Printf("1. Create OAuth credentials in Google Cloud Console\n")
 	fmt.Printf("2. Download and save as: %s\n", config.ClientSecretPath())

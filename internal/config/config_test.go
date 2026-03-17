@@ -173,6 +173,141 @@ func TestGetDefaultEmail(t *testing.T) {
 	})
 }
 
+func TestLoadConfigFromPath(t *testing.T) {
+	t.Run("defaults when file missing", func(t *testing.T) {
+		cfg, err := loadConfigFromPath("/nonexistent/config.json")
+		if err != nil {
+			t.Fatalf("loadConfigFromPath() error = %v", err)
+		}
+		if cfg.OAuthPort != DefaultOAuthPort {
+			t.Errorf("OAuthPort = %d, want %d", cfg.OAuthPort, DefaultOAuthPort)
+		}
+	})
+
+	t.Run("reads oauth_port", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+		if err := os.WriteFile(path, []byte(`{"oauth_port": 9999}`), 0644); err != nil {
+			t.Fatalf("Failed to write test config: %v", err)
+		}
+
+		cfg, err := loadConfigFromPath(path)
+		if err != nil {
+			t.Fatalf("loadConfigFromPath() error = %v", err)
+		}
+		if cfg.OAuthPort != 9999 {
+			t.Errorf("OAuthPort = %d, want 9999", cfg.OAuthPort)
+		}
+	})
+
+	t.Run("defaults for zero oauth_port", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+		if err := os.WriteFile(path, []byte(`{"oauth_port": 0}`), 0644); err != nil {
+			t.Fatalf("Failed to write test config: %v", err)
+		}
+
+		cfg, err := loadConfigFromPath(path)
+		if err != nil {
+			t.Fatalf("loadConfigFromPath() error = %v", err)
+		}
+		if cfg.OAuthPort != DefaultOAuthPort {
+			t.Errorf("OAuthPort = %d, want %d", cfg.OAuthPort, DefaultOAuthPort)
+		}
+	})
+
+	t.Run("defaults for empty json object", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+		if err := os.WriteFile(path, []byte(`{}`), 0644); err != nil {
+			t.Fatalf("Failed to write test config: %v", err)
+		}
+
+		cfg, err := loadConfigFromPath(path)
+		if err != nil {
+			t.Fatalf("loadConfigFromPath() error = %v", err)
+		}
+		if cfg.OAuthPort != DefaultOAuthPort {
+			t.Errorf("OAuthPort = %d, want %d", cfg.OAuthPort, DefaultOAuthPort)
+		}
+	})
+
+	t.Run("error on invalid JSON", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+		if err := os.WriteFile(path, []byte(`not json`), 0644); err != nil {
+			t.Fatalf("Failed to write test config: %v", err)
+		}
+
+		_, err := loadConfigFromPath(path)
+		if err == nil {
+			t.Error("loadConfigFromPath() expected error for invalid JSON")
+		}
+	})
+}
+
+func TestWriteDefaultConfigTo(t *testing.T) {
+	t.Run("creates file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+
+		created, err := writeDefaultConfigTo(path)
+		if err != nil {
+			t.Fatalf("writeDefaultConfigTo() error = %v", err)
+		}
+		if !created {
+			t.Error("writeDefaultConfigTo() returned false, want true")
+		}
+
+		// Verify it wrote valid config
+		cfg, err := loadConfigFromPath(path)
+		if err != nil {
+			t.Fatalf("loadConfigFromPath() error = %v", err)
+		}
+		if cfg.OAuthPort != DefaultOAuthPort {
+			t.Errorf("OAuthPort = %d, want %d", cfg.OAuthPort, DefaultOAuthPort)
+		}
+	})
+
+	t.Run("does not overwrite existing", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+		if err := os.WriteFile(path, []byte(`{"oauth_port": 5555}`), 0644); err != nil {
+			t.Fatalf("Failed to write test config: %v", err)
+		}
+
+		created, err := writeDefaultConfigTo(path)
+		if err != nil {
+			t.Fatalf("writeDefaultConfigTo() error = %v", err)
+		}
+		if created {
+			t.Error("writeDefaultConfigTo() returned true, want false")
+		}
+
+		// Verify original content preserved
+		cfg, err := loadConfigFromPath(path)
+		if err != nil {
+			t.Fatalf("loadConfigFromPath() error = %v", err)
+		}
+		if cfg.OAuthPort != 5555 {
+			t.Errorf("OAuthPort = %d, want 5555 (original)", cfg.OAuthPort)
+		}
+	})
+}
+
+func TestConfigPath(t *testing.T) {
+	path := ConfigPath()
+	if path == "" {
+		t.Error("ConfigPath() returned empty string")
+	}
+	if !filepath.IsAbs(path) {
+		t.Errorf("ConfigPath() returned non-absolute path: %s", path)
+	}
+	if filepath.Base(path) != "config.json" {
+		t.Errorf("ConfigPath() = %s, expected config.json filename", path)
+	}
+}
+
 func TestEnsureConfigDir(t *testing.T) {
 	// This test just verifies the function doesn't error
 	// We can't easily test it without modifying the actual config directory

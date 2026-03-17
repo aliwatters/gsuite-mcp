@@ -280,10 +280,20 @@ See [INSTALLATION.md](INSTALLATION.md) for full setup instructions.
 ```
 ~/.config/gsuite-mcp/
 ├── client_secret.json      # Your OAuth app credentials
-├── config.json             # Account configuration (optional)
+├── config.json             # Settings (optional — created by `gsuite-mcp init`)
 └── credentials/
-    └── {label}.json        # Per-account tokens
+    └── {email}.json        # Per-account tokens
 ```
+
+### OAuth Callback Port
+
+The default OAuth callback port is **8100**. Override it in `config.json`:
+
+```json
+{ "oauth_port": 9000 }
+```
+
+Or via environment variable: `GSUITE_MCP_OAUTH_PORT=9000`
 
 ## Development
 
