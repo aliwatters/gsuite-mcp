@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/aliwatters/gsuite-mcp/internal/auth"
 	"github.com/aliwatters/gsuite-mcp/internal/config"
@@ -34,6 +35,9 @@ func ResolveAccountFromRequest(request mcp.CallToolRequest) (string, error) {
 		// No account specified - use first authenticated email
 		email := config.GetDefaultEmail()
 		if email == "" {
+			if deps != nil && deps.AuthManager.AuthServerURL != "" {
+				return "", fmt.Errorf("no authenticated accounts found; open %s to authenticate", deps.AuthManager.AuthServerURL)
+			}
 			return "", fmt.Errorf("no authenticated accounts found; run 'gsuite-mcp auth' to authenticate")
 		}
 		return email, nil
@@ -44,5 +48,8 @@ func ResolveAccountFromRequest(request mcp.CallToolRequest) (string, error) {
 		return accountParam, nil
 	}
 
+	if deps != nil && deps.AuthManager.AuthServerURL != "" {
+		return "", fmt.Errorf("no credentials for %s; open %s?account=%s to authenticate", accountParam, deps.AuthManager.AuthServerURL, url.QueryEscape(accountParam))
+	}
 	return "", fmt.Errorf("no credentials for %s; run 'gsuite-mcp auth' and sign in with that account", accountParam)
 }
