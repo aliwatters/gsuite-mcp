@@ -14,6 +14,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
@@ -119,6 +120,8 @@ type Manager struct {
 	oauthConfig *oauth2.Config
 	// authMu prevents concurrent authentication attempts
 	authMu sync.Mutex
+	// AuthServerURL is set when the HTTP auth server is running (e.g. "http://localhost:8100/auth").
+	AuthServerURL string
 }
 
 // OAuthConfig returns the OAuth2 configuration (needed for reading ClientID).
@@ -356,6 +359,9 @@ func (m *Manager) GetClientOrAuthenticate(ctx context.Context, email string, int
 		}
 		// No credentials for specified email
 		if !interactive {
+			if m.AuthServerURL != "" {
+				return nil, fmt.Errorf("no credentials for %s; open %s?account=%s to authenticate", email, m.AuthServerURL, url.QueryEscape(email))
+			}
 			return nil, fmt.Errorf("no credentials for %s; run 'gsuite-mcp auth' and sign in with that account", email)
 		}
 		// Trigger authentication
@@ -380,6 +386,9 @@ func (m *Manager) GetClientOrAuthenticate(ctx context.Context, email string, int
 
 	// No authenticated accounts
 	if !interactive {
+		if m.AuthServerURL != "" {
+			return nil, fmt.Errorf("no authenticated accounts; open %s to authenticate", m.AuthServerURL)
+		}
 		return nil, fmt.Errorf("no authenticated accounts; run 'gsuite-mcp auth' to authenticate")
 	}
 

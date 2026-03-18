@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/aliwatters/gsuite-mcp/internal/auth"
 	"github.com/aliwatters/gsuite-mcp/internal/calendar"
@@ -52,6 +53,16 @@ func main() {
 	if err := initializeApp(); err != nil {
 		fmt.Fprintf(os.Stderr, "Initialization error: %v\n", err)
 		os.Exit(1)
+	}
+
+	// Start persistent HTTP auth server (non-fatal if port is unavailable)
+	authSrv := startAuthServer()
+	if authSrv != nil {
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			authSrv.Shutdown(ctx)
+		}()
 	}
 
 	s := server.NewMCPServer(serverName, serverVersion)
@@ -180,4 +191,27 @@ func runAccounts() {
 		fmt.Printf("  %s\n", email)
 	}
 	fmt.Printf("\nRun '%s auth' to add another account.\n", serverName)
+}
+
+// startAuthServer starts a persistent HTTP auth server for browser-based re-authentication.
+// Returns nil if the port cannot be bound (non-fatal — MCP server continues without it).
+func startAuthServer() *auth.AuthServer {
+	port, _, err := auth.ResolveOAuthPort()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not resolve OAuth port: %v\n", err)
+		return nil
+	}
+
+	d := common.GetDeps()
+	srv := auth.NewAuthServer(d.AuthManager, port)
+	if err := srv.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: auth server not started: %v\n", err)
+		return nil
+	}
+
+	authURL := fmt.Sprintf("http://localhost:%d/auth", port)
+	d.AuthManager.AuthServerURL = authURL
+	fmt.Fprintf(os.Stderr, "auth server listening on %s\n", authURL)
+
+	return srv
 }

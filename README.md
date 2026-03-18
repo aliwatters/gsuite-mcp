@@ -295,6 +295,15 @@ The default OAuth callback port is **8100**. Override it in `config.json`:
 
 Or via environment variable: `GSUITE_MCP_OAUTH_PORT=9000`
 
+### HTTP Auth Endpoint (MCP Server Mode)
+
+When running as an MCP server, gsuite-mcp starts a persistent HTTP server on the OAuth port so agents and users can trigger re-authentication from a browser:
+
+- **`http://localhost:8100/auth`** — starts OAuth flow (opens Google consent screen)
+- **`http://localhost:8100/auth?account=user@gmail.com`** — pre-selects the Google account
+
+When a tool encounters missing credentials, the error message includes a clickable auth URL. If the port is unavailable, the MCP server continues without the auth endpoint.
+
 ## Development
 
 ```bash

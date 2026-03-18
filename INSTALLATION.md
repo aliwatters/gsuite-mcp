@@ -187,6 +187,8 @@ Re-run the auth command:
 gsuite-mcp auth
 ```
 
+Or, if gsuite-mcp is running as an MCP server, open `http://localhost:8100/auth` in your browser to re-authenticate without restarting the server. Error messages from tools will include this URL when the auth server is running.
+
 ### API Not Enabled
 
 Run `gsuite-mcp check` to see which APIs are disabled — it provides direct enable links.
