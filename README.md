@@ -57,8 +57,8 @@ Document creation and editing: create, read, append, insert, replace, delete, fo
 ### Tasks (10 tools)
 Task management: lists, tasks, subtasks, due dates, completion, reordering.
 
-### Sheets (8 tools)
-Spreadsheet operations: read, write, append, batch operations, create.
+### Sheets (16 tools)
+Spreadsheet operations: read, write, append, batch operations, create, cell formatting, conditional formatting, data validation, charts, pivot tables.
 
 ### Contacts (12 tools)
 Contact management: list, search, create, update, delete, contact groups.
@@ -196,6 +196,14 @@ Contact management: list, search, create, update, delete, contact groups.
 | `sheets_batch_read` | Read multiple ranges |
 | `sheets_batch_write` | Write multiple ranges |
 | `sheets_clear` | Clear cell range |
+| `sheets_format_cells` | Background, font, bold, alignment, number format |
+| `sheets_add_conditional_format` | Boolean or gradient formatting rules |
+| `sheets_add_data_validation` | Dropdowns, number constraints, custom formulas |
+| `sheets_create_chart` | Create embedded chart (bar, line, pie, etc.) |
+| `sheets_update_chart` | Update chart title or type |
+| `sheets_delete_chart` | Delete embedded chart |
+| `sheets_create_pivot_table` | Create pivot table for data summarization |
+| `sheets_batch_update` | Raw API access for advanced operations |
 
 #### Contacts
 | Tool | Description |

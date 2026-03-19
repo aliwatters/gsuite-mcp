@@ -28,7 +28,7 @@ This document provides AI agents with project-specific context and guidelines fo
 - Google Drive (23 tools) — includes shared drive support, comments, revisions
 - Google Docs (16 tools)
 - Google Tasks (10 tools)
-- Google Sheets (8 tools)
+- Google Sheets (16 tools)
 - Google Contacts (12 tools)
 
 ## Architecture

@@ -32,6 +32,9 @@ type SheetsService interface {
 
 	// CreateSpreadsheet creates a new spreadsheet.
 	CreateSpreadsheet(ctx context.Context, title string) (*sheets.Spreadsheet, error)
+
+	// BatchUpdate sends a batch of spreadsheet update requests (formatting, charts, pivot tables, etc.).
+	BatchUpdate(ctx context.Context, spreadsheetID string, requests []*sheets.Request) (*sheets.BatchUpdateSpreadsheetResponse, error)
 }
 
 // RealSheetsService wraps the Sheets API client and implements SheetsService.
@@ -111,4 +114,12 @@ func (s *RealSheetsService) CreateSpreadsheet(ctx context.Context, title string)
 		},
 	}
 	return s.service.Spreadsheets.Create(spreadsheet).Context(ctx).Do()
+}
+
+// BatchUpdate sends a batch of spreadsheet update requests.
+func (s *RealSheetsService) BatchUpdate(ctx context.Context, spreadsheetID string, requests []*sheets.Request) (*sheets.BatchUpdateSpreadsheetResponse, error) {
+	req := &sheets.BatchUpdateSpreadsheetRequest{
+		Requests: requests,
+	}
+	return s.service.Spreadsheets.BatchUpdate(spreadsheetID, req).Context(ctx).Do()
 }
