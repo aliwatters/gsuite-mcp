@@ -45,7 +45,7 @@ gsuite-mcp auth personal
 ### Gmail (36 tools)
 Full inbox management: search, read, send, reply, archive, trash, labels, filters, drafts, threads, batch operations, vacation responder.
 
-### Calendar (10 tools)
+### Calendar (12 tools)
 Complete calendar control: list events, create/update/delete, recurring events, free/busy queries, Google Meet integration.
 
 ### Drive (23 tools)
@@ -110,16 +110,18 @@ Contact management: list, search, create, update, delete, contact groups.
 #### Calendar
 | Tool | Description |
 |------|-------------|
-| `calendar_list_events` | List events with filtering |
-| `calendar_get_event` | Get event details |
+| `calendar_list_events` | List events with filtering (supports event_types filter) |
+| `calendar_get_event` | Get event details (includes conference data) |
 | `calendar_create_event` | Create event (with optional Google Meet) |
 | `calendar_update_event` | Update event |
 | `calendar_delete_event` | Delete event |
 | `calendar_list_calendars` | List available calendars |
 | `calendar_quick_add` | Create from natural language |
-| `calendar_free_busy` | Query availability |
+| `calendar_free_busy` | Query availability across calendars |
 | `calendar_list_instances` | List recurring event instances |
 | `calendar_update_instance` | Update single recurrence |
+| `calendar_create_focus_time` | Create Focus Time with auto-decline |
+| `calendar_create_out_of_office` | Create Out of Office with auto-decline |
 
 #### Drive
 | Tool | Description |

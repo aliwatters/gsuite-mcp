@@ -38,8 +38,9 @@ type ListEventsOptions struct {
 	OrderBy      string // "startTime" or "updated"
 	Query        string // Free text search
 	ShowDeleted  bool
-	UpdatedMin   string // RFC3339 timestamp
-	Fields       string // Selector specifying which fields to include in a partial response
+	UpdatedMin   string   // RFC3339 timestamp
+	Fields       string   // Selector specifying which fields to include in a partial response
+	EventTypes   []string // Filter by event types (e.g., "default", "focusTime", "outOfOffice")
 }
 
 // ListInstancesOptions contains optional parameters for listing recurring event instances.
@@ -104,6 +105,9 @@ func (s *RealCalendarService) ListEvents(ctx context.Context, calendarID string,
 		}
 		if opts.Fields != "" {
 			call = call.Fields(googleapi.Field(opts.Fields))
+		}
+		if len(opts.EventTypes) > 0 {
+			call = call.EventTypes(opts.EventTypes...)
 		}
 	}
 
