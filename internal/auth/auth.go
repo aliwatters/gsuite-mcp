@@ -79,7 +79,7 @@ type successPageData struct {
 	OtherAccounts []string
 }
 
-// DefaultScopes are the OAuth scopes required for Gmail, Calendar, Docs, Tasks, Drive, Sheets, Slides, and Contacts operations.
+// DefaultScopes are the OAuth scopes required for Gmail, Calendar, Docs, Tasks, Drive, Sheets, Slides, Forms, and Contacts operations.
 var DefaultScopes = []string{
 	// OpenID Connect scopes (required for getting authenticated user email)
 	"openid",
@@ -102,6 +102,9 @@ var DefaultScopes = []string{
 	"https://www.googleapis.com/auth/spreadsheets",
 	// Slides scopes
 	"https://www.googleapis.com/auth/presentations",
+	// Forms scopes
+	"https://www.googleapis.com/auth/forms.body",
+	"https://www.googleapis.com/auth/forms.responses.readonly",
 	// Contacts scopes (People API)
 	"https://www.googleapis.com/auth/contacts",
 }

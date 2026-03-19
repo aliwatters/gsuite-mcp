@@ -4,7 +4,7 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, and Contacts. Single Go binary with true multi-account support.
+Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, and Contacts. Single Go binary with true multi-account support.
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ gsuite-mcp auth personal
 ## Why gsuite-mcp?
 
 - **Multi-account**: Switch accounts per-operation with `"account": "work"`
-- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Contacts
+- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts
 - **Single binary**: No Python, no Node, no runtime dependencies
 - **MCP native**: JSON Schema 2020-12, proper tool descriptions
 
@@ -62,6 +62,9 @@ Spreadsheet operations: read, write, append, batch operations, create, cell form
 
 ### Slides (5 tools)
 Presentation operations: get presentation metadata and structure, get individual slide details, slide thumbnails, create presentations, batch update (add/modify/delete slides, text, shapes, images).
+
+### Forms (5 tools)
+Form management: get form structure and questions, create forms, batch update (add/update/delete questions, settings), list responses, get individual responses.
 
 ### Contacts (12 tools)
 Contact management: list, search, create, update, delete, contact groups.
@@ -234,6 +237,15 @@ Contact management: list, search, create, update, delete, contact groups.
 | `slides_get_thumbnail` | Get slide thumbnail image URL |
 | `slides_create` | Create new presentation |
 | `slides_batch_update` | Batch update (add/modify/delete slides, text, shapes, images) |
+
+#### Forms
+| Tool | Description |
+|------|-------------|
+| `forms_get` | Get form metadata, questions, and structure |
+| `forms_create` | Create new form |
+| `forms_batch_update` | Batch update (add/update/delete questions, settings) |
+| `forms_list_responses` | List all form responses |
+| `forms_get_response` | Get a single form response |
 
 </details>
 

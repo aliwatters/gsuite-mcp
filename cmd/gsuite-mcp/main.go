@@ -13,6 +13,7 @@ import (
 	"github.com/aliwatters/gsuite-mcp/internal/contacts"
 	"github.com/aliwatters/gsuite-mcp/internal/docs"
 	"github.com/aliwatters/gsuite-mcp/internal/drive"
+	"github.com/aliwatters/gsuite-mcp/internal/forms"
 	"github.com/aliwatters/gsuite-mcp/internal/gmail"
 	"github.com/aliwatters/gsuite-mcp/internal/sheets"
 	"github.com/aliwatters/gsuite-mcp/internal/slides"
@@ -76,6 +77,7 @@ func main() {
 	drive.RegisterTools(s)
 	sheets.RegisterTools(s)
 	slides.RegisterTools(s)
+	forms.RegisterTools(s)
 	contacts.RegisterTools(s)
 
 	// Start server
