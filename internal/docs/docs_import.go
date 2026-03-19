@@ -3,6 +3,7 @@ package docs
 import (
 	"context"
 	"fmt"
+	"html"
 	"strings"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -82,39 +83,39 @@ func TestableDocsImportToGoogleDoc(ctx context.Context, request mcp.CallToolRequ
 // Handles headings, bold, italic, and paragraphs.
 func markdownToBasicHTML(md string) string {
 	lines := strings.Split(md, "\n")
-	var html strings.Builder
-	html.WriteString("<html><body>")
+	var b strings.Builder
+	b.WriteString("<html><body>")
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
-			html.WriteString("<br>")
+			b.WriteString("<br>")
 			continue
 		}
 
-		// Headings
+		// Headings — escape user content to prevent HTML injection
 		if strings.HasPrefix(trimmed, "######") {
-			html.WriteString("<h6>" + strings.TrimSpace(trimmed[6:]) + "</h6>")
+			b.WriteString("<h6>" + html.EscapeString(strings.TrimSpace(trimmed[6:])) + "</h6>")
 		} else if strings.HasPrefix(trimmed, "#####") {
-			html.WriteString("<h5>" + strings.TrimSpace(trimmed[5:]) + "</h5>")
+			b.WriteString("<h5>" + html.EscapeString(strings.TrimSpace(trimmed[5:])) + "</h5>")
 		} else if strings.HasPrefix(trimmed, "####") {
-			html.WriteString("<h4>" + strings.TrimSpace(trimmed[4:]) + "</h4>")
+			b.WriteString("<h4>" + html.EscapeString(strings.TrimSpace(trimmed[4:])) + "</h4>")
 		} else if strings.HasPrefix(trimmed, "###") {
-			html.WriteString("<h3>" + strings.TrimSpace(trimmed[3:]) + "</h3>")
+			b.WriteString("<h3>" + html.EscapeString(strings.TrimSpace(trimmed[3:])) + "</h3>")
 		} else if strings.HasPrefix(trimmed, "##") {
-			html.WriteString("<h2>" + strings.TrimSpace(trimmed[2:]) + "</h2>")
+			b.WriteString("<h2>" + html.EscapeString(strings.TrimSpace(trimmed[2:])) + "</h2>")
 		} else if strings.HasPrefix(trimmed, "#") {
-			html.WriteString("<h1>" + strings.TrimSpace(trimmed[1:]) + "</h1>")
+			b.WriteString("<h1>" + html.EscapeString(strings.TrimSpace(trimmed[1:])) + "</h1>")
 		} else if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
-			html.WriteString("<ul><li>" + strings.TrimSpace(trimmed[2:]) + "</li></ul>")
+			b.WriteString("<ul><li>" + html.EscapeString(strings.TrimSpace(trimmed[2:])) + "</li></ul>")
 		} else {
 			text := applyInlineFormatting(trimmed)
-			html.WriteString("<p>" + text + "</p>")
+			b.WriteString("<p>" + text + "</p>")
 		}
 	}
 
-	html.WriteString("</body></html>")
-	return html.String()
+	b.WriteString("</body></html>")
+	return b.String()
 }
 
 // applyInlineFormatting converts markdown inline formatting to HTML.
