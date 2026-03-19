@@ -29,6 +29,7 @@ This document provides AI agents with project-specific context and guidelines fo
 - Google Docs (20 tools)
 - Google Tasks (10 tools)
 - Google Sheets (16 tools)
+- Google Slides (5 tools) — read presentations, get slides, thumbnails, create, batch update
 - Google Contacts (12 tools)
 
 ## Architecture
@@ -48,6 +49,7 @@ gsuite-mcp/
 │   ├── drive/              # Google Drive tools
 │   ├── gmail/              # Gmail tools
 │   ├── sheets/             # Google Sheets tools
+│   ├── slides/             # Google Slides tools
 │   └── tasks/              # Google Tasks tools
 ├── docs/
 │   ├── AGENTS.md           # This file

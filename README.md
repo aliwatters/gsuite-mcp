@@ -4,7 +4,7 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, and Contacts. Single Go binary with true multi-account support.
+Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, and Contacts. Single Go binary with true multi-account support.
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ gsuite-mcp auth personal
 ## Why gsuite-mcp?
 
 - **Multi-account**: Switch accounts per-operation with `"account": "work"`
-- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Contacts
+- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Contacts
 - **Single binary**: No Python, no Node, no runtime dependencies
 - **MCP native**: JSON Schema 2020-12, proper tool descriptions
 
@@ -59,6 +59,9 @@ Task management: lists, tasks, subtasks, due dates, completion, reordering.
 
 ### Sheets (16 tools)
 Spreadsheet operations: read, write, append, batch operations, create, cell formatting, conditional formatting, data validation, charts, pivot tables.
+
+### Slides (5 tools)
+Presentation operations: get presentation metadata and structure, get individual slide details, slide thumbnails, create presentations, batch update (add/modify/delete slides, text, shapes, images).
 
 ### Contacts (12 tools)
 Contact management: list, search, create, update, delete, contact groups.
@@ -222,6 +225,15 @@ Contact management: list, search, create, update, delete, contact groups.
 | `contacts_get_group` | Get group with members |
 | `contacts_create_group` / `contacts_update_group` / `contacts_delete_group` | Group management |
 | `contacts_modify_group_members` | Add/remove from group |
+
+#### Slides
+| Tool | Description |
+|------|-------------|
+| `slides_get_presentation` | Get presentation metadata, slide list with text previews |
+| `slides_get_page` | Get full details of a single slide (shapes, images, tables, text) |
+| `slides_get_thumbnail` | Get slide thumbnail image URL |
+| `slides_create` | Create new presentation |
+| `slides_batch_update` | Batch update (add/modify/delete slides, text, shapes, images) |
 
 </details>
 
