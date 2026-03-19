@@ -224,4 +224,14 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs/Sheets/Slides URL")),
 		common.WithAccountParam(),
 	), HandleDocsExportToPDF)
+
+	// docs_import_to_google_doc - Import file as Google Doc
+	s.AddTool(mcp.NewTool("docs_import_to_google_doc",
+		mcp.WithDescription("Convert uploaded content (text, HTML, markdown) to a native Google Doc. Creates a new Google Doc with the provided content."),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Title for the new Google Doc")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Content to import (plain text, HTML, or markdown)")),
+		mcp.WithString("content_type", mcp.Description("MIME type of content: text/plain (default), text/html, text/markdown")),
+		mcp.WithString("parent_id", mcp.Description("Parent folder ID or URL to place the new document in")),
+		common.WithAccountParam(),
+	), HandleDocsImportToGoogleDoc)
 }

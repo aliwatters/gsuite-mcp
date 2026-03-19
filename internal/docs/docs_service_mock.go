@@ -16,12 +16,16 @@ type MockDocsService struct {
 	// ExportedPDFs stores mock PDF data keyed by document ID
 	ExportedPDFs map[string][]byte
 
+	// ImportedDocs stores mock imported document data
+	ImportedDocs []*drive.File
+
 	// Errors allows tests to configure specific errors for methods
 	Errors struct {
-		GetDocument error
-		Create      error
-		BatchUpdate error
-		ExportPDF   error
+		GetDocument    error
+		Create         error
+		BatchUpdate    error
+		ExportPDF      error
+		ImportDocument error
 	}
 
 	// Calls tracks method invocations for verification
@@ -32,7 +36,12 @@ type MockDocsService struct {
 			DocumentID string
 			Requests   []*docs.Request
 		}
-		ExportPDF []string
+		ExportPDF      []string
+		ImportDocument []struct {
+			Title       string
+			ContentType string
+			ParentID    string
+		}
 	}
 }
 
@@ -176,4 +185,28 @@ func (m *MockDocsService) ExportPDF(ctx context.Context, fileID string) ([]byte,
 	}
 
 	return pdfData, file, nil
+}
+
+// ImportDocument creates a mock imported document.
+func (m *MockDocsService) ImportDocument(ctx context.Context, title string, content []byte, contentType string, parentID string) (*drive.File, error) {
+	m.Calls.ImportDocument = append(m.Calls.ImportDocument, struct {
+		Title       string
+		ContentType string
+		ParentID    string
+	}{title, contentType, parentID})
+
+	if m.Errors.ImportDocument != nil {
+		return nil, m.Errors.ImportDocument
+	}
+
+	docID := fmt.Sprintf("imported-doc-%d", len(m.Calls.ImportDocument))
+	file := &drive.File{
+		Id:          docID,
+		Name:        title,
+		MimeType:    "application/vnd.google-apps.document",
+		WebViewLink: fmt.Sprintf("https://docs.google.com/document/d/%s/edit", docID),
+	}
+
+	m.ImportedDocs = append(m.ImportedDocs, file)
+	return file, nil
 }

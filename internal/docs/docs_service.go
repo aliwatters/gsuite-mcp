@@ -1,6 +1,7 @@
 package docs
 
 import (
+	"bytes"
 	"context"
 	"io"
 
@@ -22,6 +23,9 @@ type DocsService interface {
 
 	// ExportPDF exports a document to PDF format, returning the raw PDF bytes.
 	ExportPDF(ctx context.Context, fileID string) ([]byte, *drive.File, error)
+
+	// ImportDocument creates a new Google Doc by uploading content with conversion.
+	ImportDocument(ctx context.Context, title string, content []byte, contentType string, parentID string) (*drive.File, error)
 }
 
 // RealDocsService wraps the Docs API client and implements DocsService.
@@ -79,4 +83,20 @@ func (s *RealDocsService) ExportPDF(ctx context.Context, fileID string) ([]byte,
 	}
 
 	return data, file, nil
+}
+
+// ImportDocument creates a new Google Doc by uploading content with conversion.
+func (s *RealDocsService) ImportDocument(ctx context.Context, title string, content []byte, contentType string, parentID string) (*drive.File, error) {
+	file := &drive.File{
+		Name:     title,
+		MimeType: "application/vnd.google-apps.document",
+	}
+	if parentID != "" {
+		file.Parents = []string{parentID}
+	}
+
+	return s.driveService.Files.Create(file).
+		Media(bytes.NewReader(content)).
+		Context(ctx).
+		Do()
 }

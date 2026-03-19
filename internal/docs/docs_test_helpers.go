@@ -8,19 +8,20 @@ import (
 
 // Aliases for testable functions used by test files.
 var (
-	testableDocsCreate      = TestableDocsCreate
-	testableDocsGet         = TestableDocsGet
-	testableDocsGetMetadata = TestableDocsGetMetadata
-	testableDocsAppendText  = TestableDocsAppendText
-	testableDocsInsertText  = TestableDocsInsertText
-	testableDocsReplaceText = TestableDocsReplaceText
-	testableDocsDeleteText  = TestableDocsDeleteText
-	testableDocsInsertTable = TestableDocsInsertTable
-	testableDocsInsertLink  = TestableDocsInsertLink
-	testableDocsBatchUpdate   = TestableDocsBatchUpdate
-	testableDocsGetAsMarkdown  = TestableDocsGetAsMarkdown
-	testableDocsFindAndReplace = TestableDocsFindAndReplace
-	testableDocsExportToPDF    = TestableDocsExportToPDF
+	testableDocsCreate            = TestableDocsCreate
+	testableDocsGet               = TestableDocsGet
+	testableDocsGetMetadata       = TestableDocsGetMetadata
+	testableDocsAppendText        = TestableDocsAppendText
+	testableDocsInsertText        = TestableDocsInsertText
+	testableDocsReplaceText       = TestableDocsReplaceText
+	testableDocsDeleteText        = TestableDocsDeleteText
+	testableDocsInsertTable       = TestableDocsInsertTable
+	testableDocsInsertLink        = TestableDocsInsertLink
+	testableDocsBatchUpdate       = TestableDocsBatchUpdate
+	testableDocsGetAsMarkdown     = TestableDocsGetAsMarkdown
+	testableDocsFindAndReplace    = TestableDocsFindAndReplace
+	testableDocsExportToPDF       = TestableDocsExportToPDF
+	testableDocsImportToGoogleDoc = TestableDocsImportToGoogleDoc
 )
 
 // getDocsTextContent extracts text content from an MCP CallToolResult.
