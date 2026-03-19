@@ -15,6 +15,7 @@ import (
 	"github.com/aliwatters/gsuite-mcp/internal/drive"
 	"github.com/aliwatters/gsuite-mcp/internal/gmail"
 	"github.com/aliwatters/gsuite-mcp/internal/sheets"
+	"github.com/aliwatters/gsuite-mcp/internal/slides"
 	"github.com/aliwatters/gsuite-mcp/internal/tasks"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -74,6 +75,7 @@ func main() {
 	tasks.RegisterTools(s)
 	drive.RegisterTools(s)
 	sheets.RegisterTools(s)
+	slides.RegisterTools(s)
 	contacts.RegisterTools(s)
 
 	// Start server
