@@ -198,4 +198,13 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("content", mcp.Description("Optional text content for the footer")),
 		common.WithAccountParam(),
 	), HandleDocsCreateFooter)
+
+	// === Docs Enhanced (Phase 4) ===
+
+	// docs_get_as_markdown - Export document as markdown
+	s.AddTool(mcp.NewTool("docs_get_as_markdown",
+		mcp.WithDescription("Get document content as clean markdown. Converts headings, bold, italic, links, lists, and tables to markdown format. Ideal for AI consumption."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		common.WithAccountParam(),
+	), HandleDocsGetAsMarkdown)
 }

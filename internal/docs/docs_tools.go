@@ -111,4 +111,5 @@ var (
 	HandleDocsInsertImage       = common.WrapHandler[DocsService](TestableDocsInsertImage)
 	HandleDocsCreateHeader      = common.WrapHandler[DocsService](TestableDocsCreateHeader)
 	HandleDocsCreateFooter      = common.WrapHandler[DocsService](TestableDocsCreateFooter)
+	HandleDocsGetAsMarkdown     = common.WrapHandler[DocsService](TestableDocsGetAsMarkdown)
 )

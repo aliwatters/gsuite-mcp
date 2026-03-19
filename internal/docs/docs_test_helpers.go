@@ -17,7 +17,8 @@ var (
 	testableDocsDeleteText  = TestableDocsDeleteText
 	testableDocsInsertTable = TestableDocsInsertTable
 	testableDocsInsertLink  = TestableDocsInsertLink
-	testableDocsBatchUpdate = TestableDocsBatchUpdate
+	testableDocsBatchUpdate   = TestableDocsBatchUpdate
+	testableDocsGetAsMarkdown = TestableDocsGetAsMarkdown
 )
 
 // getDocsTextContent extracts text content from an MCP CallToolResult.
