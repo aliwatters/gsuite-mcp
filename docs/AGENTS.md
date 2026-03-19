@@ -25,7 +25,7 @@ This document provides AI agents with project-specific context and guidelines fo
 ### Services Supported
 - Gmail (36 tools)
 - Google Calendar (10 tools)
-- Google Drive (12 tools) — includes shared drive support
+- Google Drive (23 tools) — includes shared drive support, comments, revisions
 - Google Docs (16 tools)
 - Google Tasks (10 tools)
 - Google Sheets (8 tools)

@@ -48,8 +48,8 @@ Full inbox management: search, read, send, reply, archive, trash, labels, filter
 ### Calendar (10 tools)
 Complete calendar control: list events, create/update/delete, recurring events, free/busy queries, Google Meet integration.
 
-### Drive (12 tools)
-File management with shared drive support: search, upload, download, list, create folders, move, copy, trash, delete, share, permissions.
+### Drive (23 tools)
+File management with shared drive support: search (with friendly file type filter), upload, download, list, create folders, move, copy, trash, delete, share, permissions, shareable links, comments & replies, version history (revisions).
 
 ### Docs (16 tools)
 Document creation and editing: create, read, append, insert, replace, delete, formatting (bold, italic, headings), lists, tables, images, headers/footers.
@@ -136,6 +136,17 @@ Contact management: list, search, create, update, delete, contact groups.
 | `drive_delete` | Permanently delete file |
 | `drive_share` | Share file with users |
 | `drive_get_permissions` | Get file permissions |
+| `drive_get_shareable_link` | Get shareable URL with sharing status |
+| `drive_list_comments` | List comments on a file |
+| `drive_get_comment` | Get a specific comment |
+| `drive_create_comment` | Create a comment |
+| `drive_update_comment` | Update a comment |
+| `drive_delete_comment` | Delete a comment |
+| `drive_list_replies` | List replies on a comment |
+| `drive_create_reply` | Reply to a comment |
+| `drive_list_revisions` | List file version history |
+| `drive_get_revision` | Get revision metadata |
+| `drive_download_revision` | Download a specific revision |
 
 #### Docs
 | Tool | Description |

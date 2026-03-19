@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
+	"github.com/mark3labs/mcp-go/mcp"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -654,6 +655,339 @@ func TestIsTextMimeType(t *testing.T) {
 				t.Errorf("isTextMimeType(%q) = %v, want %v", tt.mimeType, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestDriveSearchFileType tests the file_type filter in TestableDriveSearch.
+func TestDriveSearchFileType(t *testing.T) {
+	tests := []struct {
+		name      string
+		args      map[string]any
+		wantQuery string
+	}{
+		{
+			name:      "friendly name doc",
+			args:      map[string]any{"query": "test", "file_type": "doc"},
+			wantQuery: "(test) and mimeType = 'application/vnd.google-apps.document'",
+		},
+		{
+			name:      "friendly name sheet",
+			args:      map[string]any{"query": "test", "file_type": "sheet"},
+			wantQuery: "(test) and mimeType = 'application/vnd.google-apps.spreadsheet'",
+		},
+		{
+			name:      "friendly name slides",
+			args:      map[string]any{"query": "test", "file_type": "slides"},
+			wantQuery: "(test) and mimeType = 'application/vnd.google-apps.presentation'",
+		},
+		{
+			name:      "friendly name pdf",
+			args:      map[string]any{"query": "test", "file_type": "pdf"},
+			wantQuery: "(test) and mimeType = 'application/pdf'",
+		},
+		{
+			name:      "friendly name folder",
+			args:      map[string]any{"query": "test", "file_type": "folder"},
+			wantQuery: "(test) and mimeType = 'application/vnd.google-apps.folder'",
+		},
+		{
+			name:      "friendly name image uses contains",
+			args:      map[string]any{"query": "test", "file_type": "image"},
+			wantQuery: "(test) and mimeType contains 'image/'",
+		},
+		{
+			name:      "raw mimeType passthrough",
+			args:      map[string]any{"query": "test", "file_type": "application/zip"},
+			wantQuery: "(test) and mimeType = 'application/zip'",
+		},
+		{
+			name:      "no file_type leaves query unchanged",
+			args:      map[string]any{"query": "test"},
+			wantQuery: "test",
+		},
+		{
+			name:      "case insensitive friendly name",
+			args:      map[string]any{"query": "test", "file_type": "PDF"},
+			wantQuery: "(test) and mimeType = 'application/pdf'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixtures := NewDriveTestFixtures()
+			var capturedOpts *ListFilesOptions
+			fixtures.MockService.ListFilesFunc = func(_ context.Context, opts *ListFilesOptions) (*drive.FileList, error) {
+				capturedOpts = opts
+				return &drive.FileList{}, nil
+			}
+
+			request := common.CreateMCPRequest(tt.args)
+			_, err := TestableDriveSearch(context.Background(), request, fixtures.Deps)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if capturedOpts == nil {
+				t.Fatal("ListFiles was not called")
+			}
+			if capturedOpts.Query != tt.wantQuery {
+				t.Errorf("got query %q, want %q", capturedOpts.Query, tt.wantQuery)
+			}
+		})
+	}
+}
+
+// TestDriveGetShareableLink tests TestableDriveGetShareableLink.
+func TestDriveGetShareableLink(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	fixtures.MockService.GetFileFunc = func(_ context.Context, fileID string, fields string) (*drive.File, error) {
+		return &drive.File{
+			Id:          fileID,
+			Name:        "Test.docx",
+			MimeType:    "application/vnd.google-apps.document",
+			WebViewLink: "https://docs.google.com/document/d/" + fileID + "/edit",
+			Permissions: []*drive.Permission{
+				{Id: "perm1", Type: "user", Role: "owner", EmailAddress: "owner@example.com"},
+				{Id: "perm2", Type: "anyone", Role: "reader"},
+			},
+		}, nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{"file_id": "file123"})
+	result, err := TestableDriveGetShareableLink(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "file123") {
+		t.Errorf("result should contain file_id, got: %s", text)
+	}
+	if !strings.Contains(text, "https://docs.google.com/document/d/file123/edit") {
+		t.Errorf("result should contain URL, got: %s", text)
+	}
+	if !strings.Contains(text, "owner@example.com") {
+		t.Errorf("result should contain permissions, got: %s", text)
+	}
+	if !strings.Contains(text, `"permission_count":2`) {
+		t.Errorf("result should contain permission_count of 2, got: %s", text)
+	}
+}
+
+// TestDriveListComments tests TestableDriveListComments.
+func TestDriveListComments(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	fixtures.MockService.ListCommentsFunc = func(_ context.Context, fileID string, _ string, _ int64, _ string, _ bool) (*drive.CommentList, error) {
+		return &drive.CommentList{
+			Comments: []*drive.Comment{
+				{
+					Id:          "comment1",
+					Content:     "This is a comment",
+					CreatedTime: "2024-01-01T00:00:00Z",
+					Author:      &drive.User{DisplayName: "Alice", EmailAddress: "alice@example.com"},
+				},
+				{
+					Id:          "comment2",
+					Content:     "Another comment",
+					Resolved:    true,
+					CreatedTime: "2024-01-02T00:00:00Z",
+					Author:      &drive.User{DisplayName: "Bob", EmailAddress: "bob@example.com"},
+				},
+			},
+		}, nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{"file_id": "file123"})
+	result, err := TestableDriveListComments(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "comment1") {
+		t.Errorf("result should contain comment1, got: %s", text)
+	}
+	if !strings.Contains(text, `"count":2`) {
+		t.Errorf("result should contain count of 2, got: %s", text)
+	}
+}
+
+// TestDriveCreateComment tests TestableDriveCreateComment.
+func TestDriveCreateComment(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	fixtures.MockService.CreateCommentFunc = func(_ context.Context, fileID string, comment *drive.Comment, _ string) (*drive.Comment, error) {
+		comment.Id = "newcomment1"
+		comment.CreatedTime = "2024-01-01T00:00:00Z"
+		comment.Author = &drive.User{DisplayName: "Test User", EmailAddress: "test@example.com"}
+		return comment, nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{"file_id": "file123", "content": "Great work!"})
+	result, err := TestableDriveCreateComment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "newcomment1") {
+		t.Errorf("result should contain new comment ID, got: %s", text)
+	}
+	if !strings.Contains(text, "Great work!") {
+		t.Errorf("result should contain content, got: %s", text)
+	}
+}
+
+// TestDriveDeleteComment tests TestableDriveDeleteComment.
+func TestDriveDeleteComment(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	var deletedFileID, deletedCommentID string
+	fixtures.MockService.DeleteCommentFunc = func(_ context.Context, fileID string, commentID string) error {
+		deletedFileID = fileID
+		deletedCommentID = commentID
+		return nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{"file_id": "file123", "comment_id": "comment1"})
+	result, err := TestableDriveDeleteComment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, `"success":true`) {
+		t.Errorf("result should contain success, got: %s", text)
+	}
+	if deletedFileID != "file123" {
+		t.Errorf("got file_id %q, want %q", deletedFileID, "file123")
+	}
+	if deletedCommentID != "comment1" {
+		t.Errorf("got comment_id %q, want %q", deletedCommentID, "comment1")
+	}
+}
+
+// TestDriveCreateReply tests TestableDriveCreateReply.
+func TestDriveCreateReply(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	fixtures.MockService.CreateReplyFunc = func(_ context.Context, fileID string, commentID string, reply *drive.Reply, _ string) (*drive.Reply, error) {
+		reply.Id = "reply1"
+		reply.CreatedTime = "2024-01-01T00:00:00Z"
+		reply.Author = &drive.User{DisplayName: "Test User", EmailAddress: "test@example.com"}
+		return reply, nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{"file_id": "file123", "comment_id": "comment1", "content": "I agree"})
+	result, err := TestableDriveCreateReply(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "reply1") {
+		t.Errorf("result should contain reply ID, got: %s", text)
+	}
+}
+
+// TestDriveListRevisions tests TestableDriveListRevisions.
+func TestDriveListRevisions(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	fixtures.MockService.ListRevisionsFunc = func(_ context.Context, fileID string, _ string, _ int64, _ string) (*drive.RevisionList, error) {
+		return &drive.RevisionList{
+			Revisions: []*drive.Revision{
+				{
+					Id:           "rev1",
+					ModifiedTime: "2024-01-01T00:00:00Z",
+					Size:         1024,
+					LastModifyingUser: &drive.User{
+						DisplayName:  "Alice",
+						EmailAddress: "alice@example.com",
+					},
+				},
+				{
+					Id:           "rev2",
+					ModifiedTime: "2024-01-02T00:00:00Z",
+					Size:         2048,
+					LastModifyingUser: &drive.User{
+						DisplayName:  "Bob",
+						EmailAddress: "bob@example.com",
+					},
+				},
+			},
+		}, nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{"file_id": "file123"})
+	result, err := TestableDriveListRevisions(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "rev1") {
+		t.Errorf("result should contain rev1, got: %s", text)
+	}
+	if !strings.Contains(text, `"count":2`) {
+		t.Errorf("result should contain count of 2, got: %s", text)
+	}
+}
+
+// TestDriveGetRevision tests TestableDriveGetRevision.
+func TestDriveGetRevision(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	fixtures.MockService.GetRevisionFunc = func(_ context.Context, fileID string, revisionID string, _ string) (*drive.Revision, error) {
+		return &drive.Revision{
+			Id:           revisionID,
+			ModifiedTime: "2024-01-01T00:00:00Z",
+			Size:         1024,
+			MimeType:     "application/pdf",
+			LastModifyingUser: &drive.User{
+				DisplayName:  "Alice",
+				EmailAddress: "alice@example.com",
+			},
+		}, nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{"file_id": "file123", "revision_id": "rev1"})
+	result, err := TestableDriveGetRevision(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "rev1") {
+		t.Errorf("result should contain revision ID, got: %s", text)
+	}
+	if !strings.Contains(text, "alice@example.com") {
+		t.Errorf("result should contain author, got: %s", text)
+	}
+}
+
+// TestDriveDownloadRevision tests TestableDriveDownloadRevision.
+func TestDriveDownloadRevision(t *testing.T) {
+	fixtures := NewDriveTestFixtures()
+	fixtures.MockService.GetFileFunc = func(_ context.Context, fileID string, _ string) (*drive.File, error) {
+		return &drive.File{
+			Id:       fileID,
+			Name:     "test.txt",
+			MimeType: "text/plain",
+			Size:     100,
+		}, nil
+	}
+	fixtures.MockService.DownloadRevisionFunc = func(_ context.Context, fileID string, revisionID string) (io.ReadCloser, error) {
+		return io.NopCloser(strings.NewReader("revision content here")), nil
+	}
+
+	request := common.CreateMCPRequest(map[string]any{"file_id": "file123", "revision_id": "rev1"})
+	result, err := TestableDriveDownloadRevision(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "revision content here") {
+		t.Errorf("result should contain revision content, got: %s", text)
+	}
+	if !strings.Contains(text, "utf-8") {
+		t.Errorf("result should indicate utf-8 encoding for text, got: %s", text)
 	}
 }
 
