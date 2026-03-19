@@ -30,6 +30,7 @@ This document provides AI agents with project-specific context and guidelines fo
 - Google Tasks (10 tools)
 - Google Sheets (16 tools)
 - Google Slides (5 tools) — read presentations, get slides, thumbnails, create, batch update
+- Google Forms (5 tools) — get form structure, create forms, batch update, list/get responses
 - Google Contacts (12 tools)
 
 ## Architecture
@@ -50,6 +51,7 @@ gsuite-mcp/
 │   ├── gmail/              # Gmail tools
 │   ├── sheets/             # Google Sheets tools
 │   ├── slides/             # Google Slides tools
+│   ├── forms/              # Google Forms tools
 │   └── tasks/              # Google Tasks tools
 ├── docs/
 │   ├── AGENTS.md           # This file
