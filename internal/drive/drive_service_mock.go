@@ -27,6 +27,22 @@ type MockDriveService struct {
 	ListPermissionsFunc  func(ctx context.Context, fileID string) (*drive.PermissionList, error)
 	CreatePermissionFunc func(ctx context.Context, fileID string, permission *drive.Permission, sendNotification bool) (*drive.Permission, error)
 	DeletePermissionFunc func(ctx context.Context, fileID string, permissionID string) error
+
+	// Comments
+	ListCommentsFunc  func(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.CommentList, error)
+	GetCommentFunc    func(ctx context.Context, fileID string, commentID string, fields string, includeDeleted bool) (*drive.Comment, error)
+	CreateCommentFunc func(ctx context.Context, fileID string, comment *drive.Comment, fields string) (*drive.Comment, error)
+	UpdateCommentFunc func(ctx context.Context, fileID string, commentID string, comment *drive.Comment, fields string) (*drive.Comment, error)
+	DeleteCommentFunc func(ctx context.Context, fileID string, commentID string) error
+
+	// Replies
+	ListRepliesFunc func(ctx context.Context, fileID string, commentID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.ReplyList, error)
+	CreateReplyFunc func(ctx context.Context, fileID string, commentID string, reply *drive.Reply, fields string) (*drive.Reply, error)
+
+	// Revisions
+	ListRevisionsFunc    func(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string) (*drive.RevisionList, error)
+	GetRevisionFunc      func(ctx context.Context, fileID string, revisionID string, fields string) (*drive.Revision, error)
+	DownloadRevisionFunc func(ctx context.Context, fileID string, revisionID string) (io.ReadCloser, error)
 }
 
 // File methods
@@ -124,4 +140,80 @@ func (m *MockDriveService) DeletePermission(ctx context.Context, fileID string, 
 		return m.DeletePermissionFunc(ctx, fileID, permissionID)
 	}
 	return nil
+}
+
+// Comment methods
+
+func (m *MockDriveService) ListComments(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.CommentList, error) {
+	if m.ListCommentsFunc != nil {
+		return m.ListCommentsFunc(ctx, fileID, fields, pageSize, pageToken, includeDeleted)
+	}
+	return &drive.CommentList{}, nil
+}
+
+func (m *MockDriveService) GetComment(ctx context.Context, fileID string, commentID string, fields string, includeDeleted bool) (*drive.Comment, error) {
+	if m.GetCommentFunc != nil {
+		return m.GetCommentFunc(ctx, fileID, commentID, fields, includeDeleted)
+	}
+	return &drive.Comment{}, nil
+}
+
+func (m *MockDriveService) CreateComment(ctx context.Context, fileID string, comment *drive.Comment, fields string) (*drive.Comment, error) {
+	if m.CreateCommentFunc != nil {
+		return m.CreateCommentFunc(ctx, fileID, comment, fields)
+	}
+	return comment, nil
+}
+
+func (m *MockDriveService) UpdateComment(ctx context.Context, fileID string, commentID string, comment *drive.Comment, fields string) (*drive.Comment, error) {
+	if m.UpdateCommentFunc != nil {
+		return m.UpdateCommentFunc(ctx, fileID, commentID, comment, fields)
+	}
+	return comment, nil
+}
+
+func (m *MockDriveService) DeleteComment(ctx context.Context, fileID string, commentID string) error {
+	if m.DeleteCommentFunc != nil {
+		return m.DeleteCommentFunc(ctx, fileID, commentID)
+	}
+	return nil
+}
+
+// Reply methods
+
+func (m *MockDriveService) ListReplies(ctx context.Context, fileID string, commentID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.ReplyList, error) {
+	if m.ListRepliesFunc != nil {
+		return m.ListRepliesFunc(ctx, fileID, commentID, fields, pageSize, pageToken, includeDeleted)
+	}
+	return &drive.ReplyList{}, nil
+}
+
+func (m *MockDriveService) CreateReply(ctx context.Context, fileID string, commentID string, reply *drive.Reply, fields string) (*drive.Reply, error) {
+	if m.CreateReplyFunc != nil {
+		return m.CreateReplyFunc(ctx, fileID, commentID, reply, fields)
+	}
+	return reply, nil
+}
+
+// Revision methods
+
+func (m *MockDriveService) ListRevisions(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string) (*drive.RevisionList, error) {
+	if m.ListRevisionsFunc != nil {
+		return m.ListRevisionsFunc(ctx, fileID, fields, pageSize, pageToken)
+	}
+	return &drive.RevisionList{}, nil
+}
+
+func (m *MockDriveService) GetRevision(ctx context.Context, fileID string, revisionID string, fields string) (*drive.Revision, error) {
+	if m.GetRevisionFunc != nil {
+		return m.GetRevisionFunc(ctx, fileID, revisionID, fields)
+	}
+	return &drive.Revision{}, nil
+}
+
+func (m *MockDriveService) DownloadRevision(ctx context.Context, fileID string, revisionID string) (io.ReadCloser, error) {
+	if m.DownloadRevisionFunc != nil {
+		return m.DownloadRevisionFunc(ctx, fileID, revisionID)
+	}
+	return nil, nil
 }

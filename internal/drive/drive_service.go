@@ -29,6 +29,22 @@ type DriveService interface {
 	ListPermissions(ctx context.Context, fileID string) (*drive.PermissionList, error)
 	CreatePermission(ctx context.Context, fileID string, permission *drive.Permission, sendNotification bool) (*drive.Permission, error)
 	DeletePermission(ctx context.Context, fileID string, permissionID string) error
+
+	// Comments
+	ListComments(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.CommentList, error)
+	GetComment(ctx context.Context, fileID string, commentID string, fields string, includeDeleted bool) (*drive.Comment, error)
+	CreateComment(ctx context.Context, fileID string, comment *drive.Comment, fields string) (*drive.Comment, error)
+	UpdateComment(ctx context.Context, fileID string, commentID string, comment *drive.Comment, fields string) (*drive.Comment, error)
+	DeleteComment(ctx context.Context, fileID string, commentID string) error
+
+	// Replies
+	ListReplies(ctx context.Context, fileID string, commentID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.ReplyList, error)
+	CreateReply(ctx context.Context, fileID string, commentID string, reply *drive.Reply, fields string) (*drive.Reply, error)
+
+	// Revisions
+	ListRevisions(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string) (*drive.RevisionList, error)
+	GetRevision(ctx context.Context, fileID string, revisionID string, fields string) (*drive.Revision, error)
+	DownloadRevision(ctx context.Context, fileID string, revisionID string) (io.ReadCloser, error)
 }
 
 // ListFilesOptions contains optional parameters for listing files.
@@ -173,4 +189,112 @@ func (s *RealDriveService) CreatePermission(ctx context.Context, fileID string, 
 func (s *RealDriveService) DeletePermission(ctx context.Context, fileID string, permissionID string) error {
 	return s.service.Permissions.Delete(fileID, permissionID).Context(ctx).
 		SupportsAllDrives(true).Do()
+}
+
+// ListComments lists comments on a file.
+func (s *RealDriveService) ListComments(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.CommentList, error) {
+	call := s.service.Comments.List(fileID).Context(ctx).
+		IncludeDeleted(includeDeleted)
+	if fields != "" {
+		call = call.Fields(googleapi.Field(fields))
+	}
+	if pageSize > 0 {
+		call = call.PageSize(pageSize)
+	}
+	if pageToken != "" {
+		call = call.PageToken(pageToken)
+	}
+	return call.Do()
+}
+
+// GetComment gets a comment by ID.
+func (s *RealDriveService) GetComment(ctx context.Context, fileID string, commentID string, fields string, includeDeleted bool) (*drive.Comment, error) {
+	call := s.service.Comments.Get(fileID, commentID).Context(ctx).
+		IncludeDeleted(includeDeleted)
+	if fields != "" {
+		call = call.Fields(googleapi.Field(fields))
+	}
+	return call.Do()
+}
+
+// CreateComment creates a comment on a file.
+func (s *RealDriveService) CreateComment(ctx context.Context, fileID string, comment *drive.Comment, fields string) (*drive.Comment, error) {
+	call := s.service.Comments.Create(fileID, comment).Context(ctx)
+	if fields != "" {
+		call = call.Fields(googleapi.Field(fields))
+	}
+	return call.Do()
+}
+
+// UpdateComment updates a comment.
+func (s *RealDriveService) UpdateComment(ctx context.Context, fileID string, commentID string, comment *drive.Comment, fields string) (*drive.Comment, error) {
+	call := s.service.Comments.Update(fileID, commentID, comment).Context(ctx)
+	if fields != "" {
+		call = call.Fields(googleapi.Field(fields))
+	}
+	return call.Do()
+}
+
+// DeleteComment deletes a comment.
+func (s *RealDriveService) DeleteComment(ctx context.Context, fileID string, commentID string) error {
+	return s.service.Comments.Delete(fileID, commentID).Context(ctx).Do()
+}
+
+// ListReplies lists replies on a comment.
+func (s *RealDriveService) ListReplies(ctx context.Context, fileID string, commentID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.ReplyList, error) {
+	call := s.service.Replies.List(fileID, commentID).Context(ctx).
+		IncludeDeleted(includeDeleted)
+	if fields != "" {
+		call = call.Fields(googleapi.Field(fields))
+	}
+	if pageSize > 0 {
+		call = call.PageSize(pageSize)
+	}
+	if pageToken != "" {
+		call = call.PageToken(pageToken)
+	}
+	return call.Do()
+}
+
+// CreateReply creates a reply on a comment.
+func (s *RealDriveService) CreateReply(ctx context.Context, fileID string, commentID string, reply *drive.Reply, fields string) (*drive.Reply, error) {
+	call := s.service.Replies.Create(fileID, commentID, reply).Context(ctx)
+	if fields != "" {
+		call = call.Fields(googleapi.Field(fields))
+	}
+	return call.Do()
+}
+
+// ListRevisions lists revisions of a file.
+func (s *RealDriveService) ListRevisions(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string) (*drive.RevisionList, error) {
+	call := s.service.Revisions.List(fileID).Context(ctx)
+	if fields != "" {
+		call = call.Fields(googleapi.Field(fields))
+	}
+	if pageSize > 0 {
+		call = call.PageSize(pageSize)
+	}
+	if pageToken != "" {
+		call = call.PageToken(pageToken)
+	}
+	return call.Do()
+}
+
+// GetRevision gets a revision by ID.
+func (s *RealDriveService) GetRevision(ctx context.Context, fileID string, revisionID string, fields string) (*drive.Revision, error) {
+	call := s.service.Revisions.Get(fileID, revisionID).Context(ctx)
+	if fields != "" {
+		call = call.Fields(googleapi.Field(fields))
+	}
+	return call.Do()
+}
+
+// DownloadRevision downloads the content of a specific revision.
+func (s *RealDriveService) DownloadRevision(ctx context.Context, fileID string, revisionID string) (io.ReadCloser, error) {
+	resp, err := s.service.Revisions.Get(fileID, revisionID).Context(ctx).
+		AcknowledgeAbuse(true).Download()
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
 }

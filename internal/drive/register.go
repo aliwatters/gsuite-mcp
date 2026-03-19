@@ -12,8 +12,9 @@ func RegisterTools(s *server.MCPServer) {
 
 	// drive_search - Search files with query syntax
 	s.AddTool(mcp.NewTool("drive_search",
-		mcp.WithDescription("Search Google Drive files including shared drives. Supports metadata queries like \"name contains 'report'\" and full-text content search with \"fullText contains 'keyword'\" (searches inside PDFs, Docs, Sheets, Slides, Office files). Combine with \"and\"/\"or\" operators."),
-		mcp.WithString("query", mcp.Required(), mcp.Description("Drive search query. Examples: \"name contains 'budget'\", \"mimeType = 'application/pdf'\", \"fullText contains 'keyword'\" (searches file content), \"fullText contains 'quarterly' and mimeType = 'application/pdf'\"")),
+		mcp.WithDescription("Search Google Drive files including shared drives. Supports metadata queries like \"name contains 'report'\" and full-text content search with \"fullText contains 'keyword'\" (searches inside PDFs, Docs, Sheets, Slides, Office files). Combine with \"and\"/\"or\" operators. Use file_type for easy filtering by type."),
+		mcp.WithString("query", mcp.Required(), mcp.Description("Drive search query. Examples: \"name contains 'budget'\", \"fullText contains 'keyword'\" (searches file content), \"fullText contains 'quarterly' and mimeType = 'application/pdf'\"")),
+		mcp.WithString("file_type", mcp.Description("Friendly file type filter: doc, sheet, slides, pdf, folder, image, video, audio, form, drawing. Also accepts raw mimeType strings.")),
 		mcp.WithNumber("max_results", mcp.Description("Maximum results to return (1-100, default 20)")),
 		mcp.WithString("corpora", mcp.Description("Search scope: allDrives (default, includes shared drives), user (My Drive only), domain")),
 		common.WithPageToken(),
@@ -115,4 +116,105 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
 		common.WithAccountParam(),
 	), HandleDriveGetPermissions)
+
+	// drive_get_shareable_link - Get shareable link with sharing status
+	s.AddTool(mcp.NewTool("drive_get_shareable_link",
+		mcp.WithDescription("Get a shareable URL for a Google Drive file along with its current sharing status and permissions. Simpler than using drive_get + drive_get_permissions separately."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		common.WithAccountParam(),
+	), HandleDriveGetShareableLink)
+
+	// === Drive Comments & Replies ===
+
+	// drive_list_comments - List comments on a file
+	s.AddTool(mcp.NewTool("drive_list_comments",
+		mcp.WithDescription("List comments on a Google Drive file."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithNumber("max_results", mcp.Description("Maximum results to return (1-100, default 20)")),
+		mcp.WithBoolean("include_deleted", mcp.Description("Include deleted comments (default: false)")),
+		common.WithPageToken(),
+		common.WithAccountParam(),
+	), HandleDriveListComments)
+
+	// drive_get_comment - Get a single comment
+	s.AddTool(mcp.NewTool("drive_get_comment",
+		mcp.WithDescription("Get a specific comment on a Google Drive file."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("comment_id", mcp.Required(), mcp.Description("Comment ID")),
+		mcp.WithBoolean("include_deleted", mcp.Description("Include if deleted (default: false)")),
+		common.WithAccountParam(),
+	), HandleDriveGetComment)
+
+	// drive_create_comment - Create a comment
+	s.AddTool(mcp.NewTool("drive_create_comment",
+		mcp.WithDescription("Create a comment on a Google Drive file."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Comment text")),
+		common.WithAccountParam(),
+	), HandleDriveCreateComment)
+
+	// drive_update_comment - Update a comment
+	s.AddTool(mcp.NewTool("drive_update_comment",
+		mcp.WithDescription("Update a comment on a Google Drive file."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("comment_id", mcp.Required(), mcp.Description("Comment ID")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Updated comment text")),
+		common.WithAccountParam(),
+	), HandleDriveUpdateComment)
+
+	// drive_delete_comment - Delete a comment
+	s.AddTool(mcp.NewTool("drive_delete_comment",
+		mcp.WithDescription("Delete a comment from a Google Drive file."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("comment_id", mcp.Required(), mcp.Description("Comment ID")),
+		common.WithAccountParam(),
+	), HandleDriveDeleteComment)
+
+	// drive_list_replies - List replies on a comment
+	s.AddTool(mcp.NewTool("drive_list_replies",
+		mcp.WithDescription("List replies on a comment of a Google Drive file."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("comment_id", mcp.Required(), mcp.Description("Comment ID")),
+		mcp.WithNumber("max_results", mcp.Description("Maximum results to return (1-100, default 20)")),
+		mcp.WithBoolean("include_deleted", mcp.Description("Include deleted replies (default: false)")),
+		common.WithPageToken(),
+		common.WithAccountParam(),
+	), HandleDriveListReplies)
+
+	// drive_create_reply - Create a reply on a comment
+	s.AddTool(mcp.NewTool("drive_create_reply",
+		mcp.WithDescription("Create a reply on a comment of a Google Drive file. Use action 'resolve' to resolve the comment."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("comment_id", mcp.Required(), mcp.Description("Comment ID")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Reply text")),
+		mcp.WithString("action", mcp.Description("Action to perform: resolve, reopen (optional)")),
+		common.WithAccountParam(),
+	), HandleDriveCreateReply)
+
+	// === Drive Revisions ===
+
+	// drive_list_revisions - List file version history
+	s.AddTool(mcp.NewTool("drive_list_revisions",
+		mcp.WithDescription("List version history (revisions) for a Google Drive file."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithNumber("max_results", mcp.Description("Maximum results to return (1-100, default 20)")),
+		common.WithPageToken(),
+		common.WithAccountParam(),
+	), HandleDriveListRevisions)
+
+	// drive_get_revision - Get a specific revision
+	s.AddTool(mcp.NewTool("drive_get_revision",
+		mcp.WithDescription("Get metadata for a specific revision of a Google Drive file."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("revision_id", mcp.Required(), mcp.Description("Revision ID")),
+		common.WithAccountParam(),
+	), HandleDriveGetRevision)
+
+	// drive_download_revision - Download a specific revision
+	s.AddTool(mcp.NewTool("drive_download_revision",
+		mcp.WithDescription("Download the content of a specific revision of a Google Drive file. Returns text for text files, base64 for binary. Max 10MB."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("revision_id", mcp.Required(), mcp.Description("Revision ID")),
+		common.WithAccountParam(),
+	), HandleDriveDownloadRevision)
 }

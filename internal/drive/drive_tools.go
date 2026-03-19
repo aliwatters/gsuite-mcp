@@ -30,23 +30,67 @@ const (
 	DrivePermissionListFields = "permissions(id,type,role,emailAddress,displayName,domain)"
 	// DriveFileUploadFields contains fields for upload operation responses
 	DriveFileUploadFields = "id,name,mimeType,size,createdTime,webViewLink"
+	// DriveShareableLinkFields contains fields for shareable link responses
+	DriveShareableLinkFields = "id,name,mimeType,webViewLink,webContentLink,sharingUser,permissions(id,type,role,emailAddress,displayName,domain)"
+	// DriveCommentFields contains fields for comment responses
+	DriveCommentFields = "id,content,author(displayName,emailAddress),createdTime,modifiedTime,resolved,replies(id,content,author(displayName,emailAddress),createdTime,modifiedTime,action)"
+	// DriveCommentListFields contains fields for comment list responses
+	DriveCommentListFields = "nextPageToken,comments(id,content,author(displayName,emailAddress),createdTime,modifiedTime,resolved,quotedFileContent,replies(id,content,author(displayName,emailAddress),createdTime,modifiedTime,action))"
+	// DriveReplyListFields contains fields for reply list responses
+	DriveReplyListFields = "nextPageToken,replies(id,content,author(displayName,emailAddress),createdTime,modifiedTime,action)"
+	// DriveRevisionListFields contains fields for revision list responses
+	DriveRevisionListFields = "nextPageToken,revisions(id,mimeType,modifiedTime,lastModifyingUser(displayName,emailAddress),size,keepForever,originalFilename)"
+	// DriveRevisionGetFields contains fields for single revision responses
+	DriveRevisionGetFields = "id,mimeType,modifiedTime,lastModifyingUser(displayName,emailAddress),size,keepForever,originalFilename,exportLinks"
 )
+
+// friendlyFileTypes maps friendly names to Google Drive MIME types for search filtering.
+var friendlyFileTypes = map[string]string{
+	"doc":          "application/vnd.google-apps.document",
+	"document":     "application/vnd.google-apps.document",
+	"sheet":        "application/vnd.google-apps.spreadsheet",
+	"spreadsheet":  "application/vnd.google-apps.spreadsheet",
+	"slides":       "application/vnd.google-apps.presentation",
+	"presentation": "application/vnd.google-apps.presentation",
+	"form":         "application/vnd.google-apps.form",
+	"drawing":      "application/vnd.google-apps.drawing",
+	"folder":       "application/vnd.google-apps.folder",
+	"pdf":          "application/pdf",
+	"image":        "image/",
+	"video":        "video/",
+	"audio":        "audio/",
+}
 
 // === Handle functions - generated via WrapHandler ===
 
 var (
-	HandleDriveSearch         = common.WrapHandler[DriveService](TestableDriveSearch)
-	HandleDriveGet            = common.WrapHandler[DriveService](TestableDriveGet)
-	HandleDriveDownload       = common.WrapHandler[DriveService](TestableDriveDownload)
-	HandleDriveUpload         = common.WrapHandler[DriveService](TestableDriveUpload)
-	HandleDriveList           = common.WrapHandler[DriveService](TestableDriveList)
-	HandleDriveCreateFolder   = common.WrapHandler[DriveService](TestableDriveCreateFolder)
-	HandleDriveMove           = common.WrapHandler[DriveService](TestableDriveMove)
-	HandleDriveCopy           = common.WrapHandler[DriveService](TestableDriveCopy)
-	HandleDriveTrash          = common.WrapHandler[DriveService](TestableDriveTrash)
-	HandleDriveDelete         = common.WrapHandler[DriveService](TestableDriveDelete)
-	HandleDriveShare          = common.WrapHandler[DriveService](TestableDriveShare)
-	HandleDriveGetPermissions = common.WrapHandler[DriveService](TestableDriveGetPermissions)
+	HandleDriveSearch           = common.WrapHandler[DriveService](TestableDriveSearch)
+	HandleDriveGet              = common.WrapHandler[DriveService](TestableDriveGet)
+	HandleDriveDownload         = common.WrapHandler[DriveService](TestableDriveDownload)
+	HandleDriveUpload           = common.WrapHandler[DriveService](TestableDriveUpload)
+	HandleDriveList             = common.WrapHandler[DriveService](TestableDriveList)
+	HandleDriveCreateFolder     = common.WrapHandler[DriveService](TestableDriveCreateFolder)
+	HandleDriveMove             = common.WrapHandler[DriveService](TestableDriveMove)
+	HandleDriveCopy             = common.WrapHandler[DriveService](TestableDriveCopy)
+	HandleDriveTrash            = common.WrapHandler[DriveService](TestableDriveTrash)
+	HandleDriveDelete           = common.WrapHandler[DriveService](TestableDriveDelete)
+	HandleDriveShare            = common.WrapHandler[DriveService](TestableDriveShare)
+	HandleDriveGetPermissions   = common.WrapHandler[DriveService](TestableDriveGetPermissions)
+	HandleDriveGetShareableLink = common.WrapHandler[DriveService](TestableDriveGetShareableLink)
+
+	// Comments & Replies
+	HandleDriveListComments  = common.WrapHandler[DriveService](TestableDriveListComments)
+	HandleDriveGetComment    = common.WrapHandler[DriveService](TestableDriveGetComment)
+	HandleDriveCreateComment = common.WrapHandler[DriveService](TestableDriveCreateComment)
+	HandleDriveUpdateComment = common.WrapHandler[DriveService](TestableDriveUpdateComment)
+	HandleDriveDeleteComment = common.WrapHandler[DriveService](TestableDriveDeleteComment)
+	HandleDriveListReplies   = common.WrapHandler[DriveService](TestableDriveListReplies)
+	HandleDriveCreateReply   = common.WrapHandler[DriveService](TestableDriveCreateReply)
+
+	// Revisions
+	HandleDriveListRevisions    = common.WrapHandler[DriveService](TestableDriveListRevisions)
+	HandleDriveGetRevision      = common.WrapHandler[DriveService](TestableDriveGetRevision)
+	HandleDriveDownloadRevision = common.WrapHandler[DriveService](TestableDriveDownloadRevision)
 )
 
 // formatFile formats a file for compact output
