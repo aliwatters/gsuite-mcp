@@ -14,12 +14,16 @@ import (
 // sheetsEditURLFormat is the URL template for Google Sheets edit links.
 const sheetsEditURLFormat = "https://docs.google.com/spreadsheets/d/%s/edit"
 
-// parseCellRange parses the sheet_id, start_row, start_col, end_row, end_col parameters
-// into a sheets.GridRange. Returns the range and nil on success, or nil and an error result.
+// parseCellRange parses a GridRange using "sheet_id" as the sheet ID key.
 func parseCellRange(args map[string]any) (*sheets.GridRange, *mcp.CallToolResult) {
-	sheetIDFloat, ok := args["sheet_id"].(float64)
+	return parseGridRange(args, "sheet_id")
+}
+
+// parseGridRange extracts a GridRange from request arguments using a custom key for the sheet ID.
+func parseGridRange(args map[string]any, sheetIDKey string) (*sheets.GridRange, *mcp.CallToolResult) {
+	sheetIDFloat, ok := args[sheetIDKey].(float64)
 	if !ok {
-		return nil, mcp.NewToolResultError("sheet_id parameter is required (numeric sheet ID, found in sheets_get response)")
+		return nil, mcp.NewToolResultError(fmt.Sprintf("%s parameter is required (numeric sheet ID)", sheetIDKey))
 	}
 	sheetID := int64(sheetIDFloat)
 

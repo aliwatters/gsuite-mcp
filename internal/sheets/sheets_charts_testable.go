@@ -9,6 +9,12 @@ import (
 	"google.golang.org/api/sheets/v4"
 )
 
+// validChartTypes is the set of supported chart types for create/update operations.
+var validChartTypes = map[string]bool{
+	"BAR": true, "LINE": true, "AREA": true, "COLUMN": true,
+	"SCATTER": true, "COMBO": true, "STEPPED_AREA": true, "PIE": true,
+}
+
 // TestableSheetsCreateChart creates an embedded chart in a spreadsheet.
 func TestableSheetsCreateChart(ctx context.Context, request mcp.CallToolRequest, deps *SheetsHandlerDeps) (*mcp.CallToolResult, error) {
 	srv, errResult, ok := ResolveSheetsServiceOrError(ctx, request, deps)
@@ -25,10 +31,6 @@ func TestableSheetsCreateChart(ctx context.Context, request mcp.CallToolRequest,
 	if chartType == "" {
 		return mcp.NewToolResultError("chart_type parameter is required (BAR, LINE, AREA, COLUMN, SCATTER, COMBO, STEPPED_AREA, PIE)"), nil
 	}
-	validChartTypes := map[string]bool{
-		"BAR": true, "LINE": true, "AREA": true, "COLUMN": true,
-		"SCATTER": true, "COMBO": true, "STEPPED_AREA": true, "PIE": true,
-	}
 	if !validChartTypes[chartType] {
 		return mcp.NewToolResultError("chart_type must be one of: BAR, LINE, AREA, COLUMN, SCATTER, COMBO, STEPPED_AREA, PIE"), nil
 	}
@@ -36,42 +38,9 @@ func TestableSheetsCreateChart(ctx context.Context, request mcp.CallToolRequest,
 	title := common.ParseStringArg(request.Params.Arguments, "title", "")
 
 	// Parse source data range
-	sheetIDFloat, ok := request.Params.Arguments["sheet_id"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("sheet_id parameter is required (numeric sheet ID for source data)"), nil
-	}
-	sheetID := int64(sheetIDFloat)
-
-	startRowFloat, ok := request.Params.Arguments["start_row"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("start_row parameter is required (0-based row index of source data)"), nil
-	}
-	startRow := int64(startRowFloat)
-
-	startColFloat, ok := request.Params.Arguments["start_col"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("start_col parameter is required (0-based column index of source data)"), nil
-	}
-	startCol := int64(startColFloat)
-
-	endRowFloat, ok := request.Params.Arguments["end_row"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("end_row parameter is required (0-based row index, exclusive)"), nil
-	}
-	endRow := int64(endRowFloat)
-
-	endColFloat, ok := request.Params.Arguments["end_col"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("end_col parameter is required (0-based column index, exclusive)"), nil
-	}
-	endCol := int64(endColFloat)
-
-	sourceRange := &sheets.GridRange{
-		SheetId:          sheetID,
-		StartRowIndex:    startRow,
-		StartColumnIndex: startCol,
-		EndRowIndex:      endRow,
-		EndColumnIndex:   endCol,
+	sourceRange, rangeErr := parseCellRange(request.Params.Arguments)
+	if rangeErr != nil {
+		return rangeErr, nil
 	}
 
 	// Build BasicChart spec
@@ -113,7 +82,7 @@ func TestableSheetsCreateChart(ctx context.Context, request mcp.CallToolRequest,
 				Position: &sheets.EmbeddedObjectPosition{
 					OverlayPosition: &sheets.OverlayPosition{
 						AnchorCell: &sheets.GridCoordinate{
-							SheetId:     sheetID,
+							SheetId:     sourceRange.SheetId,
 							RowIndex:    anchorRow,
 							ColumnIndex: anchorCol,
 						},
@@ -173,10 +142,6 @@ func TestableSheetsUpdateChart(ctx context.Context, request mcp.CallToolRequest,
 	}
 
 	if chartType, ok := request.Params.Arguments["chart_type"].(string); ok && chartType != "" {
-		validChartTypes := map[string]bool{
-			"BAR": true, "LINE": true, "AREA": true, "COLUMN": true,
-			"SCATTER": true, "COMBO": true, "STEPPED_AREA": true, "PIE": true,
-		}
 		if !validChartTypes[chartType] {
 			return mcp.NewToolResultError("chart_type must be one of: BAR, LINE, AREA, COLUMN, SCATTER, COMBO, STEPPED_AREA, PIE"), nil
 		}
@@ -266,43 +231,10 @@ func TestableSheetsCreatePivotTable(ctx context.Context, request mcp.CallToolReq
 		return idErrResult, nil
 	}
 
-	// Source data range
-	sourceSheetIDFloat, ok := request.Params.Arguments["source_sheet_id"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("source_sheet_id parameter is required"), nil
-	}
-	sourceSheetID := int64(sourceSheetIDFloat)
-
-	startRowFloat, ok := request.Params.Arguments["start_row"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("start_row parameter is required (0-based row index of source data)"), nil
-	}
-	startRow := int64(startRowFloat)
-
-	startColFloat, ok := request.Params.Arguments["start_col"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("start_col parameter is required (0-based column index of source data)"), nil
-	}
-	startCol := int64(startColFloat)
-
-	endRowFloat, ok := request.Params.Arguments["end_row"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("end_row parameter is required (0-based row index, exclusive)"), nil
-	}
-	endRow := int64(endRowFloat)
-
-	endColFloat, ok := request.Params.Arguments["end_col"].(float64)
-	if !ok {
-		return mcp.NewToolResultError("end_col parameter is required (0-based column index, exclusive)"), nil
-	}
-	endCol := int64(endColFloat)
-
-	sourceRange := &sheets.GridRange{
-		SheetId:          sourceSheetID,
-		StartRowIndex:    startRow,
-		StartColumnIndex: startCol,
-		EndRowIndex:      endRow,
-		EndColumnIndex:   endCol,
+	// Source data range (uses "source_sheet_id" instead of "sheet_id")
+	sourceRange, rangeErr := parseGridRange(request.Params.Arguments, "source_sheet_id")
+	if rangeErr != nil {
+		return rangeErr, nil
 	}
 
 	// Target location
