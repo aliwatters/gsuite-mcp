@@ -8,6 +8,9 @@ import (
 	"google.golang.org/api/docs/v1"
 )
 
+// maxExportSize is the maximum size for PDF exports (50MB).
+const maxExportSize = 50 * 1024 * 1024
+
 // extractDocumentText extracts plain text from a Google Docs document structure.
 func extractDocumentText(doc *docs.Document) string {
 	if doc == nil || doc.Body == nil || doc.Body.Content == nil {
@@ -113,4 +116,5 @@ var (
 	HandleDocsCreateFooter      = common.WrapHandler[DocsService](TestableDocsCreateFooter)
 	HandleDocsGetAsMarkdown     = common.WrapHandler[DocsService](TestableDocsGetAsMarkdown)
 	HandleDocsFindAndReplace    = common.WrapHandler[DocsService](TestableDocsFindAndReplace)
+	HandleDocsExportToPDF       = common.WrapHandler[DocsService](TestableDocsExportToPDF)
 )

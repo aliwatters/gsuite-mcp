@@ -7,6 +7,7 @@ import (
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/mark3labs/mcp-go/mcp"
 	"google.golang.org/api/docs/v1"
+	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 )
 
@@ -19,7 +20,11 @@ func NewDocsService(ctx context.Context, client *http.Client) (DocsService, erro
 	if err != nil {
 		return nil, err
 	}
-	return NewRealDocsService(srv), nil
+	driveSrv, err := drive.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return nil, err
+	}
+	return NewRealDocsService(srv, driveSrv), nil
 }
 
 // DefaultDocsHandlerDeps holds the default dependencies for production use.

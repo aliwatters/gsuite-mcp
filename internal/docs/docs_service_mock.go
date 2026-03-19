@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"google.golang.org/api/docs/v1"
+	"google.golang.org/api/drive/v3"
 )
 
 // MockDocsService implements DocsService for testing.
@@ -12,11 +13,15 @@ type MockDocsService struct {
 	// Documents stores mock document data keyed by document ID
 	Documents map[string]*docs.Document
 
+	// ExportedPDFs stores mock PDF data keyed by document ID
+	ExportedPDFs map[string][]byte
+
 	// Errors allows tests to configure specific errors for methods
 	Errors struct {
 		GetDocument error
 		Create      error
 		BatchUpdate error
+		ExportPDF   error
 	}
 
 	// Calls tracks method invocations for verification
@@ -27,13 +32,15 @@ type MockDocsService struct {
 			DocumentID string
 			Requests   []*docs.Request
 		}
+		ExportPDF []string
 	}
 }
 
 // NewMockDocsService creates a new mock Docs service with default test data.
 func NewMockDocsService() *MockDocsService {
 	m := &MockDocsService{
-		Documents: make(map[string]*docs.Document),
+		Documents:    make(map[string]*docs.Document),
+		ExportedPDFs: make(map[string][]byte),
 	}
 
 	// Add a default test document
@@ -141,4 +148,32 @@ func (m *MockDocsService) BatchUpdate(ctx context.Context, documentID string, re
 	return &docs.BatchUpdateDocumentResponse{
 		DocumentId: documentID,
 	}, nil
+}
+
+// ExportPDF exports a mock document as PDF.
+func (m *MockDocsService) ExportPDF(ctx context.Context, fileID string) ([]byte, *drive.File, error) {
+	m.Calls.ExportPDF = append(m.Calls.ExportPDF, fileID)
+
+	if m.Errors.ExportPDF != nil {
+		return nil, nil, m.Errors.ExportPDF
+	}
+
+	doc, ok := m.Documents[fileID]
+	if !ok {
+		return nil, nil, fmt.Errorf("document not found: %s", fileID)
+	}
+
+	// Return mock PDF data if configured, otherwise generate fake PDF bytes
+	pdfData := m.ExportedPDFs[fileID]
+	if pdfData == nil {
+		pdfData = []byte("%PDF-1.4 mock pdf content")
+	}
+
+	file := &drive.File{
+		Id:       fileID,
+		Name:     doc.Title,
+		MimeType: "application/vnd.google-apps.document",
+	}
+
+	return pdfData, file, nil
 }

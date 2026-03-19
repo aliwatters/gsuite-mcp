@@ -20,6 +20,7 @@ var (
 	testableDocsBatchUpdate   = TestableDocsBatchUpdate
 	testableDocsGetAsMarkdown  = TestableDocsGetAsMarkdown
 	testableDocsFindAndReplace = TestableDocsFindAndReplace
+	testableDocsExportToPDF    = TestableDocsExportToPDF
 )
 
 // getDocsTextContent extracts text content from an MCP CallToolResult.

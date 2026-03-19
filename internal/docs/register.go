@@ -217,4 +217,11 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithBoolean("match_case", mcp.Description("Case-sensitive matching (default: true)")),
 		common.WithAccountParam(),
 	), HandleDocsFindAndReplace)
+
+	// docs_export_to_pdf - Export document to PDF
+	s.AddTool(mcp.NewTool("docs_export_to_pdf",
+		mcp.WithDescription("Export a Google Doc, Sheet, or Slides presentation to PDF. Returns base64-encoded PDF content."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs/Sheets/Slides URL")),
+		common.WithAccountParam(),
+	), HandleDocsExportToPDF)
 }
