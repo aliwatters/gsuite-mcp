@@ -9,14 +9,22 @@ import (
 // === Handle functions - generated via WrapHandler ===
 
 var (
-	HandleSheetsGet        = common.WrapHandler[SheetsService](TestableSheetsGet)
-	HandleSheetsRead       = common.WrapHandler[SheetsService](TestableSheetsRead)
-	HandleSheetsWrite      = common.WrapHandler[SheetsService](TestableSheetsWrite)
-	HandleSheetsAppend     = common.WrapHandler[SheetsService](TestableSheetsAppend)
-	HandleSheetsCreate     = common.WrapHandler[SheetsService](TestableSheetsCreate)
-	HandleSheetsBatchRead  = common.WrapHandler[SheetsService](TestableSheetsBatchRead)
-	HandleSheetsBatchWrite = common.WrapHandler[SheetsService](TestableSheetsBatchWrite)
-	HandleSheetsClear      = common.WrapHandler[SheetsService](TestableSheetsClear)
+	HandleSheetsGet                    = common.WrapHandler[SheetsService](TestableSheetsGet)
+	HandleSheetsRead                   = common.WrapHandler[SheetsService](TestableSheetsRead)
+	HandleSheetsWrite                  = common.WrapHandler[SheetsService](TestableSheetsWrite)
+	HandleSheetsAppend                 = common.WrapHandler[SheetsService](TestableSheetsAppend)
+	HandleSheetsCreate                 = common.WrapHandler[SheetsService](TestableSheetsCreate)
+	HandleSheetsBatchRead              = common.WrapHandler[SheetsService](TestableSheetsBatchRead)
+	HandleSheetsBatchWrite             = common.WrapHandler[SheetsService](TestableSheetsBatchWrite)
+	HandleSheetsClear                  = common.WrapHandler[SheetsService](TestableSheetsClear)
+	HandleSheetsFormatCells            = common.WrapHandler[SheetsService](TestableSheetsFormatCells)
+	HandleSheetsAddConditionalFormat   = common.WrapHandler[SheetsService](TestableSheetsAddConditionalFormat)
+	HandleSheetsAddDataValidation      = common.WrapHandler[SheetsService](TestableSheetsAddDataValidation)
+	HandleSheetsBatchUpdateSpreadsheet = common.WrapHandler[SheetsService](TestableSheetsBatchUpdateSpreadsheet)
+	HandleSheetsCreateChart            = common.WrapHandler[SheetsService](TestableSheetsCreateChart)
+	HandleSheetsUpdateChart            = common.WrapHandler[SheetsService](TestableSheetsUpdateChart)
+	HandleSheetsDeleteChart            = common.WrapHandler[SheetsService](TestableSheetsDeleteChart)
+	HandleSheetsCreatePivotTable       = common.WrapHandler[SheetsService](TestableSheetsCreatePivotTable)
 )
 
 // parseValues converts various input formats to [][]any for Sheets API.

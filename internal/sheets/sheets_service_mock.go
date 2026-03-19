@@ -25,6 +25,7 @@ type MockSheetsService struct {
 		BatchUpdateValues error
 		ClearValues       error
 		CreateSpreadsheet error
+		BatchUpdate       error
 	}
 
 	// Calls tracks method invocations for verification
@@ -49,6 +50,10 @@ type MockSheetsService struct {
 		}
 		ClearValues       []struct{ SpreadsheetID, Range string }
 		CreateSpreadsheet []string
+		BatchUpdate       []struct {
+			SpreadsheetID string
+			Requests      []*sheets.Request
+		}
 	}
 }
 
@@ -268,4 +273,25 @@ func (m *MockSheetsService) CreateSpreadsheet(ctx context.Context, title string)
 
 	m.Spreadsheets[ssID] = ss
 	return ss, nil
+}
+
+// BatchUpdate performs a mock batch update on a spreadsheet.
+func (m *MockSheetsService) BatchUpdate(ctx context.Context, spreadsheetID string, requests []*sheets.Request) (*sheets.BatchUpdateSpreadsheetResponse, error) {
+	m.Calls.BatchUpdate = append(m.Calls.BatchUpdate, struct {
+		SpreadsheetID string
+		Requests      []*sheets.Request
+	}{spreadsheetID, requests})
+
+	if m.Errors.BatchUpdate != nil {
+		return nil, m.Errors.BatchUpdate
+	}
+
+	_, ok := m.Spreadsheets[spreadsheetID]
+	if !ok {
+		return nil, fmt.Errorf("spreadsheet not found: %s", spreadsheetID)
+	}
+
+	return &sheets.BatchUpdateSpreadsheetResponse{
+		SpreadsheetId: spreadsheetID,
+	}, nil
 }
