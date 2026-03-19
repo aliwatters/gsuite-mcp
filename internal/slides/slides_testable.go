@@ -41,8 +41,8 @@ func TestableSlidesGetPresentation(ctx context.Context, request mcp.CallToolRequ
 	slidesSummary := make([]map[string]any, 0, len(pres.Slides))
 	for _, slide := range pres.Slides {
 		summary := map[string]any{
-			"page_id":        slide.ObjectId,
-			"element_count":  len(slide.PageElements),
+			"page_id":       slide.ObjectId,
+			"element_count": len(slide.PageElements),
 		}
 
 		// Extract text content from the slide for a preview
