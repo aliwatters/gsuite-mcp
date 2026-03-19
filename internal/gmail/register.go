@@ -306,6 +306,84 @@ func registerExtendedTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleGmailModifyThread)
 
+	// === Send-As Aliases ===
+
+	// gmail_list_send_as - List send-as aliases
+	s.AddTool(mcp.NewTool("gmail_list_send_as",
+		mcp.WithDescription("List all send-as aliases (alternate from addresses) for the account"),
+		common.WithAccountParam(),
+	), HandleGmailListSendAs)
+
+	// gmail_get_send_as - Get send-as alias
+	s.AddTool(mcp.NewTool("gmail_get_send_as",
+		mcp.WithDescription("Get details of a specific send-as alias"),
+		mcp.WithString("send_as_email", mcp.Required(), mcp.Description("The send-as email address")),
+		common.WithAccountParam(),
+	), HandleGmailGetSendAs)
+
+	// gmail_create_send_as - Create send-as alias
+	s.AddTool(mcp.NewTool("gmail_create_send_as",
+		mcp.WithDescription("Create a new send-as alias. For external addresses, SMTP configuration is required."),
+		mcp.WithString("send_as_email", mcp.Required(), mcp.Description("The email address to send as")),
+		mcp.WithString("display_name", mcp.Description("Display name for the alias")),
+		mcp.WithString("reply_to_address", mcp.Description("Reply-to address (defaults to send-as address)")),
+		mcp.WithString("signature", mcp.Description("HTML signature for this alias")),
+		mcp.WithBoolean("is_default", mcp.Description("Set as default send-as alias")),
+		mcp.WithString("smtp_host", mcp.Description("SMTP server hostname (for external addresses)")),
+		mcp.WithNumber("smtp_port", mcp.Description("SMTP server port (for external addresses)")),
+		mcp.WithString("smtp_username", mcp.Description("SMTP username (for external addresses)")),
+		mcp.WithString("smtp_password", mcp.Description("SMTP password (for external addresses)")),
+		mcp.WithString("smtp_security_mode", mcp.Description("SMTP security: none, ssl, starttls")),
+		common.WithAccountParam(),
+	), HandleGmailCreateSendAs)
+
+	// gmail_update_send_as - Update send-as alias
+	s.AddTool(mcp.NewTool("gmail_update_send_as",
+		mcp.WithDescription("Update an existing send-as alias (display name, signature, reply-to)"),
+		mcp.WithString("send_as_email", mcp.Required(), mcp.Description("The send-as email address to update")),
+		mcp.WithString("display_name", mcp.Description("New display name")),
+		mcp.WithString("reply_to_address", mcp.Description("New reply-to address")),
+		mcp.WithString("signature", mcp.Description("New HTML signature")),
+		mcp.WithBoolean("is_default", mcp.Description("Set as default send-as alias")),
+		common.WithAccountParam(),
+	), HandleGmailUpdateSendAs)
+
+	// gmail_delete_send_as - Delete send-as alias
+	s.AddTool(mcp.NewTool("gmail_delete_send_as",
+		mcp.WithDescription("Delete a send-as alias. Cannot delete the primary address."),
+		mcp.WithString("send_as_email", mcp.Required(), mcp.Description("The send-as email address to delete")),
+		common.WithAccountParam(),
+	), HandleGmailDeleteSendAs)
+
+	// gmail_verify_send_as - Verify send-as alias
+	s.AddTool(mcp.NewTool("gmail_verify_send_as",
+		mcp.WithDescription("Send verification email for a send-as alias. Required for external addresses."),
+		mcp.WithString("send_as_email", mcp.Required(), mcp.Description("The send-as email address to verify")),
+		common.WithAccountParam(),
+	), HandleGmailVerifySendAs)
+
+	// === Delegates ===
+
+	// gmail_list_delegates - List delegates
+	s.AddTool(mcp.NewTool("gmail_list_delegates",
+		mcp.WithDescription("List all delegates who have access to this account"),
+		common.WithAccountParam(),
+	), HandleGmailListDelegates)
+
+	// gmail_create_delegate - Add delegate
+	s.AddTool(mcp.NewTool("gmail_create_delegate",
+		mcp.WithDescription("Add a delegate who can read, send, and delete messages on your behalf. Requires domain-wide delegation or same-domain accounts."),
+		mcp.WithString("delegate_email", mcp.Required(), mcp.Description("Email address of the delegate to add")),
+		common.WithAccountParam(),
+	), HandleGmailCreateDelegate)
+
+	// gmail_delete_delegate - Remove delegate
+	s.AddTool(mcp.NewTool("gmail_delete_delegate",
+		mcp.WithDescription("Remove a delegate's access to this account"),
+		mcp.WithString("delegate_email", mcp.Required(), mcp.Description("Email address of the delegate to remove")),
+		common.WithAccountParam(),
+	), HandleGmailDeleteDelegate)
+
 	// gmail_get_profile - Get account profile
 	s.AddTool(mcp.NewTool("gmail_get_profile",
 		mcp.WithDescription("Get email address, message count, and thread count for account"),

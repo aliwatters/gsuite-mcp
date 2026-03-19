@@ -17,13 +17,15 @@ type MethodCall struct {
 // MockGmailService is a mock implementation of GmailService for testing.
 type MockGmailService struct {
 	// Data stores
-	Messages map[string]*gmail.Message
-	Threads  map[string]*gmail.Thread
-	Labels   map[string]*gmail.Label
-	Drafts   map[string]*gmail.Draft
-	Filters  map[string]*gmail.Filter
-	Profile  *gmail.Profile
-	Vacation *gmail.VacationSettings
+	Messages  map[string]*gmail.Message
+	Threads   map[string]*gmail.Thread
+	Labels    map[string]*gmail.Label
+	Drafts    map[string]*gmail.Draft
+	Filters   map[string]*gmail.Filter
+	Profile   *gmail.Profile
+	Vacation  *gmail.VacationSettings
+	SendAs    map[string]*gmail.SendAs
+	Delegates map[string]*gmail.Delegate
 
 	// Error to return (if set, operations return this error)
 	Error error
@@ -41,11 +43,13 @@ type MockGmailService struct {
 // NewMockGmailService creates a new MockGmailService with initialized maps.
 func NewMockGmailService() *MockGmailService {
 	return &MockGmailService{
-		Messages: make(map[string]*gmail.Message),
-		Threads:  make(map[string]*gmail.Thread),
-		Labels:   make(map[string]*gmail.Label),
-		Drafts:   make(map[string]*gmail.Draft),
-		Filters:  make(map[string]*gmail.Filter),
+		Messages:  make(map[string]*gmail.Message),
+		Threads:   make(map[string]*gmail.Thread),
+		Labels:    make(map[string]*gmail.Label),
+		Drafts:    make(map[string]*gmail.Draft),
+		Filters:   make(map[string]*gmail.Filter),
+		SendAs:    make(map[string]*gmail.SendAs),
+		Delegates: make(map[string]*gmail.Delegate),
 		Profile: &gmail.Profile{
 			EmailAddress:  common.TestEmail,
 			MessagesTotal: 100,
@@ -69,6 +73,8 @@ func (m *MockGmailService) Reset() {
 	m.Labels = make(map[string]*gmail.Label)
 	m.Drafts = make(map[string]*gmail.Draft)
 	m.Filters = make(map[string]*gmail.Filter)
+	m.SendAs = make(map[string]*gmail.SendAs)
+	m.Delegates = make(map[string]*gmail.Delegate)
 	m.MethodCalls = nil
 	m.Error = nil
 }
@@ -630,4 +636,134 @@ func (m *MockGmailService) SetError(errMsg string) {
 // VacationSettings is an alias for Vacation field for convenience in tests.
 func (m *MockGmailService) SetVacationSettings(settings *gmail.VacationSettings) {
 	m.Vacation = settings
+}
+
+// === Send-As ===
+
+func (m *MockGmailService) ListSendAs(ctx context.Context) ([]*gmail.SendAs, error) {
+	m.recordCall("ListSendAs")
+	if m.Error != nil {
+		return nil, m.Error
+	}
+
+	var sendAs []*gmail.SendAs
+	for _, sa := range m.SendAs {
+		sendAs = append(sendAs, sa)
+	}
+	return sendAs, nil
+}
+
+func (m *MockGmailService) GetSendAs(ctx context.Context, sendAsEmail string) (*gmail.SendAs, error) {
+	m.recordCall("GetSendAs", sendAsEmail)
+	if m.Error != nil {
+		return nil, m.Error
+	}
+
+	sa, ok := m.SendAs[sendAsEmail]
+	if !ok {
+		return nil, fmt.Errorf("send-as not found: %s", sendAsEmail)
+	}
+	return sa, nil
+}
+
+func (m *MockGmailService) CreateSendAs(ctx context.Context, sendAs *gmail.SendAs) (*gmail.SendAs, error) {
+	m.recordCall("CreateSendAs", sendAs)
+	if m.Error != nil {
+		return nil, m.Error
+	}
+
+	m.SendAs[sendAs.SendAsEmail] = sendAs
+	return sendAs, nil
+}
+
+func (m *MockGmailService) UpdateSendAs(ctx context.Context, sendAsEmail string, sendAs *gmail.SendAs) (*gmail.SendAs, error) {
+	m.recordCall("UpdateSendAs", sendAsEmail, sendAs)
+	if m.Error != nil {
+		return nil, m.Error
+	}
+
+	if _, ok := m.SendAs[sendAsEmail]; !ok {
+		return nil, fmt.Errorf("send-as not found: %s", sendAsEmail)
+	}
+
+	sendAs.SendAsEmail = sendAsEmail
+	m.SendAs[sendAsEmail] = sendAs
+	return sendAs, nil
+}
+
+func (m *MockGmailService) DeleteSendAs(ctx context.Context, sendAsEmail string) error {
+	m.recordCall("DeleteSendAs", sendAsEmail)
+	if m.Error != nil {
+		return m.Error
+	}
+
+	if _, ok := m.SendAs[sendAsEmail]; !ok {
+		return fmt.Errorf("send-as not found: %s", sendAsEmail)
+	}
+
+	delete(m.SendAs, sendAsEmail)
+	return nil
+}
+
+func (m *MockGmailService) VerifySendAs(ctx context.Context, sendAsEmail string) error {
+	m.recordCall("VerifySendAs", sendAsEmail)
+	if m.Error != nil {
+		return m.Error
+	}
+
+	if _, ok := m.SendAs[sendAsEmail]; !ok {
+		return fmt.Errorf("send-as not found: %s", sendAsEmail)
+	}
+
+	return nil
+}
+
+// === Delegates ===
+
+func (m *MockGmailService) ListDelegates(ctx context.Context) ([]*gmail.Delegate, error) {
+	m.recordCall("ListDelegates")
+	if m.Error != nil {
+		return nil, m.Error
+	}
+
+	var delegates []*gmail.Delegate
+	for _, d := range m.Delegates {
+		delegates = append(delegates, d)
+	}
+	return delegates, nil
+}
+
+func (m *MockGmailService) CreateDelegate(ctx context.Context, delegate *gmail.Delegate) (*gmail.Delegate, error) {
+	m.recordCall("CreateDelegate", delegate)
+	if m.Error != nil {
+		return nil, m.Error
+	}
+
+	delegate.VerificationStatus = "accepted"
+	m.Delegates[delegate.DelegateEmail] = delegate
+	return delegate, nil
+}
+
+func (m *MockGmailService) DeleteDelegate(ctx context.Context, delegateEmail string) error {
+	m.recordCall("DeleteDelegate", delegateEmail)
+	if m.Error != nil {
+		return m.Error
+	}
+
+	if _, ok := m.Delegates[delegateEmail]; !ok {
+		return fmt.Errorf("delegate not found: %s", delegateEmail)
+	}
+
+	delete(m.Delegates, delegateEmail)
+	return nil
+}
+
+// AddSendAs adds a send-as alias to the mock store.
+func (m *MockGmailService) AddSendAs(sendAs *gmail.SendAs) {
+	m.SendAs[sendAs.SendAsEmail] = sendAs
+}
+
+// AddDelegate adds a delegate to the mock store.
+func (m *MockGmailService) AddDelegate(delegate *gmail.Delegate) {
+	m.Delegates[delegate.DelegateEmail] = delegate
 }
