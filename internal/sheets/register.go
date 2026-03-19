@@ -15,7 +15,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithDescription("Get spreadsheet metadata including title, sheets list, and properties."),
 		mcp.WithString("spreadsheet_id", mcp.Required(), mcp.Description("Spreadsheet ID or full Google Sheets URL")),
 		common.WithAccountParam(),
-	), HandleSheetsGet)
+	), common.WithDriveAccessCheck(HandleSheetsGet, "spreadsheet_id"))
 
 	// sheets_read - Read cell values from range
 	s.AddTool(mcp.NewTool("sheets_read",
@@ -23,7 +23,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("spreadsheet_id", mcp.Required(), mcp.Description("Spreadsheet ID or full Google Sheets URL")),
 		mcp.WithString("range", mcp.Required(), mcp.Description("A1 notation range (e.g., 'Sheet1!A1:C10', 'A1:B5')")),
 		common.WithAccountParam(),
-	), HandleSheetsRead)
+	), common.WithDriveAccessCheck(HandleSheetsRead, "spreadsheet_id"))
 
 	// sheets_write - Write values to cell range
 	s.AddTool(mcp.NewTool("sheets_write",
@@ -33,7 +33,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithArray("values", mcp.Required(), mcp.Description("2D array of values (rows of cells)")),
 		mcp.WithString("value_input_option", mcp.Description("How to interpret input: RAW (as-is) or USER_ENTERED (parse formulas, default)")),
 		common.WithAccountParam(),
-	), HandleSheetsWrite)
+	), common.WithDriveAccessCheck(HandleSheetsWrite, "spreadsheet_id"))
 
 	// sheets_append - Append rows to sheet
 	s.AddTool(mcp.NewTool("sheets_append",
@@ -43,7 +43,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithArray("values", mcp.Required(), mcp.Description("2D array of values (rows to append)")),
 		mcp.WithString("value_input_option", mcp.Description("How to interpret input: RAW or USER_ENTERED (default)")),
 		common.WithAccountParam(),
-	), HandleSheetsAppend)
+	), common.WithDriveAccessCheck(HandleSheetsAppend, "spreadsheet_id"))
 
 	// === Sheets Extended (Phase 2) ===
 
@@ -60,7 +60,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("spreadsheet_id", mcp.Required(), mcp.Description("Spreadsheet ID or full Google Sheets URL")),
 		mcp.WithArray("ranges", mcp.Required(), mcp.Description("Array of A1 notation ranges to read")),
 		common.WithAccountParam(),
-	), HandleSheetsBatchRead)
+	), common.WithDriveAccessCheck(HandleSheetsBatchRead, "spreadsheet_id"))
 
 	// sheets_batch_write - Write to multiple ranges at once
 	s.AddTool(mcp.NewTool("sheets_batch_write",
@@ -69,7 +69,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithArray("data", mcp.Required(), mcp.Description("Array of {range, values} objects")),
 		mcp.WithString("value_input_option", mcp.Description("How to interpret input: RAW or USER_ENTERED (default)")),
 		common.WithAccountParam(),
-	), HandleSheetsBatchWrite)
+	), common.WithDriveAccessCheck(HandleSheetsBatchWrite, "spreadsheet_id"))
 
 	// sheets_clear - Clear cell range
 	s.AddTool(mcp.NewTool("sheets_clear",
@@ -77,7 +77,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("spreadsheet_id", mcp.Required(), mcp.Description("Spreadsheet ID or full Google Sheets URL")),
 		mcp.WithString("range", mcp.Required(), mcp.Description("A1 notation range to clear (e.g., 'Sheet1!A1:C10')")),
 		common.WithAccountParam(),
-	), HandleSheetsClear)
+	), common.WithDriveAccessCheck(HandleSheetsClear, "spreadsheet_id"))
 
 	// === Sheets Formatting (Phase 3) ===
 
@@ -104,7 +104,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("vertical_alignment", mcp.Description("Vertical alignment: TOP, MIDDLE, BOTTOM")),
 		mcp.WithString("wrap_strategy", mcp.Description("Text wrap: OVERFLOW_CELL, LEGACY_WRAP, CLIP, WRAP")),
 		common.WithAccountParam(),
-	), HandleSheetsFormatCells)
+	), common.WithDriveAccessCheck(HandleSheetsFormatCells, "spreadsheet_id"))
 
 	// sheets_add_conditional_format - Add conditional formatting rule
 	s.AddTool(mcp.NewTool("sheets_add_conditional_format",
@@ -134,7 +134,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("max_type", mcp.Description("Gradient max type: MAX, NUMBER, PERCENT, PERCENTILE")),
 		mcp.WithString("max_value", mcp.Description("Gradient max value")),
 		common.WithAccountParam(),
-	), HandleSheetsAddConditionalFormat)
+	), common.WithDriveAccessCheck(HandleSheetsAddConditionalFormat, "spreadsheet_id"))
 
 	// sheets_add_data_validation - Add data validation rules
 	s.AddTool(mcp.NewTool("sheets_add_data_validation",
@@ -151,7 +151,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithBoolean("show_dropdown", mcp.Description("Show dropdown UI for list validations (default: true)")),
 		mcp.WithString("input_message", mcp.Description("Help text shown when cell is selected")),
 		common.WithAccountParam(),
-	), HandleSheetsAddDataValidation)
+	), common.WithDriveAccessCheck(HandleSheetsAddDataValidation, "spreadsheet_id"))
 
 	// === Sheets Charts & Pivot Tables (Phase 3) ===
 
@@ -170,7 +170,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("anchor_row", mcp.Description("Row index for chart placement (default: 0)")),
 		mcp.WithNumber("anchor_col", mcp.Description("Column index for chart placement (default: 0)")),
 		common.WithAccountParam(),
-	), HandleSheetsCreateChart)
+	), common.WithDriveAccessCheck(HandleSheetsCreateChart, "spreadsheet_id"))
 
 	// sheets_update_chart - Update existing chart
 	s.AddTool(mcp.NewTool("sheets_update_chart",
@@ -180,7 +180,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("title", mcp.Description("New chart title")),
 		mcp.WithString("chart_type", mcp.Description("New chart type: BAR, LINE, AREA, COLUMN, SCATTER, COMBO, STEPPED_AREA, PIE")),
 		common.WithAccountParam(),
-	), HandleSheetsUpdateChart)
+	), common.WithDriveAccessCheck(HandleSheetsUpdateChart, "spreadsheet_id"))
 
 	// sheets_delete_chart - Delete embedded chart
 	s.AddTool(mcp.NewTool("sheets_delete_chart",
@@ -188,7 +188,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("spreadsheet_id", mcp.Required(), mcp.Description("Spreadsheet ID or full Google Sheets URL")),
 		mcp.WithNumber("chart_id", mcp.Required(), mcp.Description("Chart ID to delete")),
 		common.WithAccountParam(),
-	), HandleSheetsDeleteChart)
+	), common.WithDriveAccessCheck(HandleSheetsDeleteChart, "spreadsheet_id"))
 
 	// sheets_create_pivot_table - Create pivot table
 	s.AddTool(mcp.NewTool("sheets_create_pivot_table",
@@ -206,7 +206,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithArray("col_source_columns", mcp.Description("Array of column offsets (0-based) for column grouping")),
 		mcp.WithArray("value_columns", mcp.Description("Array of {column, summarize_function} objects. summarize_function: SUM, COUNTA, COUNT, AVERAGE, MAX, MIN, CUSTOM")),
 		common.WithAccountParam(),
-	), HandleSheetsCreatePivotTable)
+	), common.WithDriveAccessCheck(HandleSheetsCreatePivotTable, "spreadsheet_id"))
 
 	// sheets_batch_update - Raw batchUpdate for power users
 	s.AddTool(mcp.NewTool("sheets_batch_update",
@@ -214,5 +214,5 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("spreadsheet_id", mcp.Required(), mcp.Description("Spreadsheet ID or full Google Sheets URL")),
 		mcp.WithString("requests", mcp.Required(), mcp.Description("JSON array of batch update requests (see Google Sheets API docs)")),
 		common.WithAccountParam(),
-	), HandleSheetsBatchUpdateSpreadsheet)
+	), common.WithDriveAccessCheck(HandleSheetsBatchUpdateSpreadsheet, "spreadsheet_id"))
 }

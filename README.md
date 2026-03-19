@@ -320,6 +320,25 @@ The default OAuth callback port is **8100**. Override it in `config.json`:
 
 Or via environment variable: `GSUITE_MCP_OAUTH_PORT=9000`
 
+### Drive Access Filtering
+
+Restrict which shared drives are accessible via MCP tools. Add `drive_access` to `config.json`:
+
+```json
+{
+  "oauth_port": 8100,
+  "drive_access": {
+    "allowed": ["Marketing", "Engineering"]
+  }
+}
+```
+
+**Modes** (choose one):
+- **Allowlist**: `"allowed": ["Drive A", "Drive B"]` — only these shared drives + My Drive
+- **Blocklist**: `"blocked": ["SENSITIVE", "HR"]` — everything except these drives
+
+My Drive is always accessible. Setting both `allowed` and `blocked` is an error. Drives can be specified by name (case-insensitive) or ID. The filter applies to Drive, Docs, and Sheets tools.
+
 ### HTTP Auth Endpoint (MCP Server Mode)
 
 When running as an MCP server, gsuite-mcp starts a persistent HTTP server on the OAuth port so agents and users can trigger re-authentication from a browser:

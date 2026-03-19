@@ -11,7 +11,8 @@ import (
 
 // Deps holds shared dependencies for all service handlers.
 type Deps struct {
-	AuthManager *auth.Manager
+	AuthManager       *auth.Manager
+	DriveAccessFilter *DriveAccessFilter
 }
 
 // Global instance set during initialization

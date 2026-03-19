@@ -13,9 +13,26 @@ import (
 // DefaultOAuthPort is the default port used for the OAuth callback server.
 const DefaultOAuthPort = 8100
 
+// DriveAccess configures which shared drives are accessible via MCP tools.
+// Set either Allowed (allowlist) or Blocked (blocklist), not both.
+// My Drive is always accessible. If neither is set, all drives are accessible.
+type DriveAccess struct {
+	Allowed []string `json:"allowed,omitempty"` // Only these shared drives + My Drive
+	Blocked []string `json:"blocked,omitempty"` // Everything except these shared drives
+}
+
 // Config holds the application configuration loaded from config.json.
 type Config struct {
-	OAuthPort int `json:"oauth_port"`
+	OAuthPort   int          `json:"oauth_port"`
+	DriveAccess *DriveAccess `json:"drive_access,omitempty"`
+}
+
+// Validate checks the configuration for errors.
+func (c Config) Validate() error {
+	if c.DriveAccess != nil && len(c.DriveAccess.Allowed) > 0 && len(c.DriveAccess.Blocked) > 0 {
+		return fmt.Errorf("drive_access: cannot set both 'allowed' and 'blocked' — choose one mode")
+	}
+	return nil
 }
 
 // ConfigPath returns the path to config.json.
@@ -48,6 +65,10 @@ func loadConfigFromPath(path string) (Config, error) {
 
 	if fileCfg.OAuthPort == 0 {
 		fileCfg.OAuthPort = DefaultOAuthPort
+	}
+
+	if err := fileCfg.Validate(); err != nil {
+		return cfg, fmt.Errorf("invalid config: %w", err)
 	}
 
 	return fileCfg, nil

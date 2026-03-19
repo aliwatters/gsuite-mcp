@@ -24,6 +24,7 @@ type DriveService interface {
 
 	// Drives
 	GetDrive(ctx context.Context, driveID string) (*drive.Drive, error)
+	ListDrives(ctx context.Context, pageSize int64, pageToken string) (*drive.DriveList, error)
 
 	// Permissions
 	ListPermissions(ctx context.Context, fileID string) (*drive.PermissionList, error)
@@ -168,6 +169,15 @@ func (s *RealDriveService) ExportFile(ctx context.Context, fileID string, mimeTy
 // GetDrive gets a shared drive by ID.
 func (s *RealDriveService) GetDrive(ctx context.Context, driveID string) (*drive.Drive, error) {
 	return s.service.Drives.Get(driveID).Context(ctx).Fields("id,name").Do()
+}
+
+// ListDrives lists shared drives accessible to the user.
+func (s *RealDriveService) ListDrives(ctx context.Context, pageSize int64, pageToken string) (*drive.DriveList, error) {
+	call := s.service.Drives.List().Context(ctx).PageSize(pageSize)
+	if pageToken != "" {
+		call = call.PageToken(pageToken)
+	}
+	return call.Do()
 }
 
 // ListPermissions lists a file's permissions.

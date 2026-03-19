@@ -59,10 +59,29 @@ gsuite-mcp/
 ```
 ~/.config/gsuite-mcp/
 ├── client_secret.json      # Google OAuth app credentials
-├── config.json             # Settings: oauth_port (optional — created by init)
+├── config.json             # Settings: oauth_port, drive_access (optional — created by init)
 └── credentials/
     └── {email}.json        # Per-account OAuth tokens
 ```
+
+### Drive Access Filtering
+
+The `drive_access` config restricts which shared drives are accessible:
+
+```json
+{
+  "drive_access": {
+    "allowed": ["Marketing"]
+  }
+}
+```
+
+- **Allowlist** (`allowed`): Only these shared drives + My Drive are accessible
+- **Blocklist** (`blocked`): Everything except these shared drives
+- Cannot set both — validation error at startup
+- Applies to Drive, Docs, and Sheets tools (all file-backed services)
+- Drive names are case-insensitive; drive IDs also accepted
+- Fails open on API errors (does not block if check cannot be performed)
 
 ## Key Rules
 
