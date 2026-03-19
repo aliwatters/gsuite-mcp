@@ -207,4 +207,14 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		common.WithAccountParam(),
 	), HandleDocsGetAsMarkdown)
+
+	// docs_find_and_replace - Find and replace with case sensitivity control
+	s.AddTool(mcp.NewTool("docs_find_and_replace",
+		mcp.WithDescription("Search and replace text across a Google Doc. Supports multiple find/replace pairs in a single call."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		mcp.WithString("find_text", mcp.Required(), mcp.Description("Text to find in the document")),
+		mcp.WithString("replace_text", mcp.Description("Text to replace with (empty to delete matches)")),
+		mcp.WithBoolean("match_case", mcp.Description("Case-sensitive matching (default: true)")),
+		common.WithAccountParam(),
+	), HandleDocsFindAndReplace)
 }
