@@ -51,6 +51,19 @@ func TestableCalendarListEvents(ctx context.Context, request mcp.CallToolRequest
 		opts.OrderBy = "startTime"
 	}
 
+	// Filter by event types (e.g., "focusTime", "outOfOffice")
+	if eventTypesRaw, ok := request.Params.Arguments["event_types"].([]any); ok && len(eventTypesRaw) > 0 {
+		eventTypes := make([]string, 0, len(eventTypesRaw))
+		for _, et := range eventTypesRaw {
+			if etStr, ok := et.(string); ok && etStr != "" {
+				eventTypes = append(eventTypes, etStr)
+			}
+		}
+		if len(eventTypes) > 0 {
+			opts.EventTypes = eventTypes
+		}
+	}
+
 	resp, err := srv.ListEvents(ctx, calendarID, opts)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Calendar API error: %v", err)), nil

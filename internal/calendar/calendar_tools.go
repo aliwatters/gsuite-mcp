@@ -15,9 +15,9 @@ import (
 // These reduce response payload size by only requesting needed fields.
 const (
 	// CalendarEventListFields contains fields for event listings (compact format)
-	CalendarEventListFields = "nextPageToken,items(id,summary,status,start,end,location,htmlLink,hangoutLink)"
+	CalendarEventListFields = "nextPageToken,items(id,summary,status,start,end,location,htmlLink,hangoutLink,eventType)"
 	// CalendarEventGetFields contains fields for single event retrieval (full format)
-	CalendarEventGetFields = "id,summary,status,description,location,start,end,htmlLink,created,updated,creator,organizer,attendees,reminders,recurrence,recurringEventId,hangoutLink,conferenceData"
+	CalendarEventGetFields = "id,summary,status,description,location,start,end,htmlLink,created,updated,creator,organizer,attendees,reminders,recurrence,recurringEventId,hangoutLink,conferenceData,eventType"
 	// CalendarListFields contains fields for calendar list
 	CalendarListFields = "items(id,summary,description,primary,backgroundColor,accessRole,timeZone)"
 )
@@ -170,14 +170,16 @@ func buildConferenceData(calendarID, startTime, summary string) *calendar.Confer
 // === Handle functions - generated via WrapHandler ===
 
 var (
-	HandleCalendarListEvents     = common.WrapHandler[CalendarService](TestableCalendarListEvents)
-	HandleCalendarGetEvent       = common.WrapHandler[CalendarService](TestableCalendarGetEvent)
-	HandleCalendarCreateEvent    = common.WrapHandler[CalendarService](TestableCalendarCreateEvent)
-	HandleCalendarUpdateEvent    = common.WrapHandler[CalendarService](TestableCalendarUpdateEvent)
-	HandleCalendarDeleteEvent    = common.WrapHandler[CalendarService](TestableCalendarDeleteEvent)
-	HandleCalendarListCalendars  = common.WrapHandler[CalendarService](TestableCalendarListCalendars)
-	HandleCalendarQuickAdd       = common.WrapHandler[CalendarService](TestableCalendarQuickAdd)
-	HandleCalendarFreeBusy       = common.WrapHandler[CalendarService](TestableCalendarFreeBusy)
-	HandleCalendarListInstances  = common.WrapHandler[CalendarService](TestableCalendarListInstances)
-	HandleCalendarUpdateInstance = common.WrapHandler[CalendarService](TestableCalendarUpdateInstance)
+	HandleCalendarListEvents      = common.WrapHandler[CalendarService](TestableCalendarListEvents)
+	HandleCalendarGetEvent        = common.WrapHandler[CalendarService](TestableCalendarGetEvent)
+	HandleCalendarCreateEvent     = common.WrapHandler[CalendarService](TestableCalendarCreateEvent)
+	HandleCalendarUpdateEvent     = common.WrapHandler[CalendarService](TestableCalendarUpdateEvent)
+	HandleCalendarDeleteEvent     = common.WrapHandler[CalendarService](TestableCalendarDeleteEvent)
+	HandleCalendarListCalendars   = common.WrapHandler[CalendarService](TestableCalendarListCalendars)
+	HandleCalendarQuickAdd        = common.WrapHandler[CalendarService](TestableCalendarQuickAdd)
+	HandleCalendarFreeBusy        = common.WrapHandler[CalendarService](TestableCalendarFreeBusy)
+	HandleCalendarListInstances   = common.WrapHandler[CalendarService](TestableCalendarListInstances)
+	HandleCalendarUpdateInstance  = common.WrapHandler[CalendarService](TestableCalendarUpdateInstance)
+	HandleCalendarCreateFocusTime = common.WrapHandler[CalendarService](TestableCalendarCreateFocusTime)
+	HandleCalendarCreateOOO       = common.WrapHandler[CalendarService](TestableCalendarCreateOutOfOffice)
 )

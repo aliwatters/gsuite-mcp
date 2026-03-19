@@ -20,6 +20,7 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithPageToken(),
 		mcp.WithString("query", mcp.Description("Free text search query")),
 		mcp.WithBoolean("single_events", mcp.Description("Expand recurring events into instances (default: false)")),
+		mcp.WithArray("event_types", mcp.Description("Filter by event types: 'default', 'focusTime', 'outOfOffice', 'workingLocation'")),
 		common.WithAccountParam(),
 	), HandleCalendarListEvents)
 
@@ -119,4 +120,38 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("calendar_id", mcp.Description("Calendar ID (default: 'primary')")),
 		common.WithAccountParam(),
 	), HandleCalendarUpdateInstance)
+
+	// === Calendar Special Events (Phase 3) ===
+
+	// calendar_create_focus_time - Create Focus Time event
+	s.AddTool(mcp.NewTool("calendar_create_focus_time",
+		mcp.WithDescription("Create a Focus Time event that auto-declines conflicting meetings."),
+		mcp.WithString("start_time", mcp.Required(), mcp.Description("Start time (RFC3339, e.g., 2024-01-15T09:00:00-08:00)")),
+		mcp.WithString("end_time", mcp.Description("End time (RFC3339). Defaults to 1 hour after start.")),
+		mcp.WithString("summary", mcp.Description("Event title (default: 'Focus Time')")),
+		mcp.WithString("description", mcp.Description("Event description")),
+		mcp.WithString("timezone", mcp.Description("Timezone (e.g., America/Los_Angeles)")),
+		mcp.WithBoolean("auto_decline", mcp.Description("Auto-decline conflicting invitations (default: true)")),
+		mcp.WithString("decline_message", mcp.Description("Message sent when declining (default: 'Declined because I am in focus time.')")),
+		mcp.WithString("chat_status", mcp.Description("Chat status during focus time: 'doNotDisturb' or 'available' (default: 'doNotDisturb')")),
+		mcp.WithString("recurrence", mcp.Description("RRULE for recurring focus time (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR')")),
+		mcp.WithString("calendar_id", mcp.Description("Calendar ID (default: 'primary')")),
+		common.WithAccountParam(),
+	), HandleCalendarCreateFocusTime)
+
+	// calendar_create_out_of_office - Create Out of Office event
+	s.AddTool(mcp.NewTool("calendar_create_out_of_office",
+		mcp.WithDescription("Create an Out of Office event that auto-declines meetings."),
+		mcp.WithString("start_time", mcp.Required(), mcp.Description("Start time (RFC3339, e.g., 2024-01-15T09:00:00-08:00)")),
+		mcp.WithString("end_time", mcp.Description("End time (RFC3339). Defaults to 1 hour after start.")),
+		mcp.WithString("summary", mcp.Description("Event title (default: 'Out of office')")),
+		mcp.WithString("description", mcp.Description("Event description")),
+		mcp.WithString("timezone", mcp.Description("Timezone (e.g., America/Los_Angeles)")),
+		mcp.WithBoolean("all_day", mcp.Description("Create all-day OOO event (use YYYY-MM-DD for start/end)")),
+		mcp.WithBoolean("auto_decline", mcp.Description("Auto-decline conflicting invitations (default: true)")),
+		mcp.WithString("decline_message", mcp.Description("Message sent when declining (default: 'I am out of office and unable to attend.')")),
+		mcp.WithString("recurrence", mcp.Description("RRULE for recurring OOO (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=FR')")),
+		mcp.WithString("calendar_id", mcp.Description("Calendar ID (default: 'primary')")),
+		common.WithAccountParam(),
+	), HandleCalendarCreateOOO)
 }

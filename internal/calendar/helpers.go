@@ -35,6 +35,14 @@ func formatEvent(event *calendar.Event) map[string]any {
 		result["location"] = event.Location
 	}
 
+	if event.EventType != "" && event.EventType != "default" {
+		result["event_type"] = event.EventType
+	}
+
+	if event.HangoutLink != "" {
+		result["hangout_link"] = event.HangoutLink
+	}
+
 	return result
 }
 
@@ -114,13 +122,32 @@ func formatEventFull(event *calendar.Event) map[string]any {
 		result["hangout_link"] = event.HangoutLink
 	}
 
-	if event.ConferenceData != nil && event.ConferenceData.EntryPoints != nil {
-		for _, ep := range event.ConferenceData.EntryPoints {
-			if ep.EntryPointType == "video" {
-				result["video_link"] = ep.Uri
-				break
-			}
+	if event.ConferenceData != nil {
+		confData := map[string]any{}
+		if event.ConferenceData.ConferenceSolution != nil {
+			confData["solution"] = event.ConferenceData.ConferenceSolution.Name
 		}
+		if event.ConferenceData.ConferenceId != "" {
+			confData["conference_id"] = event.ConferenceData.ConferenceId
+		}
+		if event.ConferenceData.EntryPoints != nil {
+			entryPoints := make([]map[string]any, 0, len(event.ConferenceData.EntryPoints))
+			for _, ep := range event.ConferenceData.EntryPoints {
+				entry := map[string]any{
+					"type": ep.EntryPointType,
+					"uri":  ep.Uri,
+				}
+				if ep.Label != "" {
+					entry["label"] = ep.Label
+				}
+				entryPoints = append(entryPoints, entry)
+				if ep.EntryPointType == "video" {
+					result["video_link"] = ep.Uri
+				}
+			}
+			confData["entry_points"] = entryPoints
+		}
+		result["conference_data"] = confData
 	}
 
 	return result
