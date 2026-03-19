@@ -198,4 +198,40 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("content", mcp.Description("Optional text content for the footer")),
 		common.WithAccountParam(),
 	), HandleDocsCreateFooter)
+
+	// === Docs Enhanced (Phase 4) ===
+
+	// docs_get_as_markdown - Export document as markdown
+	s.AddTool(mcp.NewTool("docs_get_as_markdown",
+		mcp.WithDescription("Get document content as clean markdown. Converts headings, bold, italic, links, lists, and tables to markdown format. Ideal for AI consumption."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		common.WithAccountParam(),
+	), HandleDocsGetAsMarkdown)
+
+	// docs_find_and_replace - Find and replace with case sensitivity control
+	s.AddTool(mcp.NewTool("docs_find_and_replace",
+		mcp.WithDescription("Search and replace text across a Google Doc. Replaces all occurrences of find_text with replace_text."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		mcp.WithString("find_text", mcp.Required(), mcp.Description("Text to find in the document")),
+		mcp.WithString("replace_text", mcp.Description("Text to replace with (empty to delete matches)")),
+		mcp.WithBoolean("match_case", mcp.Description("Case-sensitive matching (default: true)")),
+		common.WithAccountParam(),
+	), HandleDocsFindAndReplace)
+
+	// docs_export_to_pdf - Export document to PDF
+	s.AddTool(mcp.NewTool("docs_export_to_pdf",
+		mcp.WithDescription("Export a Google Doc, Sheet, or Slides presentation to PDF. Returns base64-encoded PDF content."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs/Sheets/Slides URL")),
+		common.WithAccountParam(),
+	), HandleDocsExportToPDF)
+
+	// docs_import_to_google_doc - Import file as Google Doc
+	s.AddTool(mcp.NewTool("docs_import_to_google_doc",
+		mcp.WithDescription("Convert uploaded content (text, HTML, markdown) to a native Google Doc. Creates a new Google Doc with the provided content."),
+		mcp.WithString("title", mcp.Required(), mcp.Description("Title for the new Google Doc")),
+		mcp.WithString("content", mcp.Required(), mcp.Description("Content to import (plain text, HTML, or markdown)")),
+		mcp.WithString("content_type", mcp.Description("MIME type of content: text/plain (default), text/html, text/markdown")),
+		mcp.WithString("parent_id", mcp.Description("Parent folder ID or URL to place the new document in")),
+		common.WithAccountParam(),
+	), HandleDocsImportToGoogleDoc)
 }

@@ -170,6 +170,10 @@ Contact management: list, search, create, update, delete, contact groups.
 | `docs_insert_image` | Insert image from URL |
 | `docs_create_header` / `docs_create_footer` | Headers/footers |
 | `docs_batch_update` | Raw API access |
+| `docs_get_as_markdown` | Get content as markdown |
+| `docs_find_and_replace` | Find and replace text |
+| `docs_export_to_pdf` | Export Doc/Sheet/Slides to PDF |
+| `docs_import_to_google_doc` | Import text/HTML/markdown as Google Doc |
 
 #### Tasks
 | Tool | Description |
