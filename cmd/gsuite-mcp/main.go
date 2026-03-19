@@ -83,7 +83,7 @@ func main() {
 	}
 }
 
-// initializeApp sets up the auth manager and shared dependencies.
+// initializeApp sets up the auth manager, drive access filter, and shared dependencies.
 // No configuration required - uses dynamic credential discovery.
 func initializeApp() error {
 	authManager, err := auth.NewManager()
@@ -91,9 +91,30 @@ func initializeApp() error {
 		return err
 	}
 
+	// Load config for drive access filtering (optional)
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	driveFilter := common.NewDriveAccessFilter(cfg.DriveAccess)
+	if driveFilter != nil && driveFilter.IsActive() {
+		fmt.Fprintf(os.Stderr, "drive access filter active")
+		if cfg.DriveAccess != nil {
+			if len(cfg.DriveAccess.Allowed) > 0 {
+				fmt.Fprintf(os.Stderr, " (allowed: %v)", cfg.DriveAccess.Allowed)
+			}
+			if len(cfg.DriveAccess.Blocked) > 0 {
+				fmt.Fprintf(os.Stderr, " (blocked: %v)", cfg.DriveAccess.Blocked)
+			}
+		}
+		fmt.Fprintln(os.Stderr)
+	}
+
 	// Set up shared dependencies for all packages
 	common.SetDeps(&common.Deps{
-		AuthManager: authManager,
+		AuthManager:       authManager,
+		DriveAccessFilter: driveFilter,
 	})
 
 	return nil

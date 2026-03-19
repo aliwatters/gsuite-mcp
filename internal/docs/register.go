@@ -22,14 +22,14 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithDescription("Get the full content of a Google Doc as plain text."),
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		common.WithAccountParam(),
-	), HandleDocsGet)
+	), common.WithDriveAccessCheck(HandleDocsGet, "document_id"))
 
 	// docs_get_metadata - Get document metadata
 	s.AddTool(mcp.NewTool("docs_get_metadata",
 		mcp.WithDescription("Get document metadata (title, revision, word count) without full content."),
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		common.WithAccountParam(),
-	), HandleDocsGetMetadata)
+	), common.WithDriveAccessCheck(HandleDocsGetMetadata, "document_id"))
 
 	// docs_append_text - Append text to document
 	s.AddTool(mcp.NewTool("docs_append_text",
@@ -37,7 +37,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		mcp.WithString("text", mcp.Required(), mcp.Description("Text to append to the document")),
 		common.WithAccountParam(),
-	), HandleDocsAppendText)
+	), common.WithDriveAccessCheck(HandleDocsAppendText, "document_id"))
 
 	// docs_insert_text - Insert text at specific location
 	s.AddTool(mcp.NewTool("docs_insert_text",
@@ -46,7 +46,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("text", mcp.Required(), mcp.Description("Text to insert")),
 		mcp.WithNumber("index", mcp.Required(), mcp.Description("1-based position in document where text will be inserted")),
 		common.WithAccountParam(),
-	), HandleDocsInsertText)
+	), common.WithDriveAccessCheck(HandleDocsInsertText, "document_id"))
 
 	// === Docs Extended (Phase 2) ===
 
@@ -58,7 +58,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("replace_text", mcp.Description("Text to replace with (empty to delete matches)")),
 		mcp.WithBoolean("match_case", mcp.Description("Case-sensitive matching (default: false)")),
 		common.WithAccountParam(),
-	), HandleDocsReplaceText)
+	), common.WithDriveAccessCheck(HandleDocsReplaceText, "document_id"))
 
 	// docs_delete_text - Delete text at specified range
 	s.AddTool(mcp.NewTool("docs_delete_text",
@@ -67,7 +67,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("start_index", mcp.Required(), mcp.Description("1-based start position (inclusive)")),
 		mcp.WithNumber("end_index", mcp.Required(), mcp.Description("1-based end position (exclusive)")),
 		common.WithAccountParam(),
-	), HandleDocsDeleteText)
+	), common.WithDriveAccessCheck(HandleDocsDeleteText, "document_id"))
 
 	// docs_insert_table - Insert a table at specified location
 	s.AddTool(mcp.NewTool("docs_insert_table",
@@ -77,7 +77,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("columns", mcp.Required(), mcp.Description("Number of columns")),
 		mcp.WithNumber("index", mcp.Description("1-based position for table insertion (default: 1, beginning of document)")),
 		common.WithAccountParam(),
-	), HandleDocsInsertTable)
+	), common.WithDriveAccessCheck(HandleDocsInsertTable, "document_id"))
 
 	// docs_insert_link - Insert a hyperlink
 	s.AddTool(mcp.NewTool("docs_insert_link",
@@ -87,7 +87,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("url", mcp.Required(), mcp.Description("URL to link to")),
 		mcp.WithNumber("index", mcp.Required(), mcp.Description("1-based position where link will be inserted")),
 		common.WithAccountParam(),
-	), HandleDocsInsertLink)
+	), common.WithDriveAccessCheck(HandleDocsInsertLink, "document_id"))
 
 	// docs_batch_update - Raw batchUpdate for power users
 	s.AddTool(mcp.NewTool("docs_batch_update",
@@ -95,7 +95,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		mcp.WithString("requests", mcp.Required(), mcp.Description("JSON array of batch update requests (see Google Docs API docs)")),
 		common.WithAccountParam(),
-	), HandleDocsBatchUpdate)
+	), common.WithDriveAccessCheck(HandleDocsBatchUpdate, "document_id"))
 
 	// === Docs Extended (Phase 3) - Advanced Formatting ===
 
@@ -117,7 +117,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("background_color", mcp.Description("Background/highlight color as hex")),
 		mcp.WithString("baseline_offset", mcp.Description("Vertical offset: NONE, SUPERSCRIPT, or SUBSCRIPT")),
 		common.WithAccountParam(),
-	), HandleDocsFormatText)
+	), common.WithDriveAccessCheck(HandleDocsFormatText, "document_id"))
 
 	// docs_clear_formatting - Remove text formatting
 	s.AddTool(mcp.NewTool("docs_clear_formatting",
@@ -126,7 +126,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("start_index", mcp.Required(), mcp.Description("1-based start position (inclusive)")),
 		mcp.WithNumber("end_index", mcp.Required(), mcp.Description("1-based end position (exclusive)")),
 		common.WithAccountParam(),
-	), HandleDocsClearFormatting)
+	), common.WithDriveAccessCheck(HandleDocsClearFormatting, "document_id"))
 
 	// docs_set_paragraph_style - Set paragraph formatting
 	s.AddTool(mcp.NewTool("docs_set_paragraph_style",
@@ -143,7 +143,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("space_above", mcp.Description("Space above paragraph in points")),
 		mcp.WithNumber("space_below", mcp.Description("Space below paragraph in points")),
 		common.WithAccountParam(),
-	), HandleDocsSetParagraphStyle)
+	), common.WithDriveAccessCheck(HandleDocsSetParagraphStyle, "document_id"))
 
 	// docs_create_list - Create bulleted or numbered list
 	s.AddTool(mcp.NewTool("docs_create_list",
@@ -153,7 +153,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("end_index", mcp.Required(), mcp.Description("1-based end position (exclusive)")),
 		mcp.WithString("bullet_preset", mcp.Description("Bullet preset (default: BULLET_DISC_CIRCLE_SQUARE). Use NUMBERED_DECIMAL_ALPHA_ROMAN for numbered lists.")),
 		common.WithAccountParam(),
-	), HandleDocsCreateList)
+	), common.WithDriveAccessCheck(HandleDocsCreateList, "document_id"))
 
 	// docs_remove_list - Remove list formatting
 	s.AddTool(mcp.NewTool("docs_remove_list",
@@ -162,7 +162,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("start_index", mcp.Required(), mcp.Description("1-based start position (inclusive)")),
 		mcp.WithNumber("end_index", mcp.Required(), mcp.Description("1-based end position (exclusive)")),
 		common.WithAccountParam(),
-	), HandleDocsRemoveList)
+	), common.WithDriveAccessCheck(HandleDocsRemoveList, "document_id"))
 
 	// docs_insert_page_break - Insert page break
 	s.AddTool(mcp.NewTool("docs_insert_page_break",
@@ -170,7 +170,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		mcp.WithNumber("index", mcp.Required(), mcp.Description("1-based position in document")),
 		common.WithAccountParam(),
-	), HandleDocsInsertPageBreak)
+	), common.WithDriveAccessCheck(HandleDocsInsertPageBreak, "document_id"))
 
 	// docs_insert_image - Insert inline image from URL
 	s.AddTool(mcp.NewTool("docs_insert_image",
@@ -181,7 +181,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithNumber("width", mcp.Description("Image width in points (aspect ratio preserved if only one dimension set)")),
 		mcp.WithNumber("height", mcp.Description("Image height in points")),
 		common.WithAccountParam(),
-	), HandleDocsInsertImage)
+	), common.WithDriveAccessCheck(HandleDocsInsertImage, "document_id"))
 
 	// docs_create_header - Create document header
 	s.AddTool(mcp.NewTool("docs_create_header",
@@ -189,7 +189,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		mcp.WithString("content", mcp.Description("Optional text content for the header")),
 		common.WithAccountParam(),
-	), HandleDocsCreateHeader)
+	), common.WithDriveAccessCheck(HandleDocsCreateHeader, "document_id"))
 
 	// docs_create_footer - Create document footer
 	s.AddTool(mcp.NewTool("docs_create_footer",
@@ -197,7 +197,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		mcp.WithString("content", mcp.Description("Optional text content for the footer")),
 		common.WithAccountParam(),
-	), HandleDocsCreateFooter)
+	), common.WithDriveAccessCheck(HandleDocsCreateFooter, "document_id"))
 
 	// === Docs Enhanced (Phase 4) ===
 
@@ -206,7 +206,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithDescription("Get document content as clean markdown. Converts headings, bold, italic, links, lists, and tables to markdown format. Ideal for AI consumption."),
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		common.WithAccountParam(),
-	), HandleDocsGetAsMarkdown)
+	), common.WithDriveAccessCheck(HandleDocsGetAsMarkdown, "document_id"))
 
 	// docs_find_and_replace - Find and replace with case sensitivity control
 	s.AddTool(mcp.NewTool("docs_find_and_replace",
@@ -216,14 +216,14 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("replace_text", mcp.Description("Text to replace with (empty to delete matches)")),
 		mcp.WithBoolean("match_case", mcp.Description("Case-sensitive matching (default: true)")),
 		common.WithAccountParam(),
-	), HandleDocsFindAndReplace)
+	), common.WithDriveAccessCheck(HandleDocsFindAndReplace, "document_id"))
 
 	// docs_export_to_pdf - Export document to PDF
 	s.AddTool(mcp.NewTool("docs_export_to_pdf",
 		mcp.WithDescription("Export a Google Doc, Sheet, or Slides presentation to PDF. Returns base64-encoded PDF content."),
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs/Sheets/Slides URL")),
 		common.WithAccountParam(),
-	), HandleDocsExportToPDF)
+	), common.WithDriveAccessCheck(HandleDocsExportToPDF, "document_id"))
 
 	// docs_import_to_google_doc - Import file as Google Doc
 	s.AddTool(mcp.NewTool("docs_import_to_google_doc",
