@@ -65,3 +65,20 @@ var (
 	HandleGmailSpam    = common.WrapHandler[GmailService](TestableGmailSpam)
 	HandleGmailNotSpam = common.WrapHandler[GmailService](TestableGmailNotSpam)
 )
+
+// Send-As Aliases
+var (
+	HandleGmailListSendAs   = common.WrapHandler[GmailService](TestableGmailListSendAs)
+	HandleGmailGetSendAs    = common.WrapHandler[GmailService](TestableGmailGetSendAs)
+	HandleGmailCreateSendAs = common.WrapHandler[GmailService](TestableGmailCreateSendAs)
+	HandleGmailUpdateSendAs = common.WrapHandler[GmailService](TestableGmailUpdateSendAs)
+	HandleGmailDeleteSendAs = common.WrapHandler[GmailService](TestableGmailDeleteSendAs)
+	HandleGmailVerifySendAs = common.WrapHandler[GmailService](TestableGmailVerifySendAs)
+)
+
+// Delegates
+var (
+	HandleGmailListDelegates  = common.WrapHandler[GmailService](TestableGmailListDelegates)
+	HandleGmailCreateDelegate = common.WrapHandler[GmailService](TestableGmailCreateDelegate)
+	HandleGmailDeleteDelegate = common.WrapHandler[GmailService](TestableGmailDeleteDelegate)
+)

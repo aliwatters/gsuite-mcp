@@ -52,6 +52,19 @@ type GmailService interface {
 	GetProfile(ctx context.Context) (*gmail.Profile, error)
 	GetVacationSettings(ctx context.Context) (*gmail.VacationSettings, error)
 	UpdateVacationSettings(ctx context.Context, settings *gmail.VacationSettings) (*gmail.VacationSettings, error)
+
+	// Send-As
+	ListSendAs(ctx context.Context) ([]*gmail.SendAs, error)
+	GetSendAs(ctx context.Context, sendAsEmail string) (*gmail.SendAs, error)
+	CreateSendAs(ctx context.Context, sendAs *gmail.SendAs) (*gmail.SendAs, error)
+	UpdateSendAs(ctx context.Context, sendAsEmail string, sendAs *gmail.SendAs) (*gmail.SendAs, error)
+	DeleteSendAs(ctx context.Context, sendAsEmail string) error
+	VerifySendAs(ctx context.Context, sendAsEmail string) error
+
+	// Delegates
+	ListDelegates(ctx context.Context) ([]*gmail.Delegate, error)
+	CreateDelegate(ctx context.Context, delegate *gmail.Delegate) (*gmail.Delegate, error)
+	DeleteDelegate(ctx context.Context, delegateEmail string) error
 }
 
 // RealGmailService wraps the actual Gmail API service.
@@ -200,4 +213,52 @@ func (s *RealGmailService) GetVacationSettings(ctx context.Context) (*gmail.Vaca
 
 func (s *RealGmailService) UpdateVacationSettings(ctx context.Context, settings *gmail.VacationSettings) (*gmail.VacationSettings, error) {
 	return s.service.Users.Settings.UpdateVacation(common.GmailUserMe, settings).Context(ctx).Do()
+}
+
+// === Send-As ===
+
+func (s *RealGmailService) ListSendAs(ctx context.Context) ([]*gmail.SendAs, error) {
+	resp, err := s.service.Users.Settings.SendAs.List(common.GmailUserMe).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+	return resp.SendAs, nil
+}
+
+func (s *RealGmailService) GetSendAs(ctx context.Context, sendAsEmail string) (*gmail.SendAs, error) {
+	return s.service.Users.Settings.SendAs.Get(common.GmailUserMe, sendAsEmail).Context(ctx).Do()
+}
+
+func (s *RealGmailService) CreateSendAs(ctx context.Context, sendAs *gmail.SendAs) (*gmail.SendAs, error) {
+	return s.service.Users.Settings.SendAs.Create(common.GmailUserMe, sendAs).Context(ctx).Do()
+}
+
+func (s *RealGmailService) UpdateSendAs(ctx context.Context, sendAsEmail string, sendAs *gmail.SendAs) (*gmail.SendAs, error) {
+	return s.service.Users.Settings.SendAs.Patch(common.GmailUserMe, sendAsEmail, sendAs).Context(ctx).Do()
+}
+
+func (s *RealGmailService) DeleteSendAs(ctx context.Context, sendAsEmail string) error {
+	return s.service.Users.Settings.SendAs.Delete(common.GmailUserMe, sendAsEmail).Context(ctx).Do()
+}
+
+func (s *RealGmailService) VerifySendAs(ctx context.Context, sendAsEmail string) error {
+	return s.service.Users.Settings.SendAs.Verify(common.GmailUserMe, sendAsEmail).Context(ctx).Do()
+}
+
+// === Delegates ===
+
+func (s *RealGmailService) ListDelegates(ctx context.Context) ([]*gmail.Delegate, error) {
+	resp, err := s.service.Users.Settings.Delegates.List(common.GmailUserMe).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+	return resp.Delegates, nil
+}
+
+func (s *RealGmailService) CreateDelegate(ctx context.Context, delegate *gmail.Delegate) (*gmail.Delegate, error) {
+	return s.service.Users.Settings.Delegates.Create(common.GmailUserMe, delegate).Context(ctx).Do()
+}
+
+func (s *RealGmailService) DeleteDelegate(ctx context.Context, delegateEmail string) error {
+	return s.service.Users.Settings.Delegates.Delete(common.GmailUserMe, delegateEmail).Context(ctx).Do()
 }

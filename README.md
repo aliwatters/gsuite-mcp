@@ -42,8 +42,8 @@ gsuite-mcp auth personal
 
 ## Tools Overview
 
-### Gmail (36 tools)
-Full inbox management: search, read, send, reply, archive, trash, labels, filters, drafts, threads, batch operations, vacation responder.
+### Gmail (45 tools)
+Full inbox management: search, read, send, reply, archive, trash, labels, filters, drafts, threads, batch operations, vacation responder, send-as aliases, delegation.
 
 ### Calendar (12 tools)
 Complete calendar control: list events, create/update/delete, recurring events, free/busy queries, Google Meet integration.
@@ -112,6 +112,10 @@ Contact management: list, search, create, update, delete, contact groups.
 | `gmail_thread_archive` / `gmail_thread_trash` / `gmail_thread_untrash` / `gmail_modify_thread` | Thread operations |
 | `gmail_get_profile` | Account info |
 | `gmail_get_vacation` / `gmail_set_vacation` | Vacation responder |
+| `gmail_list_send_as` / `gmail_get_send_as` | List/get send-as aliases |
+| `gmail_create_send_as` / `gmail_update_send_as` / `gmail_delete_send_as` | Manage send-as aliases |
+| `gmail_verify_send_as` | Verify external send-as alias |
+| `gmail_list_delegates` / `gmail_create_delegate` / `gmail_delete_delegate` | Delegation management |
 
 #### Calendar
 | Tool | Description |

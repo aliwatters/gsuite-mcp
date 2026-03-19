@@ -23,7 +23,7 @@ This document provides AI agents with project-specific context and guidelines fo
 - Full inbox management: archive, trash, labels, batch operations
 
 ### Services Supported
-- Gmail (36 tools)
+- Gmail (45 tools)
 - Google Calendar (12 tools)
 - Google Drive (23 tools) — includes shared drive support, comments, revisions
 - Google Docs (20 tools)
