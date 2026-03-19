@@ -6,12 +6,16 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/mark3labs/mcp-go/mcp"
 	"google.golang.org/api/drive/v3"
 )
+
+// validMimeType matches standard MIME type patterns (e.g. "application/pdf", "image/").
+var validMimeType = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*\/[a-zA-Z0-9!#$&\-^_.+]*$`)
 
 // googleWorkspaceExportMIME maps Google Workspace MIME types to their export formats.
 var googleWorkspaceExportMIME = map[string]string{
@@ -96,7 +100,10 @@ func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 	if fileType != "" {
 		mimeType, ok := friendlyFileTypes[strings.ToLower(fileType)]
 		if !ok {
-			// Not a friendly name — treat as raw mimeType
+			// Not a friendly name — treat as raw mimeType after validation
+			if !validMimeType.MatchString(fileType) && !strings.HasSuffix(fileType, "/") {
+				return mcp.NewToolResultError(fmt.Sprintf("invalid file_type %q: use a friendly name (doc, sheet, slides, pdf, folder, image, video, audio) or a valid MIME type", fileType)), nil
+			}
 			mimeType = fileType
 		}
 		// Prefix-based types (image/, video/, audio/) use "contains" match
@@ -954,9 +961,12 @@ func TestableDriveCreateReply(ctx context.Context, request mcp.CallToolRequest, 
 		Content: content,
 	}
 
-	// Support resolve action
+	// Support resolve/reopen action
 	action := common.ParseStringArg(request.Params.Arguments, "action", "")
 	if action != "" {
+		if action != "resolve" && action != "reopen" {
+			return mcp.NewToolResultError("invalid action: must be 'resolve' or 'reopen'"), nil
+		}
 		reply.Action = action
 	}
 
