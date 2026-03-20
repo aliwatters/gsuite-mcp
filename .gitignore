@@ -34,3 +34,6 @@ rod-mcp.yaml
 !schemas/*.json
 credentials/
 .workflow-state.json
+
+# Per-installation config directories (see #85)
+.installations/

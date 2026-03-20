@@ -327,6 +327,40 @@ func TestDefaultConfigDir(t *testing.T) {
 	}
 }
 
+func TestSetConfigDir(t *testing.T) {
+	// Save and restore original override
+	origOverride := configDirOverride
+	defer func() { configDirOverride = origOverride }()
+
+	t.Run("overrides default config dir", func(t *testing.T) {
+		customDir := "/tmp/test-gsuite-mcp"
+		SetConfigDir(customDir)
+
+		if got := DefaultConfigDir(); got != customDir {
+			t.Errorf("DefaultConfigDir() = %s, want %s", got, customDir)
+		}
+		// Derived paths should also use the override
+		if got := ConfigPath(); got != filepath.Join(customDir, "config.json") {
+			t.Errorf("ConfigPath() = %s, want %s", got, filepath.Join(customDir, "config.json"))
+		}
+		if got := ClientSecretPath(); got != filepath.Join(customDir, "client_secret.json") {
+			t.Errorf("ClientSecretPath() = %s, want %s", got, filepath.Join(customDir, "client_secret.json"))
+		}
+		if got := CredentialsDir(); got != filepath.Join(customDir, "credentials") {
+			t.Errorf("CredentialsDir() = %s, want %s", got, filepath.Join(customDir, "credentials"))
+		}
+	})
+
+	t.Run("empty string restores default", func(t *testing.T) {
+		SetConfigDir("")
+		dir := DefaultConfigDir()
+		// Should fall back to ~/.config/gsuite-mcp
+		if dir == "" || dir == "/tmp/test-gsuite-mcp" {
+			t.Errorf("DefaultConfigDir() = %s, expected default path", dir)
+		}
+	})
+}
+
 func TestCredentialsDir(t *testing.T) {
 	dir := CredentialsDir()
 	if dir == "" {
