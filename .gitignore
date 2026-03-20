@@ -22,6 +22,7 @@ tmp/
 .workflow-state.*
 .workflow-reports/
 .ax/
+.plans/
 rod-mcp.yaml
 
 # Environment files
