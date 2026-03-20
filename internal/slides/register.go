@@ -15,7 +15,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithDescription("Get a Google Slides presentation's metadata, slide list with text previews, and structure."),
 		mcp.WithString("presentation_id", mcp.Required(), mcp.Description("Presentation ID or full Google Slides URL")),
 		common.WithAccountParam(),
-	), common.WithDriveAccessCheck(HandleSlidesGetPresentation, "presentation_id"))
+	), common.WithLargeContentHint(common.WithDriveAccessCheck(HandleSlidesGetPresentation, "presentation_id")))
 
 	// slides_get_page - Get a single slide/page with full element details
 	s.AddTool(mcp.NewTool("slides_get_page",

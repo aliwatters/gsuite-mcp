@@ -11,7 +11,7 @@ import (
 )
 
 // DefaultOAuthPort is the default port used for the OAuth callback server.
-const DefaultOAuthPort = 8100
+const DefaultOAuthPort = 38917
 
 // DriveAccess configures which shared drives are accessible via MCP tools.
 // Set either Allowed (allowlist) or Blocked (blocklist), not both.
@@ -21,10 +21,27 @@ type DriveAccess struct {
 	Blocked []string `json:"blocked,omitempty"` // Everything except these shared drives
 }
 
+// CitationIndex maps an index name to its backing Sheet ID.
+type CitationIndex struct {
+	SheetID string `json:"sheet_id"`
+}
+
+// CitationConfig holds citation/large-doc-indexing settings.
+type CitationConfig struct {
+	Indexes map[string]CitationIndex `json:"indexes,omitempty"`
+}
+
+// Features holds feature flags.
+type Features struct {
+	LargeDocIndexing bool `json:"large_doc_indexing,omitempty"`
+}
+
 // Config holds the application configuration loaded from config.json.
 type Config struct {
-	OAuthPort   int          `json:"oauth_port"`
-	DriveAccess *DriveAccess `json:"drive_access,omitempty"`
+	OAuthPort   int             `json:"oauth_port"`
+	DriveAccess *DriveAccess    `json:"drive_access,omitempty"`
+	Features    *Features       `json:"features,omitempty"`
+	Citation    *CitationConfig `json:"citation,omitempty"`
 }
 
 // Validate checks the configuration for errors.
@@ -103,8 +120,21 @@ func writeDefaultConfigTo(path string) (bool, error) {
 	return true, nil
 }
 
+// configDirOverride is set by SetConfigDir to use a custom config directory.
+var configDirOverride string
+
+// SetConfigDir overrides the default config directory.
+// All path functions (ConfigPath, ClientSecretPath, CredentialsDir, etc.)
+// derive from DefaultConfigDir, so they automatically respect this override.
+func SetConfigDir(dir string) {
+	configDirOverride = dir
+}
+
 // DefaultConfigDir returns the default configuration directory.
 func DefaultConfigDir() string {
+	if configDirOverride != "" {
+		return configDirOverride
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""

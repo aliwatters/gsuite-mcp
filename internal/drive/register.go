@@ -33,7 +33,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithDescription("Download file content. Returns text for text files, base64 for binary. Max 10MB. Google Docs/Sheets are exported as text/CSV."),
 		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
 		common.WithAccountParam(),
-	), HandleDriveDownload)
+	), common.WithLargeContentHint(HandleDriveDownload))
 
 	// drive_upload - Upload new file
 	s.AddTool(mcp.NewTool("drive_upload",

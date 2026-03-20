@@ -125,7 +125,7 @@ type Manager struct {
 	oauthConfig *oauth2.Config
 	// authMu prevents concurrent authentication attempts
 	authMu sync.Mutex
-	// AuthServerURL is set when the HTTP auth server is running (e.g. "http://localhost:8100/auth").
+	// AuthServerURL is set when the HTTP auth server is running (e.g. "http://localhost:38917/auth").
 	AuthServerURL string
 }
 
@@ -192,7 +192,7 @@ func loadOAuthConfig() (*oauth2.Config, error) {
 }
 
 // resolveOAuthPort determines the OAuth callback port.
-// Resolution order: GSUITE_MCP_OAUTH_PORT env var → config.json → default (8100).
+// Resolution order: GSUITE_MCP_OAUTH_PORT env var → config.json → default (38917).
 func resolveOAuthPort() (int, error) {
 	if portStr := os.Getenv("GSUITE_MCP_OAUTH_PORT"); portStr != "" {
 		port, err := strconv.Atoi(portStr)

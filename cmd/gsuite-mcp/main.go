@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/aliwatters/gsuite-mcp/internal/auth"
 	"github.com/aliwatters/gsuite-mcp/internal/calendar"
+	"github.com/aliwatters/gsuite-mcp/internal/citation"
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/aliwatters/gsuite-mcp/internal/config"
 	"github.com/aliwatters/gsuite-mcp/internal/contacts"
@@ -23,10 +25,14 @@ import (
 
 const (
 	serverName    = "gsuite-mcp"
-	serverVersion = "0.1.0"
+	serverVersion = "0.2.0"
 )
 
 func main() {
+	// Parse --config-dir flag or GSUITE_MCP_CONFIG_DIR env var before subcommand dispatch.
+	// This must happen first so all config.* path functions resolve correctly.
+	parseConfigDir()
+
 	// Check for subcommands first
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -79,6 +85,9 @@ func main() {
 	slides.RegisterTools(s)
 	forms.RegisterTools(s)
 	contacts.RegisterTools(s)
+
+	// Conditionally register citation tools (feature-flagged)
+	registerCitationIfEnabled(s)
 
 	// Start server
 	if err := server.ServeStdio(s); err != nil {
@@ -138,6 +147,10 @@ Usage:
 No configuration required - just authenticate any Google account on demand.
 When tools request an account without credentials, auth flow is triggered automatically.
 
+Flags:
+  --config-dir DIR  Use DIR for config, credentials, and client_secret.json
+                    (default: %s)
+
 Configuration:
   Config dir:     %s
   Config file:    %s
@@ -145,10 +158,12 @@ Configuration:
   Client secret:  %s
 
 Environment variables:
+  GSUITE_MCP_CONFIG_DIR   Override config directory (same as --config-dir)
   GSUITE_MCP_OAUTH_PORT   Override OAuth callback port (default: %d)
 
 For more information, see README.md
 `, serverName, serverName, serverName, serverName, serverName, serverName,
+		config.DefaultConfigDir(),
 		config.DefaultConfigDir(), config.ConfigPath(), config.CredentialsDir(), config.ClientSecretPath(),
 		config.DefaultOAuthPort)
 }
@@ -216,6 +231,65 @@ func runAccounts() {
 		fmt.Printf("  %s\n", email)
 	}
 	fmt.Printf("\nRun '%s auth' to add another account.\n", serverName)
+}
+
+// registerCitationIfEnabled registers citation tools if the large_doc_indexing feature is enabled.
+func registerCitationIfEnabled(s *server.MCPServer) {
+	cfg, err := config.LoadConfig()
+	if err != nil || cfg.Features == nil || !cfg.Features.LargeDocIndexing {
+		return
+	}
+
+	var citCfg *citation.CitationConfig
+	if cfg.Citation != nil {
+		citCfg = &citation.CitationConfig{
+			Indexes: make(map[string]citation.IndexEntry),
+		}
+		for k, v := range cfg.Citation.Indexes {
+			citCfg.Indexes[k] = citation.IndexEntry{SheetID: v.SheetID}
+		}
+	}
+
+	citation.InitDefaultDeps(citCfg)
+	citation.RegisterTools(s)
+
+	// Enable citation hints on large content responses
+	if d := common.GetDeps(); d != nil {
+		d.CitationEnabled = true
+	}
+
+	fmt.Fprintln(os.Stderr, "citation tools enabled (large_doc_indexing)")
+}
+
+// parseConfigDir checks for --config-dir flag or GSUITE_MCP_CONFIG_DIR env var
+// and sets the config directory override. The flag is consumed from os.Args so
+// subcommand parsing is unaffected.
+func parseConfigDir() {
+	// Check for --config-dir flag (must appear before subcommand)
+	for i := 1; i < len(os.Args); i++ {
+		if os.Args[i] == "--config-dir" && i+1 < len(os.Args) {
+			dir := os.Args[i+1]
+			absDir, err := filepath.Abs(dir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error resolving --config-dir %q: %v\n", dir, err)
+				os.Exit(1)
+			}
+			config.SetConfigDir(absDir)
+			// Remove the flag and its value from os.Args
+			os.Args = append(os.Args[:i], os.Args[i+2:]...)
+			return
+		}
+	}
+
+	// Fall back to environment variable
+	if dir := os.Getenv("GSUITE_MCP_CONFIG_DIR"); dir != "" {
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error resolving GSUITE_MCP_CONFIG_DIR %q: %v\n", dir, err)
+			os.Exit(1)
+		}
+		config.SetConfigDir(absDir)
+	}
 }
 
 // startAuthServer starts a persistent HTTP auth server for browser-based re-authentication.

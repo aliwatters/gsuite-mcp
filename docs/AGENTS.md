@@ -165,7 +165,7 @@ if err != nil {
 
 #### HTTP Auth Endpoint
 
-When running as an MCP server, gsuite-mcp starts a persistent HTTP auth server on the OAuth port. If a tool encounters missing credentials, the error message includes a clickable URL (e.g., `http://localhost:8100/auth?account=user@gmail.com`). Agents should surface this URL to the user rather than suggesting CLI commands.
+When running as an MCP server, gsuite-mcp starts a persistent HTTP auth server on the OAuth port. If a tool encounters missing credentials, the error message includes a clickable URL (e.g., `http://localhost:38917/auth?account=user@gmail.com`). Agents should surface this URL to the user rather than suggesting CLI commands.
 
 ### 4. Error Handling
 

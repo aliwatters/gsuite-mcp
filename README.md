@@ -340,7 +340,7 @@ See [INSTALLATION.md](INSTALLATION.md) for full setup instructions.
 
 ### OAuth Callback Port
 
-The default OAuth callback port is **8100**. Override it in `config.json`:
+The default OAuth callback port is **38917**. Override it in `config.json`:
 
 ```json
 { "oauth_port": 9000 }
@@ -354,7 +354,7 @@ Restrict which shared drives are accessible via MCP tools. Add `drive_access` to
 
 ```json
 {
-  "oauth_port": 8100,
+  "oauth_port": 38917,
   "drive_access": {
     "allowed": ["Marketing", "Engineering"]
   }
@@ -371,8 +371,8 @@ My Drive is always accessible. Setting both `allowed` and `blocked` is an error.
 
 When running as an MCP server, gsuite-mcp starts a persistent HTTP server on the OAuth port so agents and users can trigger re-authentication from a browser:
 
-- **`http://localhost:8100/auth`** — starts OAuth flow (opens Google consent screen)
-- **`http://localhost:8100/auth?account=user@gmail.com`** — pre-selects the Google account
+- **`http://localhost:38917/auth`** — starts OAuth flow (opens Google consent screen)
+- **`http://localhost:38917/auth?account=user@gmail.com`** — pre-selects the Google account
 
 When a tool encounters missing credentials, the error message includes a clickable auth URL. If the port is unavailable, the MCP server continues without the auth endpoint.
 

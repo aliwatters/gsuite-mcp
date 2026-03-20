@@ -22,7 +22,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithDescription("Get the full content of a Google Doc as plain text."),
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		common.WithAccountParam(),
-	), common.WithDriveAccessCheck(HandleDocsGet, "document_id"))
+	), common.WithLargeContentHint(common.WithDriveAccessCheck(HandleDocsGet, "document_id")))
 
 	// docs_get_metadata - Get document metadata
 	s.AddTool(mcp.NewTool("docs_get_metadata",
@@ -206,7 +206,7 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithDescription("Get document content as clean markdown. Converts headings, bold, italic, links, lists, and tables to markdown format. Ideal for AI consumption."),
 		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
 		common.WithAccountParam(),
-	), common.WithDriveAccessCheck(HandleDocsGetAsMarkdown, "document_id"))
+	), common.WithLargeContentHint(common.WithDriveAccessCheck(HandleDocsGetAsMarkdown, "document_id")))
 
 	// docs_find_and_replace - Find and replace with case sensitivity control
 	s.AddTool(mcp.NewTool("docs_find_and_replace",

@@ -187,7 +187,7 @@ Re-run the auth command:
 gsuite-mcp auth
 ```
 
-Or, if gsuite-mcp is running as an MCP server, open `http://localhost:8100/auth` in your browser to re-authenticate without restarting the server. Error messages from tools will include this URL when the auth server is running.
+Or, if gsuite-mcp is running as an MCP server, open `http://localhost:38917/auth` in your browser to re-authenticate without restarting the server. Error messages from tools will include this URL when the auth server is running.
 
 ### API Not Enabled
 
@@ -270,7 +270,7 @@ Optional configuration file created by `gsuite-mcp init`. Settings:
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `oauth_port` | `8100` | Port for the OAuth callback server during `gsuite-mcp auth` |
+| `oauth_port` | `38917` | Port for the OAuth callback server during `gsuite-mcp auth` |
 
 Override `oauth_port` via the `GSUITE_MCP_OAUTH_PORT` environment variable.
 
