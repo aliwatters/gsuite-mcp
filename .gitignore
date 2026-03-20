@@ -24,6 +24,10 @@ tmp/
 .ax/
 rod-mcp.yaml
 
+# Environment files
+.env
+.env.*
+
 # Credentials (never commit)
 *.json
 !schemas/*.json
