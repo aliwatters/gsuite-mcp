@@ -24,7 +24,7 @@ func newTestAuthServer() *AuthServer {
 			Scopes: []string{"openid", "email"},
 		},
 	}
-	return NewAuthServer(mgr, 8100)
+	return NewAuthServer(mgr, 38917)
 }
 
 func TestHandleAuth_RedirectsToGoogle(t *testing.T) {
