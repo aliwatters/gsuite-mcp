@@ -13,6 +13,7 @@ import (
 type Deps struct {
 	AuthManager       *auth.Manager
 	DriveAccessFilter *DriveAccessFilter
+	CitationEnabled   bool // true when large_doc_indexing feature is on
 }
 
 // Global instance set during initialization
