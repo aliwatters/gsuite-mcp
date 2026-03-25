@@ -24,6 +24,10 @@ var (
 	testableDocsImportToGoogleDoc = TestableDocsImportToGoogleDoc
 	testableDocsFormatByFind      = TestableDocsFormatByFind
 	testableDocsGetStructure      = TestableDocsGetStructure
+	testableDocsListNamedRanges   = TestableDocsListNamedRanges
+	testableDocsCreateNamedRange  = TestableDocsCreateNamedRange
+	testableDocsDeleteNamedRange  = TestableDocsDeleteNamedRange
+	testableDocsGetSuggestedEdits = TestableDocsGetSuggestedEdits
 )
 
 // getDocsTextContent extracts text content from an MCP CallToolResult.

@@ -97,6 +97,22 @@ func (m *MockDocsService) GetDocument(ctx context.Context, documentID string) (*
 	return doc, nil
 }
 
+// GetDocumentWithSuggestions retrieves a mock document (same as GetDocument for testing).
+func (m *MockDocsService) GetDocumentWithSuggestions(ctx context.Context, documentID string) (*docs.Document, error) {
+	m.Calls.GetDocument = append(m.Calls.GetDocument, documentID)
+
+	if m.Errors.GetDocument != nil {
+		return nil, m.Errors.GetDocument
+	}
+
+	doc, ok := m.Documents[documentID]
+	if !ok {
+		return nil, fmt.Errorf("document not found: %s", documentID)
+	}
+
+	return doc, nil
+}
+
 // CreateDocument creates a mock document.
 func (m *MockDocsService) CreateDocument(ctx context.Context, title string) (*docs.Document, error) {
 	m.Calls.Create = append(m.Calls.Create, title)

@@ -61,10 +61,11 @@ const (
 // googleUserInfoURL is the Google OAuth2 userinfo endpoint.
 const googleUserInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
-// authResult carries the result of a successful authentication to be displayed to the user.
+// authResult carries the result of an authentication attempt to be displayed to the user.
 type authResult struct {
 	email         string
 	otherAccounts []string
+	err           error
 }
 
 // errorPageData holds the template data for the error page.
@@ -475,6 +476,10 @@ func handleOAuthCallback(state string, codeCh chan<- string, errCh chan<- error,
 
 		select {
 		case result := <-resultCh:
+			if result.err != nil {
+				sendOAuthError(w, "Authentication Error", result.err.Error())
+				return
+			}
 			w.Header().Set("Content-Type", "text/html")
 			successTmpl.Execute(w, successPageData{
 				Email:         result.email,
@@ -509,20 +514,23 @@ func (m *Manager) waitForAuthResult(ctx context.Context, codeCh <-chan string, e
 	case code := <-codeCh:
 		token, err := oauthCfg.Exchange(ctx, code)
 		if err != nil {
-			resultCh <- authResult{email: "", otherAccounts: nil}
-			return "", fmt.Errorf("failed to exchange code for token: %w", err)
+			exchangeErr := fmt.Errorf("failed to exchange code for token: %w", err)
+			resultCh <- authResult{err: exchangeErr}
+			return "", exchangeErr
 		}
 
 		client := oauthCfg.Client(ctx, token)
 		actualEmail, err := getAuthenticatedEmail(ctx, client)
 		if err != nil {
-			resultCh <- authResult{email: "", otherAccounts: nil}
-			return "", fmt.Errorf("failed to get authenticated email: %w", err)
+			emailErr := fmt.Errorf("failed to get authenticated email: %w", err)
+			resultCh <- authResult{err: emailErr}
+			return "", emailErr
 		}
 
 		if err := m.saveTokenForEmail(actualEmail, token); err != nil {
-			resultCh <- authResult{email: actualEmail, otherAccounts: nil}
-			return "", fmt.Errorf("failed to save token: %w", err)
+			saveErr := fmt.Errorf("failed to save token: %w", err)
+			resultCh <- authResult{err: saveErr}
+			return "", saveErr
 		}
 
 		otherAccounts := getOtherAuthenticatedEmails(actualEmail)
