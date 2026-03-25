@@ -32,6 +32,8 @@ You should see the help output with available commands.
 
 ## 2. Create a GCP Project (5 minutes)
 
+> **New to GCP?** See the [detailed GCP Setup Guide](docs/GCP_SETUP.md) with step-by-step instructions, exact URLs, and troubleshooting for common pitfalls.
+
 ### Step 1: Create or select a project
 
 - Visit [console.cloud.google.com](https://console.cloud.google.com) and sign in
@@ -62,15 +64,18 @@ If using External + Testing mode, add yourself under "Test users" → "Add users
 
 ### Step 3: Enable the APIs
 
-Go to **APIs & Services → Library** and enable all 7 APIs:
+Go to **APIs & Services → Library** and enable the required APIs:
 
 - Gmail API
 - Google Calendar API
 - Google Drive API
 - Google Docs API
 - Google Sheets API
+- Google Slides API
 - Google Tasks API
 - People API (for Contacts)
+- Google Forms API
+- Google Meet API
 
 > **Tip**: You can enable just what you need now. `gsuite-mcp check` will tell you which are missing later.
 
@@ -152,7 +157,7 @@ gsuite-mcp check
 This checks:
 - `client_secret.json` exists and parses correctly
 - All authenticated account tokens are still valid
-- All 7 Google APIs are enabled for your GCP project
+- All required Google APIs are enabled for your GCP project
 
 Any issues include actionable fix instructions (re-auth commands, API enable links).
 
@@ -277,5 +282,6 @@ Override `oauth_port` via the `GSUITE_MCP_OAUTH_PORT` environment variable.
 ## Next Steps
 
 - Read the [README](README.md) for the full tool reference
+- See the [GCP Setup Guide](docs/GCP_SETUP.md) for detailed setup instructions with troubleshooting
 - Check [docs/AGENTS.md](docs/AGENTS.md) if you're building integrations
 - See [docs/ROADMAP.md](docs/ROADMAP.md) for upcoming features
