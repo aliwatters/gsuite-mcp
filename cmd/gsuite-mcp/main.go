@@ -17,6 +17,7 @@ import (
 	"github.com/aliwatters/gsuite-mcp/internal/drive"
 	"github.com/aliwatters/gsuite-mcp/internal/forms"
 	"github.com/aliwatters/gsuite-mcp/internal/gmail"
+	"github.com/aliwatters/gsuite-mcp/internal/meet"
 	"github.com/aliwatters/gsuite-mcp/internal/sheets"
 	"github.com/aliwatters/gsuite-mcp/internal/slides"
 	"github.com/aliwatters/gsuite-mcp/internal/tasks"
@@ -85,6 +86,7 @@ func main() {
 	slides.RegisterTools(s)
 	forms.RegisterTools(s)
 	contacts.RegisterTools(s)
+	meet.RegisterTools(s)
 
 	// Conditionally register citation tools (feature-flagged)
 	registerCitationIfEnabled(s)

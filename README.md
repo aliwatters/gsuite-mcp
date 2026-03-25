@@ -4,7 +4,7 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, and Contacts. Single Go binary with true multi-account support.
+Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts, and Meet. Single Go binary with true multi-account support.
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ gsuite-mcp auth personal
 ## Why gsuite-mcp?
 
 - **Multi-account**: Switch accounts per-operation with `"account": "work"`
-- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts
+- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts, Meet
 - **Single binary**: No Python, no Node, no runtime dependencies
 - **MCP native**: JSON Schema 2020-12, proper tool descriptions
 
@@ -68,6 +68,9 @@ Form management: get form structure and questions, create forms, batch update (a
 
 ### Contacts (12 tools)
 Contact management: list, search, create, update, delete, contact groups.
+
+### Meet (6 tools)
+Conference record retrieval: list/get conference records, list participants, list/get transcripts, get transcript entries for meeting summarization.
 
 <details>
 <summary>Full tool reference</summary>
@@ -256,6 +259,16 @@ Contact management: list, search, create, update, delete, contact groups.
 | `forms_batch_update` | Batch update (add/update/delete questions, settings) |
 | `forms_list_responses` | List all form responses |
 | `forms_get_response` | Get a single form response |
+
+#### Meet
+| Tool | Description |
+|------|-------------|
+| `meet_list_conference_records` | List conference records visible to the user |
+| `meet_get_conference_record` | Get a specific conference record |
+| `meet_list_participants` | List participants of a conference |
+| `meet_list_transcripts` | List transcripts for a conference |
+| `meet_get_transcript` | Get transcript details |
+| `meet_list_transcript_entries` | Get transcript text entries for summarization |
 
 </details>
 
