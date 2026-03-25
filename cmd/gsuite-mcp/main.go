@@ -25,7 +25,7 @@ import (
 
 const (
 	serverName    = "gsuite-mcp"
-	serverVersion = "0.2.0"
+	serverVersion = "0.2.1"
 )
 
 func main() {
