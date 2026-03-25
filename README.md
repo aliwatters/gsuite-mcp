@@ -4,7 +4,7 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, and Contacts. Single Go binary with true multi-account support.
+Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts, Drive Activity, and Chat. Single Go binary with true multi-account support.
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ gsuite-mcp auth personal
 ## Why gsuite-mcp?
 
 - **Multi-account**: Switch accounts per-operation with `"account": "work"`
-- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts
+- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts, Drive Activity, Chat
 - **Single binary**: No Python, no Node, no runtime dependencies
 - **MCP native**: JSON Schema 2020-12, proper tool descriptions
 
@@ -68,6 +68,12 @@ Form management: get form structure and questions, create forms, batch update (a
 
 ### Contacts (12 tools)
 Contact management: list, search, create, update, delete, contact groups.
+
+### Drive Activity (1 tool)
+Audit trail queries: query activity history for Drive files and folders (who edited, created, moved, shared, with time range and action type filters).
+
+### Chat (9 tools)
+Google Chat management: list/get/create spaces, list/get/send messages, thread replies, add/remove reactions, list space members.
 
 <details>
 <summary>Full tool reference</summary>
@@ -252,6 +258,24 @@ Contact management: list, search, create, update, delete, contact groups.
 | `forms_batch_update` | Batch update (add/update/delete questions, settings) |
 | `forms_list_responses` | List all form responses |
 | `forms_get_response` | Get a single form response |
+
+#### Drive Activity
+| Tool | Description |
+|------|-------------|
+| `driveactivity_query` | Query activity history for a Drive file or folder |
+
+#### Chat
+| Tool | Description |
+|------|-------------|
+| `chat_list_spaces` | List Chat spaces |
+| `chat_get_space` | Get space details |
+| `chat_create_space` | Create a new space |
+| `chat_list_messages` | List messages in a space |
+| `chat_get_message` | Get a specific message |
+| `chat_send_message` | Send a message to a space |
+| `chat_create_reaction` | Add a reaction to a message |
+| `chat_delete_reaction` | Remove a reaction |
+| `chat_list_members` | List members of a space |
 
 </details>
 

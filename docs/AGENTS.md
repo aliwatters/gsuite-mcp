@@ -32,6 +32,8 @@ This document provides AI agents with project-specific context and guidelines fo
 - Google Slides (5 tools) — read presentations, get slides, thumbnails, create, batch update
 - Google Forms (5 tools) — get form structure, create forms, batch update, list/get responses
 - Google Contacts (12 tools)
+- Google Drive Activity (1 tool) — audit trail queries for Drive files/folders
+- Google Chat (9 tools) — spaces, messages, reactions, members
 
 ## Architecture
 
@@ -52,6 +54,8 @@ gsuite-mcp/
 │   ├── sheets/             # Google Sheets tools
 │   ├── slides/             # Google Slides tools
 │   ├── forms/              # Google Forms tools
+│   ├── driveactivity/      # Google Drive Activity tools
+│   ├── chat/               # Google Chat tools
 │   └── tasks/              # Google Tasks tools
 ├── docs/
 │   ├── AGENTS.md           # This file
