@@ -22,6 +22,7 @@ var (
 	testableDocsFindAndReplace    = TestableDocsFindAndReplace
 	testableDocsExportToPDF       = TestableDocsExportToPDF
 	testableDocsImportToGoogleDoc = TestableDocsImportToGoogleDoc
+	testableDocsFormatByFind      = TestableDocsFormatByFind
 )
 
 // getDocsTextContent extracts text content from an MCP CallToolResult.

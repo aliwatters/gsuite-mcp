@@ -51,8 +51,8 @@ Complete calendar control: list events, create/update/delete, recurring events, 
 ### Drive (23 tools)
 File management with shared drive support: search (with friendly file type filter), upload, download, list, create folders, move, copy, trash, delete, share, permissions, shareable links, comments & replies, version history (revisions).
 
-### Docs (16 tools)
-Document creation and editing: create, read, append, insert, replace, delete, formatting (bold, italic, headings), lists, tables, images, headers/footers.
+### Docs (24 tools)
+Document creation and editing: create, read, append, insert, replace, delete, formatting (bold, italic, headings, format-by-find), lists, tables, images, headers/footers, markdown export, PDF export, import.
 
 ### Tasks (10 tools)
 Task management: lists, tasks, subtasks, due dates, completion, reordering.
@@ -173,6 +173,7 @@ Contact management: list, search, create, update, delete, contact groups.
 | `docs_insert_table` | Insert table |
 | `docs_insert_link` | Insert hyperlink |
 | `docs_format_text` | Bold, italic, color, font |
+| `docs_format_by_find` | Find text and apply formatting (no position math) |
 | `docs_clear_formatting` | Remove formatting |
 | `docs_set_paragraph_style` | Headings, alignment |
 | `docs_create_list` / `docs_remove_list` | Bullet/numbered lists |

@@ -225,6 +225,26 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), common.WithDriveAccessCheck(HandleDocsExportToPDF, "document_id"))
 
+	// docs_format_by_find - Format text by finding it (no position math needed)
+	s.AddTool(mcp.NewTool("docs_format_by_find",
+		mcp.WithDescription("Find text in a Google Doc and apply formatting to all matches. Resolves real document indexes internally so you never need to calculate character positions."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		mcp.WithString("find_text", mcp.Required(), mcp.Description("Text to find in the document")),
+		mcp.WithBoolean("match_case", mcp.Description("Case-sensitive matching (default: true)")),
+		mcp.WithBoolean("match_all", mcp.Description("Format all occurrences or just the first (default: true)")),
+		mcp.WithBoolean("bold", mcp.Description("Apply bold formatting")),
+		mcp.WithBoolean("italic", mcp.Description("Apply italic formatting")),
+		mcp.WithBoolean("underline", mcp.Description("Apply underline formatting")),
+		mcp.WithBoolean("strikethrough", mcp.Description("Apply strikethrough formatting")),
+		mcp.WithBoolean("small_caps", mcp.Description("Apply small caps formatting")),
+		mcp.WithString("font_family", mcp.Description("Font family name (e.g., 'Arial', 'Times New Roman')")),
+		mcp.WithNumber("font_size", mcp.Description("Font size in points (e.g., 12, 14, 16)")),
+		mcp.WithString("foreground_color", mcp.Description("Text color as hex (e.g., '#FF0000' or 'FF0000')")),
+		mcp.WithString("background_color", mcp.Description("Background/highlight color as hex")),
+		mcp.WithString("baseline_offset", mcp.Description("Vertical offset: NONE, SUPERSCRIPT, or SUBSCRIPT")),
+		common.WithAccountParam(),
+	), common.WithDriveAccessCheck(HandleDocsFormatByFind, "document_id"))
+
 	// docs_import_to_google_doc - Import file as Google Doc
 	s.AddTool(mcp.NewTool("docs_import_to_google_doc",
 		mcp.WithDescription("Convert uploaded content (text, HTML, markdown) to a native Google Doc. Creates a new Google Doc with the provided content."),
