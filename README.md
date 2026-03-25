@@ -386,6 +386,26 @@ go test ./...
 go vet ./...
 ```
 
+### E2E Tests
+
+End-to-end tests run against live Google APIs using a dedicated test account. They are excluded from normal `go test` runs via the `e2e` build tag.
+
+**Setup:**
+
+1. Authenticate the test account: `./gsuite-mcp auth testaccount@gmail.com`
+2. Create `.env` in the project root (see `e2e/.env.example`):
+   ```
+   E2E_TEST_ACCOUNT=testaccount@gmail.com
+   ```
+
+**Run:**
+
+```bash
+go test -tags=e2e -v -count=1 ./e2e/...
+```
+
+Tests create temporary artifacts (emails, labels, events, files, task lists) and clean up after themselves. The test account should be a dedicated account, not a production mailbox.
+
 See [docs/AGENTS.md](docs/AGENTS.md) for contribution guidelines.
 
 ## Roadmap
