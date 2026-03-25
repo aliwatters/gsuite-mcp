@@ -27,7 +27,7 @@ var ServiceToolCounts = map[string]int{
 	"gmail":    50,
 	"calendar": 12,
 	"drive":    23,
-	"docs":     25,
+	"docs":     29,
 	"sheets":   16,
 	"slides":   5,
 	"forms":    5,

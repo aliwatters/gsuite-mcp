@@ -15,6 +15,10 @@ type DocsService interface {
 	// GetDocument retrieves a document by ID.
 	GetDocument(ctx context.Context, documentID string) (*docs.Document, error)
 
+	// GetDocumentWithSuggestions retrieves a document with suggestions inline.
+	// This mode shows suggested insertions and deletions alongside the document content.
+	GetDocumentWithSuggestions(ctx context.Context, documentID string) (*docs.Document, error)
+
 	// CreateDocument creates a new document with the given title.
 	CreateDocument(ctx context.Context, title string) (*docs.Document, error)
 
@@ -42,6 +46,11 @@ func NewRealDocsService(service *docs.Service, driveService *drive.Service) *Rea
 // GetDocument retrieves a document by ID.
 func (s *RealDocsService) GetDocument(ctx context.Context, documentID string) (*docs.Document, error) {
 	return s.service.Documents.Get(documentID).Context(ctx).Do()
+}
+
+// GetDocumentWithSuggestions retrieves a document with suggestions shown inline.
+func (s *RealDocsService) GetDocumentWithSuggestions(ctx context.Context, documentID string) (*docs.Document, error) {
+	return s.service.Documents.Get(documentID).SuggestionsViewMode("SUGGESTIONS_INLINE").Context(ctx).Do()
 }
 
 // CreateDocument creates a new document with the given title.

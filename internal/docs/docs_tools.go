@@ -120,4 +120,8 @@ var (
 	HandleDocsImportToGoogleDoc = common.WrapHandler[DocsService](TestableDocsImportToGoogleDoc)
 	HandleDocsFormatByFind      = common.WrapHandler[DocsService](TestableDocsFormatByFind)
 	HandleDocsGetStructure      = common.WrapHandler[DocsService](TestableDocsGetStructure)
+	HandleDocsListNamedRanges   = common.WrapHandler[DocsService](TestableDocsListNamedRanges)
+	HandleDocsCreateNamedRange  = common.WrapHandler[DocsService](TestableDocsCreateNamedRange)
+	HandleDocsDeleteNamedRange  = common.WrapHandler[DocsService](TestableDocsDeleteNamedRange)
+	HandleDocsGetSuggestedEdits = common.WrapHandler[DocsService](TestableDocsGetSuggestedEdits)
 )

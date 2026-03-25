@@ -51,8 +51,8 @@ Complete calendar control: list events, create/update/delete, recurring events, 
 ### Drive (23 tools)
 File management with shared drive support: search (with friendly file type filter), upload, download, list, create folders, move, copy, trash, delete, share, permissions, shareable links, comments & replies, version history (revisions).
 
-### Docs (25 tools)
-Document creation and editing: create, read, structure, append, insert, replace, delete, formatting (bold, italic, headings, format-by-find), lists, tables, images, headers/footers, markdown export, PDF export, import.
+### Docs (29 tools)
+Document creation and editing: create, read, structure, append, insert, replace, delete, formatting (bold, italic, headings, format-by-find), lists, tables, images, headers/footers, markdown export, PDF export, import, named ranges, suggested edits.
 
 ### Tasks (10 tools)
 Task management: lists, tasks, subtasks, due dates, completion, reordering.
@@ -186,6 +186,10 @@ Contact management: list, search, create, update, delete, contact groups.
 | `docs_find_and_replace` | Find and replace text |
 | `docs_export_to_pdf` | Export Doc/Sheet/Slides to PDF |
 | `docs_import_to_google_doc` | Import text/HTML/markdown as Google Doc |
+| `docs_list_named_ranges` | List all named ranges in a document |
+| `docs_create_named_range` | Create a named range (stable editing anchor) |
+| `docs_delete_named_range` | Delete a named range by ID |
+| `docs_get_suggested_edits` | Get suggested edits (insertions, deletions, formatting) |
 
 #### Tasks
 | Tool | Description |
