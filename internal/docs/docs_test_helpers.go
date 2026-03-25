@@ -23,6 +23,7 @@ var (
 	testableDocsExportToPDF       = TestableDocsExportToPDF
 	testableDocsImportToGoogleDoc = TestableDocsImportToGoogleDoc
 	testableDocsFormatByFind      = TestableDocsFormatByFind
+	testableDocsGetStructure      = TestableDocsGetStructure
 )
 
 // getDocsTextContent extracts text content from an MCP CallToolResult.

@@ -119,4 +119,5 @@ var (
 	HandleDocsExportToPDF       = common.WrapHandler[DocsService](TestableDocsExportToPDF)
 	HandleDocsImportToGoogleDoc = common.WrapHandler[DocsService](TestableDocsImportToGoogleDoc)
 	HandleDocsFormatByFind      = common.WrapHandler[DocsService](TestableDocsFormatByFind)
+	HandleDocsGetStructure      = common.WrapHandler[DocsService](TestableDocsGetStructure)
 )
