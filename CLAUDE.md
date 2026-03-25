@@ -7,7 +7,8 @@ See **[docs/AGENTS.md](docs/AGENTS.md)** for full development guidelines, archit
 | Command | Description |
 |---------|-------------|
 | `go build -o gsuite-mcp` | Build the binary |
-| `go test ./...` | Run all tests |
+| `go test ./...` | Run unit tests |
+| `go test -tags=e2e ./e2e/...` | Run E2E tests (requires `.env`) |
 | `go vet ./...` | Check for issues |
 | `gofmt -w .` | Format code |
 
