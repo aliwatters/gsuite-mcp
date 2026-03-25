@@ -66,6 +66,32 @@ func TestHandleDocsFormatByFind(t *testing.T) {
 		},
 	}
 
+	// Add a document with emoji/UTF-16 surrogate pairs to test index calculation
+	// "Hi 👋 World" — the emoji is a surrogate pair (2 UTF-16 code units)
+	// Byte layout: H(1) i(1) (1) 👋(4) (1) W(1) o(1) r(1) l(1) d(1) \n(1) = 14 bytes
+	// UTF-16 layout: H(1) i(1) (1) 👋(2) (1) W(1) o(1) r(1) l(1) d(1) \n(1) = 12 code units
+	fixtures.MockService.Documents["emoji-doc"] = &docs.Document{
+		DocumentId: "emoji-doc",
+		Title:      "Emoji Doc",
+		Body: &docs.Body{
+			Content: []*docs.StructuralElement{
+				{
+					StartIndex: 0,
+					EndIndex:   12,
+					Paragraph: &docs.Paragraph{
+						Elements: []*docs.ParagraphElement{
+							{
+								StartIndex: 0,
+								EndIndex:   12,
+								TextRun:    &docs.TextRun{Content: "Hi 👋 World\n"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
 	tests := []struct {
 		name        string
 		args        map[string]any
@@ -191,6 +217,31 @@ func TestHandleDocsFormatByFind(t *testing.T) {
 				// "Hello" starts at offset 0 within the TextRun, element starts at index 12
 				if req.Range.StartIndex != 12 || req.Range.EndIndex != 17 {
 					t.Errorf("expected table match range 12-17, got %d-%d", req.Range.StartIndex, req.Range.EndIndex)
+				}
+			},
+		},
+		{
+			name: "UTF-16 surrogate pairs calculate correct indexes",
+			args: map[string]any{
+				"document_id": "emoji-doc",
+				"find_text":   "World",
+				"bold":        true,
+			},
+			wantErr: false,
+			checkResult: func(t *testing.T, result map[string]any) {
+				matchesFound, _ := result["matches_found"].(float64)
+				if matchesFound != 1 {
+					t.Errorf("expected 1 match, got %v", matchesFound)
+				}
+			},
+			checkCalls: func(t *testing.T, mock *MockDocsService) {
+				lastCall := mock.Calls.BatchUpdate[len(mock.Calls.BatchUpdate)-1]
+				req := lastCall.Requests[0].UpdateTextStyle
+				// "Hi 👋 World\n" — "World" starts after "Hi 👋 "
+				// UTF-16: H(1) i(1) space(1) 👋(2) space(1) = 6 code units before "World"
+				// "World" = 5 UTF-16 code units → range 6-11
+				if req.Range.StartIndex != 6 || req.Range.EndIndex != 11 {
+					t.Errorf("expected UTF-16 range 6-11, got %d-%d", req.Range.StartIndex, req.Range.EndIndex)
 				}
 			},
 		},

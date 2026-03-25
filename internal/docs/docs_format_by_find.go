@@ -16,8 +16,22 @@ type textMatch struct {
 	EndIndex   int64
 }
 
+// utf16Len returns the number of UTF-16 code units needed to represent s.
+// Google Docs uses UTF-16 code unit indexing, not byte or rune indexing.
+func utf16Len(s string) int64 {
+	var n int64
+	for _, r := range s {
+		if r >= 0x10000 {
+			n += 2 // surrogate pair
+		} else {
+			n++
+		}
+	}
+	return n
+}
+
 // findTextOccurrences walks the document structure and returns ranges where findText appears.
-// Each range has the real Google Docs startIndex and endIndex.
+// Each range has the real Google Docs startIndex and endIndex (UTF-16 code unit positions).
 func findTextOccurrences(doc *docs.Document, findText string, matchCase bool, matchAll bool) []textMatch {
 	var matches []textMatch
 	if doc == nil || doc.Body == nil {
@@ -69,6 +83,9 @@ func findInParagraph(para *docs.Paragraph, findText string, matchCase bool, matc
 			searchText = strings.ToLower(findText)
 		}
 
+		// Pre-compute UTF-16 length of find text for end index calculation.
+		findTextUTF16Len := utf16Len(findText)
+
 		offset := 0
 		for {
 			idx := strings.Index(searchContent[offset:], searchText)
@@ -76,8 +93,10 @@ func findInParagraph(para *docs.Paragraph, findText string, matchCase bool, matc
 				break
 			}
 
-			realStart := paraElem.StartIndex + int64(offset+idx)
-			realEnd := realStart + int64(len(findText))
+			// Convert byte offset within the Go string to UTF-16 code units
+			// since Google Docs indexes are UTF-16 code unit positions.
+			realStart := paraElem.StartIndex + utf16Len(content[:offset+idx])
+			realEnd := realStart + findTextUTF16Len
 
 			matches = append(matches, textMatch{
 				StartIndex: realStart,
