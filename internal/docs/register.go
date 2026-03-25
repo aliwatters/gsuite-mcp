@@ -201,6 +201,13 @@ func RegisterTools(s *server.MCPServer) {
 
 	// === Docs Enhanced (Phase 4) ===
 
+	// docs_get_structure - Get document structure with character indices
+	s.AddTool(mcp.NewTool("docs_get_structure",
+		mcp.WithDescription("Get document structure with paragraph boundaries and character indices. Returns element types, named styles, and text previews with real Google Docs indexes for use with batch_update and format_text."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		common.WithAccountParam(),
+	), common.WithDriveAccessCheck(HandleDocsGetStructure, "document_id"))
+
 	// docs_get_as_markdown - Export document as markdown
 	s.AddTool(mcp.NewTool("docs_get_as_markdown",
 		mcp.WithDescription("Get document content as clean markdown. Converts headings, bold, italic, links, lists, and tables to markdown format. Ideal for AI consumption."),
