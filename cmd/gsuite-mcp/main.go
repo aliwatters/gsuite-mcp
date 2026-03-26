@@ -9,12 +9,14 @@ import (
 
 	"github.com/aliwatters/gsuite-mcp/internal/auth"
 	"github.com/aliwatters/gsuite-mcp/internal/calendar"
+	"github.com/aliwatters/gsuite-mcp/internal/chat"
 	"github.com/aliwatters/gsuite-mcp/internal/citation"
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"github.com/aliwatters/gsuite-mcp/internal/config"
 	"github.com/aliwatters/gsuite-mcp/internal/contacts"
 	"github.com/aliwatters/gsuite-mcp/internal/docs"
 	"github.com/aliwatters/gsuite-mcp/internal/drive"
+	"github.com/aliwatters/gsuite-mcp/internal/driveactivity"
 	"github.com/aliwatters/gsuite-mcp/internal/forms"
 	"github.com/aliwatters/gsuite-mcp/internal/gmail"
 	"github.com/aliwatters/gsuite-mcp/internal/meet"
@@ -87,6 +89,8 @@ func main() {
 	forms.RegisterTools(s)
 	contacts.RegisterTools(s)
 	meet.RegisterTools(s)
+	driveactivity.RegisterTools(s)
+	chat.RegisterTools(s)
 
 	// Conditionally register citation tools (feature-flagged)
 	registerCitationIfEnabled(s)
