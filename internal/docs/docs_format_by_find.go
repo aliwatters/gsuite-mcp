@@ -32,6 +32,7 @@ func utf16Len(s string) int64 {
 
 // findTextOccurrences walks the document structure and returns ranges where findText appears.
 // Each range has the real Google Docs startIndex and endIndex (UTF-16 code unit positions).
+// Uses pure string matching (strings.Index) — no regex, so special characters like { } are matched literally.
 func findTextOccurrences(doc *docs.Document, findText string, matchCase bool, matchAll bool) []textMatch {
 	var matches []textMatch
 	if doc == nil || doc.Body == nil {

@@ -92,6 +92,12 @@ func TestHandleDocsFormatByFind(t *testing.T) {
 		},
 	}
 
+	// Add a document containing curly braces for brace-search testing
+	fixtures.AddTestDocument("braces-doc", "Braces Doc", "Hello {value} world")
+
+	// Add a document with multiple opening braces
+	fixtures.AddTestDocument("brace-only-doc", "Brace Only Doc", "a{b and c{d")
+
 	tests := []struct {
 		name        string
 		args        map[string]any
@@ -242,6 +248,47 @@ func TestHandleDocsFormatByFind(t *testing.T) {
 				// "World" = 5 UTF-16 code units → range 6-11
 				if req.Range.StartIndex != 6 || req.Range.EndIndex != 11 {
 					t.Errorf("expected UTF-16 range 6-11, got %d-%d", req.Range.StartIndex, req.Range.EndIndex)
+				}
+			},
+		},
+		{
+			name: "find text containing curly braces",
+			args: map[string]any{
+				"document_id": "braces-doc",
+				"find_text":   "{value}",
+				"bold":        true,
+			},
+			wantErr: false,
+			checkResult: func(t *testing.T, result map[string]any) {
+				matchesFound, _ := result["matches_found"].(float64)
+				if matchesFound != 1 {
+					t.Errorf("expected 1 match for '{value}', got %v", matchesFound)
+				}
+			},
+			checkCalls: func(t *testing.T, mock *MockDocsService) {
+				lastCall := mock.Calls.BatchUpdate[len(mock.Calls.BatchUpdate)-1]
+				if len(lastCall.Requests) != 1 {
+					t.Fatalf("expected 1 request, got %d", len(lastCall.Requests))
+				}
+				req := lastCall.Requests[0].UpdateTextStyle
+				// "Hello {value} world\n" — "{value}" starts at index 6, length 7
+				if req.Range.StartIndex != 6 || req.Range.EndIndex != 13 {
+					t.Errorf("expected range 6-13 for '{value}', got %d-%d", req.Range.StartIndex, req.Range.EndIndex)
+				}
+			},
+		},
+		{
+			name: "find text with opening brace only",
+			args: map[string]any{
+				"document_id": "brace-only-doc",
+				"find_text":   "{",
+				"italic":      true,
+			},
+			wantErr: false,
+			checkResult: func(t *testing.T, result map[string]any) {
+				matchesFound, _ := result["matches_found"].(float64)
+				if matchesFound != 2 {
+					t.Errorf("expected 2 matches for '{', got %v", matchesFound)
 				}
 			},
 		},

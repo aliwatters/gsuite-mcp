@@ -26,12 +26,13 @@ This document provides AI agents with project-specific context and guidelines fo
 - Gmail (45 tools)
 - Google Calendar (12 tools)
 - Google Drive (23 tools) — includes shared drive support, comments, revisions
-- Google Docs (25 tools)
+- Google Docs (29 tools)
 - Google Tasks (10 tools)
 - Google Sheets (16 tools)
 - Google Slides (5 tools) — read presentations, get slides, thumbnails, create, batch update
 - Google Forms (5 tools) — get form structure, create forms, batch update, list/get responses
 - Google Contacts (12 tools)
+- Google Meet (6 tools) — conference records, participants, transcripts, transcript entries
 - Google Drive Activity (1 tool) — audit trail queries for Drive files/folders
 - Google Chat (9 tools) — spaces, messages, reactions, members
 
@@ -54,6 +55,7 @@ gsuite-mcp/
 │   ├── sheets/             # Google Sheets tools
 │   ├── slides/             # Google Slides tools
 │   ├── forms/              # Google Forms tools
+│   ├── meet/               # Google Meet tools
 │   ├── driveactivity/      # Google Drive Activity tools
 │   ├── chat/               # Google Chat tools
 │   └── tasks/              # Google Tasks tools
@@ -329,6 +331,7 @@ go build && go test ./... && go vet ./...
 - [Tasks API](https://developers.google.com/tasks/reference/rest)
 - [Sheets API](https://developers.google.com/sheets/api/reference/rest)
 - [People API](https://developers.google.com/people/api/rest)
+- [Meet REST API](https://developers.google.com/meet/api/reference/rest)
 - [mcp-go Framework](https://github.com/mark3labs/mcp-go)
 - [MCP Specification](https://modelcontextprotocol.io/)
 - [ROADMAP.md](ROADMAP.md) — Development phases

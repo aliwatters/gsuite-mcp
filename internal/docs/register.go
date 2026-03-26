@@ -261,4 +261,38 @@ func RegisterTools(s *server.MCPServer) {
 		mcp.WithString("parent_id", mcp.Description("Parent folder ID or URL to place the new document in")),
 		common.WithAccountParam(),
 	), HandleDocsImportToGoogleDoc)
+
+	// === Docs Named Ranges & Suggestions (Phase 5) ===
+
+	// docs_list_named_ranges - List all named ranges
+	s.AddTool(mcp.NewTool("docs_list_named_ranges",
+		mcp.WithDescription("List all named ranges in a Google Doc. Named ranges are stable anchors for programmatic editing that survive text changes."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		common.WithAccountParam(),
+	), common.WithDriveAccessCheck(HandleDocsListNamedRanges, "document_id"))
+
+	// docs_create_named_range - Create a named range
+	s.AddTool(mcp.NewTool("docs_create_named_range",
+		mcp.WithDescription("Create a named range in a Google Doc. Named ranges provide stable anchors for programmatic editing — they track position even as the document changes."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		mcp.WithString("name", mcp.Required(), mcp.Description("Name for the range (does not need to be unique)")),
+		mcp.WithNumber("start_index", mcp.Required(), mcp.Description("1-based start position (inclusive)")),
+		mcp.WithNumber("end_index", mcp.Required(), mcp.Description("1-based end position (exclusive)")),
+		common.WithAccountParam(),
+	), common.WithDriveAccessCheck(HandleDocsCreateNamedRange, "document_id"))
+
+	// docs_delete_named_range - Delete a named range
+	s.AddTool(mcp.NewTool("docs_delete_named_range",
+		mcp.WithDescription("Delete a named range from a Google Doc by its ID."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		mcp.WithString("named_range_id", mcp.Required(), mcp.Description("ID of the named range to delete (from docs_list_named_ranges)")),
+		common.WithAccountParam(),
+	), common.WithDriveAccessCheck(HandleDocsDeleteNamedRange, "document_id"))
+
+	// docs_get_suggested_edits - Get suggested edits
+	s.AddTool(mcp.NewTool("docs_get_suggested_edits",
+		mcp.WithDescription("Get all suggested edits (insertions, deletions, formatting changes) in a Google Doc. Returns each suggestion with its ID, type, content, and position."),
+		mcp.WithString("document_id", mcp.Required(), mcp.Description("Document ID or full Google Docs URL")),
+		common.WithAccountParam(),
+	), common.WithDriveAccessCheck(HandleDocsGetSuggestedEdits, "document_id"))
 }

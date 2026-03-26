@@ -4,7 +4,7 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts, Drive Activity, and Chat. Single Go binary with true multi-account support.
+Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts, Meet, Drive Activity, and Chat. Single Go binary with true multi-account support.
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ gsuite-mcp auth personal
 ## Why gsuite-mcp?
 
 - **Multi-account**: Switch accounts per-operation with `"account": "work"`
-- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts, Drive Activity, Chat
+- **Complete coverage**: Gmail, Calendar, Drive, Docs, Tasks, Sheets, Slides, Forms, Contacts, Meet, Drive Activity, Chat
 - **Single binary**: No Python, no Node, no runtime dependencies
 - **MCP native**: JSON Schema 2020-12, proper tool descriptions
 
@@ -51,8 +51,8 @@ Complete calendar control: list events, create/update/delete, recurring events, 
 ### Drive (23 tools)
 File management with shared drive support: search (with friendly file type filter), upload, download, list, create folders, move, copy, trash, delete, share, permissions, shareable links, comments & replies, version history (revisions).
 
-### Docs (25 tools)
-Document creation and editing: create, read, structure, append, insert, replace, delete, formatting (bold, italic, headings, format-by-find), lists, tables, images, headers/footers, markdown export, PDF export, import.
+### Docs (29 tools)
+Document creation and editing: create, read, structure, append, insert, replace, delete, formatting (bold, italic, headings, format-by-find), lists, tables, images, headers/footers, markdown export, PDF export, import, named ranges, suggested edits.
 
 ### Tasks (10 tools)
 Task management: lists, tasks, subtasks, due dates, completion, reordering.
@@ -68,6 +68,9 @@ Form management: get form structure and questions, create forms, batch update (a
 
 ### Contacts (12 tools)
 Contact management: list, search, create, update, delete, contact groups.
+
+### Meet (6 tools)
+Conference record retrieval: list/get conference records, list participants, list/get transcripts, get transcript entries for meeting summarization.
 
 ### Drive Activity (1 tool)
 Audit trail queries: query activity history for Drive files and folders (who edited, created, moved, shared, with time range and action type filters).
@@ -192,6 +195,10 @@ Google Chat management: list/get/create spaces, list/get/send messages, thread r
 | `docs_find_and_replace` | Find and replace text |
 | `docs_export_to_pdf` | Export Doc/Sheet/Slides to PDF |
 | `docs_import_to_google_doc` | Import text/HTML/markdown as Google Doc |
+| `docs_list_named_ranges` | List all named ranges in a document |
+| `docs_create_named_range` | Create a named range (stable editing anchor) |
+| `docs_delete_named_range` | Delete a named range by ID |
+| `docs_get_suggested_edits` | Get suggested edits (insertions, deletions, formatting) |
 
 #### Tasks
 | Tool | Description |
@@ -258,6 +265,16 @@ Google Chat management: list/get/create spaces, list/get/send messages, thread r
 | `forms_batch_update` | Batch update (add/update/delete questions, settings) |
 | `forms_list_responses` | List all form responses |
 | `forms_get_response` | Get a single form response |
+
+#### Meet
+| Tool | Description |
+|------|-------------|
+| `meet_list_conference_records` | List conference records visible to the user |
+| `meet_get_conference_record` | Get a specific conference record |
+| `meet_list_participants` | List participants of a conference |
+| `meet_list_transcripts` | List transcripts for a conference |
+| `meet_get_transcript` | Get transcript details |
+| `meet_list_transcript_entries` | Get transcript text entries for summarization |
 
 #### Drive Activity
 | Tool | Description |
@@ -409,6 +426,26 @@ go build -o gsuite-mcp
 go test ./...
 go vet ./...
 ```
+
+### E2E Tests
+
+End-to-end tests run against live Google APIs using a dedicated test account. They are excluded from normal `go test` runs via the `e2e` build tag.
+
+**Setup:**
+
+1. Authenticate the test account: `./gsuite-mcp auth testaccount@gmail.com`
+2. Create `.env` in the project root (see `e2e/.env.example`):
+   ```
+   E2E_TEST_ACCOUNT=testaccount@gmail.com
+   ```
+
+**Run:**
+
+```bash
+go test -tags=e2e -v -count=1 ./e2e/...
+```
+
+Tests create temporary artifacts (emails, labels, events, files, task lists) and clean up after themselves. The test account should be a dedicated account, not a production mailbox.
 
 See [docs/AGENTS.md](docs/AGENTS.md) for contribution guidelines.
 
