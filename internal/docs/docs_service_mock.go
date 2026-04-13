@@ -2,6 +2,7 @@ package docs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"google.golang.org/api/docs/v1"
@@ -24,6 +25,7 @@ type MockDocsService struct {
 		GetDocument    error
 		Create         error
 		BatchUpdate    error
+		BatchUpdateRaw error
 		ExportPDF      error
 		ImportDocument error
 	}
@@ -35,6 +37,10 @@ type MockDocsService struct {
 		BatchUpdate []struct {
 			DocumentID string
 			Requests   []*docs.Request
+		}
+		BatchUpdateRaw []struct {
+			DocumentID   string
+			RequestsJSON json.RawMessage
 		}
 		ExportPDF      []string
 		ImportDocument []struct {
@@ -169,6 +175,29 @@ func (m *MockDocsService) BatchUpdate(ctx context.Context, documentID string, re
 
 	// Simulate applying updates (just update revision for now)
 	doc.RevisionId = fmt.Sprintf("rev-%d", len(m.Calls.BatchUpdate)+1)
+
+	return &docs.BatchUpdateDocumentResponse{
+		DocumentId: documentID,
+	}, nil
+}
+
+// BatchUpdateRaw performs a mock batch update using raw JSON.
+func (m *MockDocsService) BatchUpdateRaw(ctx context.Context, documentID string, requestsJSON json.RawMessage) (*docs.BatchUpdateDocumentResponse, error) {
+	m.Calls.BatchUpdateRaw = append(m.Calls.BatchUpdateRaw, struct {
+		DocumentID   string
+		RequestsJSON json.RawMessage
+	}{documentID, requestsJSON})
+
+	if m.Errors.BatchUpdateRaw != nil {
+		return nil, m.Errors.BatchUpdateRaw
+	}
+
+	doc, ok := m.Documents[documentID]
+	if !ok {
+		return nil, fmt.Errorf("document not found: %s", documentID)
+	}
+
+	doc.RevisionId = fmt.Sprintf("rev-%d", len(m.Calls.BatchUpdateRaw)+1)
 
 	return &docs.BatchUpdateDocumentResponse{
 		DocumentId: documentID,

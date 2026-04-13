@@ -24,7 +24,7 @@ func NewDocsService(ctx context.Context, client *http.Client) (DocsService, erro
 	if err != nil {
 		return nil, err
 	}
-	return NewRealDocsService(srv, driveSrv), nil
+	return NewRealDocsServiceWithHTTP(srv, driveSrv, client), nil
 }
 
 // DefaultDocsHandlerDeps holds the default dependencies for production use.

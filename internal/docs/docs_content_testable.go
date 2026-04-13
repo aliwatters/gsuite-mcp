@@ -338,6 +338,8 @@ func TestableDocsDeleteText(ctx context.Context, request mcp.CallToolRequest, de
 }
 
 // TestableDocsBatchUpdate is the testable version of HandleDocsBatchUpdate.
+// Uses raw JSON passthrough to support all Docs API request types, including
+// those not yet in the Go client library's typed Request struct (e.g., updateNamedStyle).
 func TestableDocsBatchUpdate(ctx context.Context, request mcp.CallToolRequest, deps *DocsHandlerDeps) (*mcp.CallToolResult, error) {
 	srv, errResult, ok := ResolveDocsServiceOrError(ctx, request, deps)
 	if !ok {
@@ -354,17 +356,19 @@ func TestableDocsBatchUpdate(ctx context.Context, request mcp.CallToolRequest, d
 		return mcp.NewToolResultError("requests parameter is required (JSON array of batch update requests)"), nil
 	}
 
-	// Parse the JSON into Docs API request objects
-	var docsRequests []*docs.Request
-	if err := json.Unmarshal([]byte(requestsJSON), &docsRequests); err != nil {
+	// Validate that the JSON is a non-empty array
+	var rawRequests []json.RawMessage
+	if err := json.Unmarshal([]byte(requestsJSON), &rawRequests); err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to parse requests JSON: %v", err)), nil
 	}
 
-	if len(docsRequests) == 0 {
+	if len(rawRequests) == 0 {
 		return mcp.NewToolResultError("requests array cannot be empty"), nil
 	}
 
-	resp, err := srv.BatchUpdate(ctx, docID, docsRequests)
+	// Use raw JSON passthrough to support all request types, including those
+	// the Go client library doesn't have typed structs for yet.
+	resp, err := srv.BatchUpdateRaw(ctx, docID, json.RawMessage(requestsJSON))
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Docs API error: %v", err)), nil
 	}
@@ -377,9 +381,9 @@ func TestableDocsBatchUpdate(ctx context.Context, request mcp.CallToolRequest, d
 	result := map[string]any{
 		"success":        true,
 		"document_id":    docID,
-		"requests_count": len(docsRequests),
+		"requests_count": len(rawRequests),
 		"replies_count":  repliesCount,
-		"message":        fmt.Sprintf("Successfully executed %d batch update request(s)", len(docsRequests)),
+		"message":        fmt.Sprintf("Successfully executed %d batch update request(s)", len(rawRequests)),
 		"url":            fmt.Sprintf(docsEditURLFormat, docID),
 	}
 
