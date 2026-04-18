@@ -7,12 +7,12 @@ import (
 
 // mockStore implements IndexStore using in-memory maps.
 type mockStore struct {
-	chunks   map[string]Chunk
-	concepts []ConceptMapping
+	chunks    map[string]Chunk
+	concepts  []ConceptMapping
 	summaries map[int][]LevelSummary
-	files    []IndexedFile
-	metadata map[string]string
-	closed   bool
+	files     []IndexedFile
+	metadata  map[string]string
+	closed    bool
 }
 
 func newMockStore() *mockStore {

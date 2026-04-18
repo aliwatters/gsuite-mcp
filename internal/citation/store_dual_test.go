@@ -177,7 +177,7 @@ func TestDualStore_GetIndexedFiles(t *testing.T) {
 
 	file := IndexedFile{
 		FileID: "f1", FileName: "deck.pptx",
-		MimeType: "application/vnd.google-apps.presentation",
+		MimeType:     "application/vnd.google-apps.presentation",
 		ModifiedTime: "2026-01-01T00:00:00Z", ChunkCount: 3,
 	}
 	if err := sqlite.SaveIndexedFile(ctx, file); err != nil {

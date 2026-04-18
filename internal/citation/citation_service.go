@@ -127,7 +127,6 @@ func (s *RealCitationService) getStore(ctx context.Context, indexID string) (*Du
 	return store, nil
 }
 
-
 func (s *RealCitationService) AddDocuments(ctx context.Context, indexID string, fileIDs []string) (int, error) {
 	store, err := s.getStore(ctx, indexID)
 	if err != nil {
@@ -352,5 +351,3 @@ func (s *RealCitationService) FormatCitation(_ context.Context, chunk Chunk) str
 	parts = append(parts, fmt.Sprintf("'%s'", snippet))
 	return "Source: " + strings.Join(parts, ", ")
 }
-
-

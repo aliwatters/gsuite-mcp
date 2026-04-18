@@ -11,11 +11,11 @@ import (
 
 // mockCitationService is an in-memory CitationService for testing.
 type mockCitationService struct {
-	indexes    map[string]*IndexInfo
-	chunks     map[string]map[string]Chunk   // indexID → chunkID → chunk
-	concepts   map[string][]ConceptMapping   // indexID → mappings
-	summaries  map[string][]LevelSummary     // indexID → summaries
-	files      map[string][]IndexedFile      // indexID → files
+	indexes   map[string]*IndexInfo
+	chunks    map[string]map[string]Chunk // indexID → chunkID → chunk
+	concepts  map[string][]ConceptMapping // indexID → mappings
+	summaries map[string][]LevelSummary   // indexID → summaries
+	files     map[string][]IndexedFile    // indexID → files
 }
 
 func newMockCitationService() *mockCitationService {
@@ -260,10 +260,10 @@ func TestTestableCitationSaveSummary(t *testing.T) {
 
 	// Valid
 	result, err = TestableCitationSaveSummary(ctx, makeToolRequest(map[string]any{
-		"index_id": "idx1",
-		"level":    float64(2),
+		"index_id":  "idx1",
+		"level":     float64(2),
 		"parent_id": "root",
-		"summary":  "corpus overview",
+		"summary":   "corpus overview",
 	}), deps)
 	if err != nil || result.IsError {
 		t.Fatalf("unexpected error: %v", err)
