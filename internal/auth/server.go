@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -115,16 +116,26 @@ func (s *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		errDesc := r.URL.Query().Get("error_description")
 
-		// Detect Workspace unverified-app blocks and show a more actionable error.
+		// Detect Workspace unverified-app blocks using the same heuristic as the CLI
+		// auth flow: access_denied with an empty or admin/policy/unverified description.
+		// Do NOT treat user-cancelled consent ("user denied access" etc.) as an admin block.
 		if errMsg == "access_denied" {
-			printUnverifiedAppHelp()
-			if errDesc == "" {
-				errDesc = "Access denied"
+			descLower := strings.ToLower(errDesc)
+			isWorkspaceBlock := strings.Contains(descLower, "admin") ||
+				strings.Contains(descLower, "unverified") ||
+				strings.Contains(descLower, "policy") ||
+				strings.Contains(descLower, "restricted") ||
+				errDesc == "" // access_denied with no description is typically an admin block
+			if isWorkspaceBlock {
+				printUnverifiedAppHelp()
+				if errDesc == "" {
+					errDesc = "Access denied"
+				}
+				sendOAuthError(w, "Access Denied — Unverified App",
+					errDesc+". Your Google Workspace admin may have blocked unverified apps. "+
+						"Check the terminal for options.")
+				return
 			}
-			sendOAuthError(w, "Access Denied — Unverified App",
-				errDesc+". Your Google Workspace admin may have blocked unverified apps. "+
-					"Check the terminal for options.")
-			return
 		}
 
 		if errDesc == "" {

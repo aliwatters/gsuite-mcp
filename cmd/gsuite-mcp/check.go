@@ -95,11 +95,21 @@ func runCheck() {
 
 	port, _, portErr := auth.ResolveOAuthPort()
 	if portErr != nil {
-		report.ConfigError = fmt.Sprintf("OAuth port: %v", portErr)
 		report.ConfigOK = false
-	} else {
-		report.OAuthPort = port
+		report.ConfigError = fmt.Sprintf("OAuth port: %v", portErr)
+		if jsonMode {
+			outputJSON(report)
+		} else {
+			fmt.Println("Checking configuration...")
+			fmt.Printf("  ✓ client_secret.json found\n")
+			if projectNumber != "" {
+				fmt.Printf("  ✓ OAuth client ID (project: %s)\n", projectNumber)
+			}
+			fmt.Printf("  ✗ OAuth port: %v\n", portErr)
+		}
+		os.Exit(checkExitConfigError)
 	}
+	report.OAuthPort = port
 
 	if !jsonMode {
 		fmt.Println("Checking configuration...")
@@ -107,11 +117,7 @@ func runCheck() {
 		if projectNumber != "" {
 			fmt.Printf("  ✓ OAuth client ID (project: %s)\n", projectNumber)
 		}
-		if portErr != nil {
-			fmt.Printf("  ✗ OAuth port: %v\n", portErr)
-		} else {
-			fmt.Printf("  ✓ OAuth port: %d\n", port)
-		}
+		fmt.Printf("  ✓ OAuth port: %d\n", port)
 	}
 
 	// Stage 2: Accounts
@@ -230,9 +236,6 @@ func runCheck() {
 	}
 
 	totalIssues := staleCount + apiIssues
-	if portErr != nil {
-		totalIssues++
-	}
 	report.Issues = totalIssues
 	report.OK = totalIssues == 0
 

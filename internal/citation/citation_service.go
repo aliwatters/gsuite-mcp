@@ -275,8 +275,13 @@ func (s *RealCitationService) AddDocuments(ctx context.Context, indexID string, 
 			errs = append(errs, r.err.Error())
 			continue
 		}
+		if r.indexedFile.FileID == "" {
+			continue // uninitialized slot (goroutine did not run)
+		}
+		// nil chunks means the file had no extractable content — still record the file
+		// with ChunkCount=0 so the index has a consistent files-row.
 		if r.chunks == nil {
-			continue // empty result slot
+			r.chunks = []Chunk{}
 		}
 
 		if err := store.SaveChunks(ctx, r.chunks); err != nil {
