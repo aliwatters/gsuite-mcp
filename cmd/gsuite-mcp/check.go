@@ -178,10 +178,13 @@ func buildAPIChecks() []apiCheck {
 			checkFunc: func(ctx context.Context, client *http.Client) error {
 				srv, err := gmail.NewService(ctx, option.WithHTTPClient(client))
 				if err != nil {
-					return err
+					return fmt.Errorf("creating gmail service: %w", err)
 				}
 				_, err = srv.Users.GetProfile("me").Fields("emailAddress").Do()
-				return err
+				if err != nil {
+					return fmt.Errorf("getting gmail profile: %w", err)
+				}
+				return nil
 			},
 		},
 		{
@@ -190,10 +193,13 @@ func buildAPIChecks() []apiCheck {
 			checkFunc: func(ctx context.Context, client *http.Client) error {
 				srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
 				if err != nil {
-					return err
+					return fmt.Errorf("creating calendar service: %w", err)
 				}
 				_, err = srv.CalendarList.List().MaxResults(1).Fields("items(id)").Do()
-				return err
+				if err != nil {
+					return fmt.Errorf("listing calendars: %w", err)
+				}
+				return nil
 			},
 		},
 		{
@@ -202,10 +208,13 @@ func buildAPIChecks() []apiCheck {
 			checkFunc: func(ctx context.Context, client *http.Client) error {
 				srv, err := drive.NewService(ctx, option.WithHTTPClient(client))
 				if err != nil {
-					return err
+					return fmt.Errorf("creating drive service: %w", err)
 				}
 				_, err = srv.Files.List().PageSize(1).Fields("files(id)").Do()
-				return err
+				if err != nil {
+					return fmt.Errorf("listing drive files: %w", err)
+				}
+				return nil
 			},
 		},
 		{
@@ -214,14 +223,17 @@ func buildAPIChecks() []apiCheck {
 			checkFunc: func(ctx context.Context, client *http.Client) error {
 				srv, err := docs.NewService(ctx, option.WithHTTPClient(client))
 				if err != nil {
-					return err
+					return fmt.Errorf("creating docs service: %w", err)
 				}
 				_, err = srv.Documents.Get("_check").Fields("title").Do()
 				// 404 means the API is enabled (document doesn't exist, which is expected)
 				if isNotFound(err) {
 					return nil
 				}
-				return err
+				if err != nil {
+					return fmt.Errorf("getting docs document: %w", err)
+				}
+				return nil
 			},
 		},
 		{
@@ -230,14 +242,17 @@ func buildAPIChecks() []apiCheck {
 			checkFunc: func(ctx context.Context, client *http.Client) error {
 				srv, err := sheets.NewService(ctx, option.WithHTTPClient(client))
 				if err != nil {
-					return err
+					return fmt.Errorf("creating sheets service: %w", err)
 				}
 				_, err = srv.Spreadsheets.Get("_check").Fields("spreadsheetId").Do()
 				// 404 means the API is enabled (spreadsheet doesn't exist, which is expected)
 				if isNotFound(err) {
 					return nil
 				}
-				return err
+				if err != nil {
+					return fmt.Errorf("getting spreadsheet: %w", err)
+				}
+				return nil
 			},
 		},
 		{
@@ -246,10 +261,13 @@ func buildAPIChecks() []apiCheck {
 			checkFunc: func(ctx context.Context, client *http.Client) error {
 				srv, err := tasks.NewService(ctx, option.WithHTTPClient(client))
 				if err != nil {
-					return err
+					return fmt.Errorf("creating tasks service: %w", err)
 				}
 				_, err = srv.Tasklists.List().MaxResults(1).Do()
-				return err
+				if err != nil {
+					return fmt.Errorf("listing task lists: %w", err)
+				}
+				return nil
 			},
 		},
 		{
@@ -258,10 +276,13 @@ func buildAPIChecks() []apiCheck {
 			checkFunc: func(ctx context.Context, client *http.Client) error {
 				srv, err := people.NewService(ctx, option.WithHTTPClient(client))
 				if err != nil {
-					return err
+					return fmt.Errorf("creating people service: %w", err)
 				}
 				_, err = srv.People.Connections.List("people/me").PageSize(1).PersonFields("names").Do()
-				return err
+				if err != nil {
+					return fmt.Errorf("listing people connections: %w", err)
+				}
+				return nil
 			},
 		},
 	}

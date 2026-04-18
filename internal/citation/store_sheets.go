@@ -31,7 +31,10 @@ func (s *SheetsStore) AppendChunks(ctx context.Context, chunks []Chunk) error {
 	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "chunks!A2", &sheets.ValueRange{
 		Values: rows,
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending chunks to sheet: %w", err)
+	}
+	return nil
 }
 
 // AppendConcepts appends concept rows to the concepts tab.
@@ -44,7 +47,10 @@ func (s *SheetsStore) AppendConcepts(ctx context.Context, mappings []ConceptMapp
 	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "concepts!A2", &sheets.ValueRange{
 		Values: rows,
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending concepts to sheet: %w", err)
+	}
+	return nil
 }
 
 // AppendSummary appends a summary row to the summaries tab.
@@ -53,7 +59,10 @@ func (s *SheetsStore) AppendSummary(ctx context.Context, summary LevelSummary) e
 	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "summaries!A2", &sheets.ValueRange{
 		Values: row,
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending summary to sheet: %w", err)
+	}
+	return nil
 }
 
 // ReadAllChunks reads all chunk rows from the Sheet.
@@ -148,7 +157,10 @@ func (s *SheetsStore) AppendFiles(ctx context.Context, files []IndexedFile) erro
 	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "files!A2", &sheets.ValueRange{
 		Values: rows,
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending files to sheet: %w", err)
+	}
+	return nil
 }
 
 // ReadAllFiles reads all indexed file tracking rows from the Sheet.
@@ -204,7 +216,7 @@ func (s *SheetsStore) RewriteChunksForFile(ctx context.Context, fileID string) e
 	// Read all chunks
 	allChunks, err := s.ReadAllChunks(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading all chunks: %w", err)
 	}
 
 	// Filter out chunks for this file
@@ -244,7 +256,10 @@ func (s *SheetsStore) UpdateMetadata(ctx context.Context, key, value string) err
 				_, err := s.sheetsSrv.Spreadsheets.Values.Update(s.sheetID, updateRange, &sheets.ValueRange{
 					Values: [][]any{{value}},
 				}).ValueInputOption("RAW").Context(ctx).Do()
-				return err
+				if err != nil {
+					return fmt.Errorf("updating metadata %q: %w", key, err)
+				}
+				return nil
 			}
 		}
 	}
@@ -253,5 +268,8 @@ func (s *SheetsStore) UpdateMetadata(ctx context.Context, key, value string) err
 	_, err = s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "metadata!A2", &sheets.ValueRange{
 		Values: [][]any{{key, value}},
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending metadata %q: %w", key, err)
+	}
+	return nil
 }

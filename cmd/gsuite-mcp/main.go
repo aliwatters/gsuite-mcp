@@ -107,13 +107,13 @@ func main() {
 func initializeApp() error {
 	authManager, err := auth.NewManager()
 	if err != nil {
-		return err
+		return fmt.Errorf("initializing auth manager: %w", err)
 	}
 
 	// Load config for drive access filtering (optional)
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("loading config: %w", err)
 	}
 
 	driveFilter := common.NewDriveAccessFilter(cfg.DriveAccess)

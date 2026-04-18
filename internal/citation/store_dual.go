@@ -69,23 +69,23 @@ func NewDualStore(ctx context.Context, indexID, sheetID string, sheetsSrv *sheet
 func (d *DualStore) rebuild(ctx context.Context) error {
 	chunks, err := d.sheets.ReadAllChunks(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading chunks from sheet: %w", err)
 	}
 	concepts, err := d.sheets.ReadAllConcepts(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading concepts from sheet: %w", err)
 	}
 	summaries, err := d.sheets.ReadAllSummaries(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading summaries from sheet: %w", err)
 	}
 	files, err := d.sheets.ReadAllFiles(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading files from sheet: %w", err)
 	}
 	meta, err := d.sheets.ReadAllMetadata(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading metadata from sheet: %w", err)
 	}
 
 	return d.sqlite.BulkInsertFromSheet(chunks, concepts, summaries, files, meta)

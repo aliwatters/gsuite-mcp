@@ -448,7 +448,7 @@ func (s *RealCitationService) chunkExportedText(ctx context.Context, file *drive
 func (s *RealCitationService) SaveConcepts(ctx context.Context, indexID string, mappings []ConceptMapping) error {
 	store, err := s.getStore(ctx, indexID)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting store for index %q: %w", indexID, err)
 	}
 	return store.SaveConcepts(ctx, mappings)
 }
@@ -456,7 +456,7 @@ func (s *RealCitationService) SaveConcepts(ctx context.Context, indexID string, 
 func (s *RealCitationService) SaveSummary(ctx context.Context, indexID string, summary LevelSummary) error {
 	store, err := s.getStore(ctx, indexID)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting store for index %q: %w", indexID, err)
 	}
 	return store.SaveSummary(ctx, summary)
 }
@@ -622,7 +622,7 @@ func (s *RealCitationService) RefreshIndex(ctx context.Context, indexID string) 
 // removeFileFromIndex deletes a file's chunks and tracking record.
 func (s *RealCitationService) removeFileFromIndex(ctx context.Context, store *DualStore, fileID string) error {
 	if err := store.DeleteChunksByFileID(ctx, fileID); err != nil {
-		return err
+		return fmt.Errorf("deleting chunks for file %s: %w", fileID, err)
 	}
 	return store.DeleteIndexedFile(ctx, fileID)
 }
