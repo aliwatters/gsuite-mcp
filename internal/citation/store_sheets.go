@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -112,17 +113,21 @@ func (s *SheetsStore) ReadAllSummaries(ctx context.Context) ([]LevelSummary, err
 		if len(row) < 3 {
 			continue
 		}
-		levelStr, _ := row[0].(string)
-		level, _ := strconv.Atoi(levelStr)
-		parentID, _ := row[1].(string)
-		summary, _ := row[2].(string)
-
-		// Handle float64 from Sheets API
-		if levelStr == "" {
-			if f, ok := row[0].(float64); ok {
-				level = int(f)
+		var level int
+		switch v := row[0].(type) {
+		case float64:
+			level = int(v)
+		case string:
+			if v != "" {
+				n, err := strconv.Atoi(v)
+				if err != nil {
+					log.Printf("citation: ReadAllSummaries: level %q is not an integer: %v", v, err)
+				}
+				level = n
 			}
 		}
+		parentID, _ := row[1].(string)
+		summary, _ := row[2].(string)
 
 		summaries = append(summaries, LevelSummary{Level: level, ParentID: parentID, Summary: summary})
 	}
@@ -180,7 +185,11 @@ func (s *SheetsStore) ReadAllFiles(ctx context.Context) ([]IndexedFile, error) {
 		case float64:
 			chunkCount = int(v)
 		case string:
-			chunkCount, _ = strconv.Atoi(v)
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				log.Printf("citation: ReadAllFiles: chunk_count %q is not an integer: %v", v, err)
+			}
+			chunkCount = n
 		}
 		fileID, _ := row[0].(string)
 		fileName, _ := row[1].(string)

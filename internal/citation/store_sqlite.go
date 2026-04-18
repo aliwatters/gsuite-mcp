@@ -366,9 +366,17 @@ func (s *SQLiteStore) GetMetadata(_ context.Context) (*IndexInfo, error) {
 		case "created_at":
 			info.CreatedAt = value
 		case "doc_count":
-			info.DocCount, _ = strconv.Atoi(value)
+			n, err := strconv.Atoi(value)
+			if err != nil {
+				return nil, fmt.Errorf("parsing doc_count %q: %w", value, err)
+			}
+			info.DocCount = n
 		case "chunk_count":
-			info.ChunkCount, _ = strconv.Atoi(value)
+			n, err := strconv.Atoi(value)
+			if err != nil {
+				return nil, fmt.Errorf("parsing chunk_count %q: %w", value, err)
+			}
+			info.ChunkCount = n
 		}
 	}
 	return info, rows.Err()
@@ -514,7 +522,10 @@ func SheetRowToChunk(row []any) Chunk {
 		case float64:
 			return int(v)
 		case string:
-			n, _ := strconv.Atoi(v)
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				log.Printf("citation: SheetRowToChunk: field[%d] %q is not an integer: %v", i, v, err)
+			}
 			return n
 		}
 		return 0
