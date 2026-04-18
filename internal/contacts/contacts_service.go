@@ -2,6 +2,7 @@ package contacts
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/api/people/v1"
 )
@@ -153,7 +154,10 @@ func (s *RealContactsService) DeleteContact(ctx context.Context, resourceName st
 	_, err := s.service.People.DeleteContact(resourceName).
 		Context(ctx).
 		Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("deleting contact %q: %w", resourceName, err)
+	}
+	return nil
 }
 
 // ListContactGroups lists all contact groups.
@@ -220,7 +224,10 @@ func (s *RealContactsService) DeleteContactGroup(ctx context.Context, resourceNa
 	_, err := s.service.ContactGroups.Delete(resourceName).
 		Context(ctx).
 		Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("deleting contact group %q: %w", resourceName, err)
+	}
+	return nil
 }
 
 // ModifyContactGroupMembers adds or removes members from a contact group.

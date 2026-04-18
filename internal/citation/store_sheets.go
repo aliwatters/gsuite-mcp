@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -31,7 +32,10 @@ func (s *SheetsStore) AppendChunks(ctx context.Context, chunks []Chunk) error {
 	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "chunks!A2", &sheets.ValueRange{
 		Values: rows,
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending chunks to sheet: %w", err)
+	}
+	return nil
 }
 
 // AppendConcepts appends concept rows to the concepts tab.
@@ -44,7 +48,10 @@ func (s *SheetsStore) AppendConcepts(ctx context.Context, mappings []ConceptMapp
 	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "concepts!A2", &sheets.ValueRange{
 		Values: rows,
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending concepts to sheet: %w", err)
+	}
+	return nil
 }
 
 // AppendSummary appends a summary row to the summaries tab.
@@ -53,7 +60,10 @@ func (s *SheetsStore) AppendSummary(ctx context.Context, summary LevelSummary) e
 	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "summaries!A2", &sheets.ValueRange{
 		Values: row,
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending summary to sheet: %w", err)
+	}
+	return nil
 }
 
 // ReadAllChunks reads all chunk rows from the Sheet.
@@ -103,17 +113,21 @@ func (s *SheetsStore) ReadAllSummaries(ctx context.Context) ([]LevelSummary, err
 		if len(row) < 3 {
 			continue
 		}
-		levelStr, _ := row[0].(string)
-		level, _ := strconv.Atoi(levelStr)
-		parentID, _ := row[1].(string)
-		summary, _ := row[2].(string)
-
-		// Handle float64 from Sheets API
-		if levelStr == "" {
-			if f, ok := row[0].(float64); ok {
-				level = int(f)
+		var level int
+		switch v := row[0].(type) {
+		case float64:
+			level = int(v)
+		case string:
+			if v != "" {
+				n, err := strconv.Atoi(v)
+				if err != nil {
+					log.Printf("citation: ReadAllSummaries: level %q is not an integer: %v", v, err)
+				}
+				level = n
 			}
 		}
+		parentID, _ := row[1].(string)
+		summary, _ := row[2].(string)
 
 		summaries = append(summaries, LevelSummary{Level: level, ParentID: parentID, Summary: summary})
 	}
@@ -148,7 +162,10 @@ func (s *SheetsStore) AppendFiles(ctx context.Context, files []IndexedFile) erro
 	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "files!A2", &sheets.ValueRange{
 		Values: rows,
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending files to sheet: %w", err)
+	}
+	return nil
 }
 
 // ReadAllFiles reads all indexed file tracking rows from the Sheet.
@@ -168,7 +185,11 @@ func (s *SheetsStore) ReadAllFiles(ctx context.Context) ([]IndexedFile, error) {
 		case float64:
 			chunkCount = int(v)
 		case string:
-			chunkCount, _ = strconv.Atoi(v)
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				log.Printf("citation: ReadAllFiles: chunk_count %q is not an integer: %v", v, err)
+			}
+			chunkCount = n
 		}
 		fileID, _ := row[0].(string)
 		fileName, _ := row[1].(string)
@@ -204,7 +225,7 @@ func (s *SheetsStore) RewriteChunksForFile(ctx context.Context, fileID string) e
 	// Read all chunks
 	allChunks, err := s.ReadAllChunks(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading all chunks: %w", err)
 	}
 
 	// Filter out chunks for this file
@@ -244,7 +265,10 @@ func (s *SheetsStore) UpdateMetadata(ctx context.Context, key, value string) err
 				_, err := s.sheetsSrv.Spreadsheets.Values.Update(s.sheetID, updateRange, &sheets.ValueRange{
 					Values: [][]any{{value}},
 				}).ValueInputOption("RAW").Context(ctx).Do()
-				return err
+				if err != nil {
+					return fmt.Errorf("updating metadata %q: %w", key, err)
+				}
+				return nil
 			}
 		}
 	}
@@ -253,5 +277,8 @@ func (s *SheetsStore) UpdateMetadata(ctx context.Context, key, value string) err
 	_, err = s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "metadata!A2", &sheets.ValueRange{
 		Values: [][]any{{key, value}},
 	}).ValueInputOption("RAW").Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("appending metadata %q: %w", key, err)
+	}
+	return nil
 }

@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"fmt"
 
 	chatapi "google.golang.org/api/chat/v1"
 )
@@ -130,7 +131,10 @@ func (s *RealChatService) CreateReaction(ctx context.Context, messageName string
 // DeleteReaction removes a reaction from a message.
 func (s *RealChatService) DeleteReaction(ctx context.Context, reactionName string) error {
 	_, err := s.service.Spaces.Messages.Reactions.Delete(reactionName).Context(ctx).Do()
-	return err
+	if err != nil {
+		return fmt.Errorf("deleting reaction %q: %w", reactionName, err)
+	}
+	return nil
 }
 
 // ListMembers lists members of a Chat space.

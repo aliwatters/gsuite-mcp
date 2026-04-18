@@ -99,7 +99,7 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 func (s *SQLiteStore) SaveChunks(_ context.Context, chunks []Chunk) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -107,13 +107,13 @@ func (s *SQLiteStore) SaveChunks(_ context.Context, chunks []Chunk) error {
 		(id, file_id, file_name, content, summary, page_number, section_heading, paragraph_index, char_start, char_end)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing chunk statement: %w", err)
 	}
 	defer stmt.Close()
 
 	conceptStmt, err := tx.Prepare(`INSERT OR REPLACE INTO chunk_concepts (chunk_id, concept) VALUES (?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing concept statement: %w", err)
 	}
 	defer conceptStmt.Close()
 
@@ -122,11 +122,11 @@ func (s *SQLiteStore) SaveChunks(_ context.Context, chunks []Chunk) error {
 			c.Location.PageNumber, c.Location.SectionHeading, c.Location.ParagraphIndex,
 			c.Location.CharStart, c.Location.CharEnd)
 		if err != nil {
-			return err
+			return fmt.Errorf("inserting chunk %s: %w", c.ID, err)
 		}
 		for _, concept := range c.Concepts {
 			if _, err := conceptStmt.Exec(c.ID, concept); err != nil {
-				return err
+				return fmt.Errorf("inserting concept %q for chunk %s: %w", concept, c.ID, err)
 			}
 		}
 	}
@@ -152,19 +152,19 @@ func (s *SQLiteStore) GetChunks(_ context.Context, ids []string) ([]Chunk, error
 
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying chunks: %w", err)
 	}
 	defer rows.Close()
 
 	chunks, err := scanChunks(rows)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scanning chunks: %w", err)
 	}
 
 	for i := range chunks {
 		concepts, err := s.getChunkConcepts(chunks[i].ID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("getting concepts for chunk %s: %w", chunks[i].ID, err)
 		}
 		chunks[i].Concepts = concepts
 	}
@@ -175,7 +175,7 @@ func (s *SQLiteStore) GetChunks(_ context.Context, ids []string) ([]Chunk, error
 func (s *SQLiteStore) DeleteChunksByFileID(_ context.Context, fileID string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -197,7 +197,7 @@ func (s *SQLiteStore) DeleteChunksByFileID(_ context.Context, fileID string) err
 func (s *SQLiteStore) getChunkConcepts(chunkID string) ([]string, error) {
 	rows, err := s.db.Query(`SELECT concept FROM chunk_concepts WHERE chunk_id = ?`, chunkID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying concepts for chunk %s: %w", chunkID, err)
 	}
 	defer rows.Close()
 
@@ -205,7 +205,7 @@ func (s *SQLiteStore) getChunkConcepts(chunkID string) ([]string, error) {
 	for rows.Next() {
 		var c string
 		if err := rows.Scan(&c); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning concept for chunk %s: %w", chunkID, err)
 		}
 		concepts = append(concepts, c)
 	}
@@ -215,20 +215,20 @@ func (s *SQLiteStore) getChunkConcepts(chunkID string) ([]string, error) {
 func (s *SQLiteStore) SaveConcepts(_ context.Context, mappings []ConceptMapping) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`INSERT OR REPLACE INTO chunk_concepts (chunk_id, concept) VALUES (?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing concept statement: %w", err)
 	}
 	defer stmt.Close()
 
 	for _, m := range mappings {
 		for _, chunkID := range m.ChunkIDs {
 			if _, err := stmt.Exec(chunkID, m.Concept); err != nil {
-				return err
+				return fmt.Errorf("inserting concept %q for chunk %s: %w", m.Concept, chunkID, err)
 			}
 		}
 	}
@@ -239,7 +239,7 @@ func (s *SQLiteStore) SaveConcepts(_ context.Context, mappings []ConceptMapping)
 func (s *SQLiteStore) GetConcepts(_ context.Context) ([]ConceptMapping, error) {
 	rows, err := s.db.Query(`SELECT concept, GROUP_CONCAT(chunk_id) FROM chunk_concepts GROUP BY concept ORDER BY concept`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying concepts: %w", err)
 	}
 	defer rows.Close()
 
@@ -247,7 +247,7 @@ func (s *SQLiteStore) GetConcepts(_ context.Context) ([]ConceptMapping, error) {
 	for rows.Next() {
 		var concept, chunkIDs string
 		if err := rows.Scan(&concept, &chunkIDs); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning concept: %w", err)
 		}
 		mappings = append(mappings, ConceptMapping{
 			Concept:  concept,
@@ -260,13 +260,16 @@ func (s *SQLiteStore) GetConcepts(_ context.Context) ([]ConceptMapping, error) {
 func (s *SQLiteStore) SaveSummary(_ context.Context, summary LevelSummary) error {
 	_, err := s.db.Exec(`INSERT OR REPLACE INTO summaries (level, parent_id, summary) VALUES (?, ?, ?)`,
 		summary.Level, summary.ParentID, summary.Summary)
-	return err
+	if err != nil {
+		return fmt.Errorf("saving summary: %w", err)
+	}
+	return nil
 }
 
 func (s *SQLiteStore) GetSummaries(_ context.Context, level int) ([]LevelSummary, error) {
 	rows, err := s.db.Query(`SELECT level, parent_id, summary FROM summaries WHERE level = ?`, level)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying summaries: %w", err)
 	}
 	defer rows.Close()
 
@@ -274,7 +277,7 @@ func (s *SQLiteStore) GetSummaries(_ context.Context, level int) ([]LevelSummary
 	for rows.Next() {
 		var ls LevelSummary
 		if err := rows.Scan(&ls.Level, &ls.ParentID, &ls.Summary); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning summary: %w", err)
 		}
 		summaries = append(summaries, ls)
 	}
@@ -308,13 +311,16 @@ func (s *SQLiteStore) Search(_ context.Context, query string, limit int) ([]Chun
 func (s *SQLiteStore) SaveIndexedFile(_ context.Context, file IndexedFile) error {
 	_, err := s.db.Exec(`INSERT OR REPLACE INTO indexed_files (file_id, file_name, mime_type, modified_time, chunk_count)
 		VALUES (?, ?, ?, ?, ?)`, file.FileID, file.FileName, file.MimeType, file.ModifiedTime, file.ChunkCount)
-	return err
+	if err != nil {
+		return fmt.Errorf("saving indexed file %s: %w", file.FileID, err)
+	}
+	return nil
 }
 
 func (s *SQLiteStore) GetIndexedFiles(_ context.Context) ([]IndexedFile, error) {
 	rows, err := s.db.Query(`SELECT file_id, file_name, mime_type, modified_time, chunk_count FROM indexed_files`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying indexed files: %w", err)
 	}
 	defer rows.Close()
 
@@ -322,7 +328,7 @@ func (s *SQLiteStore) GetIndexedFiles(_ context.Context) ([]IndexedFile, error) 
 	for rows.Next() {
 		var f IndexedFile
 		if err := rows.Scan(&f.FileID, &f.FileName, &f.MimeType, &f.ModifiedTime, &f.ChunkCount); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning indexed file: %w", err)
 		}
 		files = append(files, f)
 	}
@@ -331,13 +337,16 @@ func (s *SQLiteStore) GetIndexedFiles(_ context.Context) ([]IndexedFile, error) 
 
 func (s *SQLiteStore) DeleteIndexedFile(_ context.Context, fileID string) error {
 	_, err := s.db.Exec(`DELETE FROM indexed_files WHERE file_id = ?`, fileID)
-	return err
+	if err != nil {
+		return fmt.Errorf("deleting indexed file %s: %w", fileID, err)
+	}
+	return nil
 }
 
 func (s *SQLiteStore) GetMetadata(_ context.Context) (*IndexInfo, error) {
 	rows, err := s.db.Query(`SELECT key, value FROM metadata`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("querying metadata: %w", err)
 	}
 	defer rows.Close()
 
@@ -345,7 +354,7 @@ func (s *SQLiteStore) GetMetadata(_ context.Context) (*IndexInfo, error) {
 	for rows.Next() {
 		var key, value string
 		if err := rows.Scan(&key, &value); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning metadata: %w", err)
 		}
 		switch key {
 		case "index_id":
@@ -357,17 +366,31 @@ func (s *SQLiteStore) GetMetadata(_ context.Context) (*IndexInfo, error) {
 		case "created_at":
 			info.CreatedAt = value
 		case "doc_count":
-			info.DocCount, _ = strconv.Atoi(value)
+			n, err := strconv.Atoi(value)
+			if err != nil {
+				return nil, fmt.Errorf("parsing doc_count %q: %w", value, err)
+			}
+			info.DocCount = n
 		case "chunk_count":
-			info.ChunkCount, _ = strconv.Atoi(value)
+			n, err := strconv.Atoi(value)
+			if err != nil {
+				return nil, fmt.Errorf("parsing chunk_count %q: %w", value, err)
+			}
+			info.ChunkCount = n
 		}
 	}
-	return info, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating metadata rows: %w", err)
+	}
+	return info, nil
 }
 
 func (s *SQLiteStore) SetMetadata(_ context.Context, key, value string) error {
 	_, err := s.db.Exec(`INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)`, key, value)
-	return err
+	if err != nil {
+		return fmt.Errorf("setting metadata %q: %w", key, err)
+	}
+	return nil
 }
 
 func (s *SQLiteStore) Close() error {
@@ -378,7 +401,7 @@ func (s *SQLiteStore) Close() error {
 func (s *SQLiteStore) BulkInsertFromSheet(chunks []Chunk, concepts []ConceptMapping, summaries []LevelSummary, files []IndexedFile, meta map[string]string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("beginning bulk transaction: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -386,7 +409,7 @@ func (s *SQLiteStore) BulkInsertFromSheet(chunks []Chunk, concepts []ConceptMapp
 		(id, file_id, file_name, content, summary, page_number, section_heading, paragraph_index, char_start, char_end)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing bulk chunk statement: %w", err)
 	}
 	defer chunkStmt.Close()
 
@@ -394,58 +417,58 @@ func (s *SQLiteStore) BulkInsertFromSheet(chunks []Chunk, concepts []ConceptMapp
 		if _, err := chunkStmt.Exec(c.ID, c.FileID, c.FileName, c.Content, c.Summary,
 			c.Location.PageNumber, c.Location.SectionHeading, c.Location.ParagraphIndex,
 			c.Location.CharStart, c.Location.CharEnd); err != nil {
-			return err
+			return fmt.Errorf("bulk inserting chunk %s: %w", c.ID, err)
 		}
 	}
 
 	conceptStmt, err := tx.Prepare(`INSERT OR REPLACE INTO chunk_concepts (chunk_id, concept) VALUES (?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing bulk concept statement: %w", err)
 	}
 	defer conceptStmt.Close()
 
 	for _, m := range concepts {
 		for _, chunkID := range m.ChunkIDs {
 			if _, err := conceptStmt.Exec(chunkID, m.Concept); err != nil {
-				return err
+				return fmt.Errorf("bulk inserting concept %q for chunk %s: %w", m.Concept, chunkID, err)
 			}
 		}
 	}
 
 	sumStmt, err := tx.Prepare(`INSERT OR REPLACE INTO summaries (level, parent_id, summary) VALUES (?, ?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing bulk summary statement: %w", err)
 	}
 	defer sumStmt.Close()
 
 	for _, ls := range summaries {
 		if _, err := sumStmt.Exec(ls.Level, ls.ParentID, ls.Summary); err != nil {
-			return err
+			return fmt.Errorf("bulk inserting summary level %d: %w", ls.Level, err)
 		}
 	}
 
 	fileStmt, err := tx.Prepare(`INSERT OR REPLACE INTO indexed_files (file_id, file_name, mime_type, modified_time, chunk_count)
 		VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing bulk file statement: %w", err)
 	}
 	defer fileStmt.Close()
 
 	for _, f := range files {
 		if _, err := fileStmt.Exec(f.FileID, f.FileName, f.MimeType, f.ModifiedTime, f.ChunkCount); err != nil {
-			return err
+			return fmt.Errorf("bulk inserting file %s: %w", f.FileID, err)
 		}
 	}
 
 	metaStmt, err := tx.Prepare(`INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)`)
 	if err != nil {
-		return err
+		return fmt.Errorf("preparing bulk metadata statement: %w", err)
 	}
 	defer metaStmt.Close()
 
 	for k, v := range meta {
 		if _, err := metaStmt.Exec(k, v); err != nil {
-			return err
+			return fmt.Errorf("bulk inserting metadata %q: %w", k, err)
 		}
 	}
 
@@ -502,7 +525,10 @@ func SheetRowToChunk(row []any) Chunk {
 		case float64:
 			return int(v)
 		case string:
-			n, _ := strconv.Atoi(v)
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				log.Printf("citation: SheetRowToChunk: field[%d] %q is not an integer: %v", i, v, err)
+			}
 			return n
 		}
 		return 0

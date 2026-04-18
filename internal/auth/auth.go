@@ -336,7 +336,7 @@ func (m *Manager) AuthenticateDynamic(ctx context.Context) (string, error) {
 // saveTokenForEmail saves an oauth2.Token using email as the identifier.
 func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) error {
 	if err := config.EnsureConfigDir(); err != nil {
-		return err
+		return fmt.Errorf("ensuring config dir: %w", err)
 	}
 
 	token := &Token{

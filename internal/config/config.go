@@ -160,7 +160,7 @@ func CredentialPathForEmail(email string) string {
 // EnsureConfigDir creates the configuration directory if it doesn't exist.
 func EnsureConfigDir() error {
 	if err := os.MkdirAll(CredentialsDir(), 0700); err != nil {
-		return err
+		return fmt.Errorf("creating config dir %s: %w", CredentialsDir(), err)
 	}
 	return nil
 }
