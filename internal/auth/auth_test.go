@@ -86,6 +86,119 @@ func TestHandleOAuthCallback_SuccessResultShowsSuccessPage(t *testing.T) {
 	}
 }
 
+// === Unverified app / Workspace domain tests ===
+
+func TestHandleOAuthCallback_AccessDeniedNoDesc_IsUnverifiedApp(t *testing.T) {
+	// access_denied with no error_description is typically an admin-policy block.
+	state := "test-state"
+	codeCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+	resultCh := make(chan authResult, 1)
+
+	handler := handleOAuthCallback(state, codeCh, errCh, resultCh)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/oauth2callback?state=test-state&error=access_denied",
+		nil)
+	w := httptest.NewRecorder()
+
+	handler(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", resp.StatusCode)
+	}
+
+	// Should propagate ErrUnverifiedApp
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, ErrUnverifiedApp) {
+			t.Errorf("expected ErrUnverifiedApp, got %v", err)
+		}
+	default:
+		t.Error("expected an error on errCh")
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "Unverified App") {
+		t.Errorf("expected unverified-app message in error page, got: %s", body)
+	}
+}
+
+func TestHandleOAuthCallback_AccessDeniedWithAdminDesc_IsUnverifiedApp(t *testing.T) {
+	state := "test-state"
+	codeCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+	resultCh := make(chan authResult, 1)
+
+	handler := handleOAuthCallback(state, codeCh, errCh, resultCh)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/oauth2callback?state=test-state&error=access_denied&error_description=Admin+policy+restricts+access",
+		nil)
+	w := httptest.NewRecorder()
+
+	handler(w, req)
+
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, ErrUnverifiedApp) {
+			t.Errorf("expected ErrUnverifiedApp, got %v", err)
+		}
+	default:
+		t.Error("expected an error on errCh")
+	}
+}
+
+func TestHandleOAuthCallback_AccessDeniedUserCancelled_IsNotUnverifiedApp(t *testing.T) {
+	// access_denied can also happen when the user clicks "Cancel" — not an admin block.
+	state := "test-state"
+	codeCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+	resultCh := make(chan authResult, 1)
+
+	handler := handleOAuthCallback(state, codeCh, errCh, resultCh)
+
+	req := httptest.NewRequest(http.MethodGet,
+		"/oauth2callback?state=test-state&error=access_denied&error_description=User+denied+access",
+		nil)
+	w := httptest.NewRecorder()
+
+	handler(w, req)
+
+	select {
+	case err := <-errCh:
+		if errors.Is(err, ErrUnverifiedApp) {
+			t.Errorf("user-denied access_denied should NOT be ErrUnverifiedApp, got %v", err)
+		}
+	default:
+		t.Error("expected an error on errCh")
+	}
+}
+
+func TestIsWorkspaceDomain(t *testing.T) {
+	cases := []struct {
+		email string
+		want  bool
+	}{
+		{"user@gmail.com", false},
+		{"user@googlemail.com", false},
+		{"USER@GMAIL.COM", false}, // case-insensitive
+		{"user@company.com", true},
+		{"user@school.edu", true},
+		{"user@corp.google.com", true},
+		{"", false},
+		{"notanemail", false},
+	}
+
+	for _, tc := range cases {
+		got := isWorkspaceDomain(tc.email)
+		if got != tc.want {
+			t.Errorf("isWorkspaceDomain(%q) = %v, want %v", tc.email, got, tc.want)
+		}
+	}
+}
+
 func TestHandleOAuthCallback_TimeoutShowsErrorPage(t *testing.T) {
 	// This test verifies the timeout path. We use a very short timeout
 	// by not sending anything on resultCh.

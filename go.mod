@@ -5,7 +5,9 @@ go 1.25.0
 require (
 	github.com/mark3labs/mcp-go v0.23.1
 	golang.org/x/oauth2 v0.34.0
+	golang.org/x/sync v0.19.0
 	google.golang.org/api v0.264.0
+	modernc.org/sqlite v1.47.0
 )
 
 require (
@@ -41,5 +43,4 @@ require (
 	modernc.org/libc v1.70.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.47.0 // indirect
 )
