@@ -111,9 +111,22 @@ func (s *AuthServer) handleAuth(w http.ResponseWriter, r *http.Request) {
 
 // handleCallback validates the state, exchanges the code, saves the token, and renders the result.
 func (s *AuthServer) handleCallback(w http.ResponseWriter, r *http.Request) {
-	// Check for Google-reported errors first
+	// Check for Google-reported errors first.
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		errDesc := r.URL.Query().Get("error_description")
+
+		// Detect Workspace unverified-app blocks and show a more actionable error.
+		if errMsg == "access_denied" {
+			printUnverifiedAppHelp()
+			if errDesc == "" {
+				errDesc = "Access denied"
+			}
+			sendOAuthError(w, "Access Denied — Unverified App",
+				errDesc+". Your Google Workspace admin may have blocked unverified apps. "+
+					"Check the terminal for options.")
+			return
+		}
+
 		if errDesc == "" {
 			errDesc = errMsg
 		}

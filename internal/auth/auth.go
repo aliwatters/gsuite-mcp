@@ -85,7 +85,64 @@ type successPageData struct {
 	OtherAccounts []string
 }
 
-// DefaultScopes are the OAuth scopes required for Gmail, Calendar, Docs, Tasks, Drive, Sheets, Slides, Forms, and Contacts operations.
+// ScopesByService documents the OAuth scopes required per Google service.
+// All scopes are requested together in a single consent screen — this map exists
+// for documentation and debugging, not for selective scoping.
+//
+// | Service      | Scope(s)                                                   | Why                                      |
+// |--------------|-----------------------------------------------------------|------------------------------------------|
+// | Identity     | openid, userinfo.email                                    | Determine the authenticated email        |
+// | Gmail        | gmail.modify, gmail.compose, gmail.labels                 | Read/write messages, manage labels       |
+// |              | gmail.settings.basic                                      | Manage filters, send-as, vacation        |
+// | Calendar     | calendar, calendar.events                                 | Full calendar and event access           |
+// | Drive        | drive                                                     | Read/write files and metadata            |
+// | Docs         | documents                                                 | Read/write Google Docs                   |
+// | Sheets       | spreadsheets                                              | Read/write Google Sheets                 |
+// | Slides       | presentations                                             | Read/write Google Slides                 |
+// | Forms        | forms.body, forms.responses.readonly                      | Manage forms and read responses          |
+// | Tasks        | tasks                                                     | Read/write task lists and tasks          |
+// | Contacts     | contacts                                                  | Read/write Google Contacts               |
+var ScopesByService = map[string][]string{
+	"identity": {
+		"openid",
+		"https://www.googleapis.com/auth/userinfo.email",
+	},
+	"gmail": {
+		"https://www.googleapis.com/auth/gmail.modify",
+		"https://www.googleapis.com/auth/gmail.compose",
+		"https://www.googleapis.com/auth/gmail.labels",
+		"https://www.googleapis.com/auth/gmail.settings.basic",
+	},
+	"calendar": {
+		"https://www.googleapis.com/auth/calendar",
+		"https://www.googleapis.com/auth/calendar.events",
+	},
+	"drive": {
+		"https://www.googleapis.com/auth/drive",
+	},
+	"docs": {
+		"https://www.googleapis.com/auth/documents",
+	},
+	"sheets": {
+		"https://www.googleapis.com/auth/spreadsheets",
+	},
+	"slides": {
+		"https://www.googleapis.com/auth/presentations",
+	},
+	"forms": {
+		"https://www.googleapis.com/auth/forms.body",
+		"https://www.googleapis.com/auth/forms.responses.readonly",
+	},
+	"tasks": {
+		"https://www.googleapis.com/auth/tasks",
+	},
+	"contacts": {
+		"https://www.googleapis.com/auth/contacts",
+	},
+}
+
+// DefaultScopes aggregates all service scopes for the single-consent OAuth flow.
+// All scopes are requested together to avoid multiple consent screens as users add services.
 var DefaultScopes = []string{
 	// OpenID Connect scopes (required for getting authenticated user email)
 	"openid",
@@ -102,7 +159,7 @@ var DefaultScopes = []string{
 	"https://www.googleapis.com/auth/documents",
 	// Tasks scopes
 	"https://www.googleapis.com/auth/tasks",
-	// Drive scopes
+	// Drive scopes (broad access needed for citation feature and file operations)
 	"https://www.googleapis.com/auth/drive",
 	// Sheets scopes
 	"https://www.googleapis.com/auth/spreadsheets",
@@ -621,9 +678,7 @@ func (m *Manager) waitForAuthResult(ctx context.Context, codeCh <-chan string, e
 
 // printAuthInstructions prints the authentication URL and instructions to stderr.
 func printAuthInstructions(authURL string) {
-	fmt.Fprintf(os.Stderr, "\n=== Authentication Required ===\n")
-	fmt.Fprintf(os.Stderr, "Opening browser to authenticate with Google...\n")
-	fmt.Fprintf(os.Stderr, "Choose any Google account you want to use.\n")
-	fmt.Fprintf(os.Stderr, "If browser doesn't open, visit:\n%s\n", authURL)
-	fmt.Fprintf(os.Stderr, "================================\n\n")
+	fmt.Fprintf(os.Stderr, "\nAuthentication required — opening browser...\n")
+	fmt.Fprintf(os.Stderr, "Choose any Google account to authenticate.\n")
+	fmt.Fprintf(os.Stderr, "If the browser does not open, visit:\n  %s\n\n", authURL)
 }
