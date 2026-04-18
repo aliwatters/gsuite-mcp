@@ -18,14 +18,23 @@ const citationHint = "This content is large. For reliable citation tracing, use 
 // WithLargeContentHint wraps an MCP handler to append a citation hint when
 // the response content exceeds the threshold and citation tools are enabled.
 // Zero overhead when citation is disabled — the check is a single bool read.
-func WithLargeContentHint(handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// Pass explicit appDeps to avoid reading from the global singleton; omit to fall
+// back to GetDeps() for backward compatibility.
+func WithLargeContentHint(handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error), appDeps ...*Deps) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	var injected *Deps
+	if len(appDeps) > 0 {
+		injected = appDeps[0]
+	}
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		result, err := handler(ctx, request)
 		if err != nil || result == nil || result.IsError {
 			return result, err
 		}
 
-		d := GetDeps()
+		d := injected
+		if d == nil {
+			d = GetDeps()
+		}
 		if d == nil || !d.CitationEnabled {
 			return result, nil
 		}

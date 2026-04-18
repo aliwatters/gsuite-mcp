@@ -131,10 +131,17 @@ func initializeApp() error {
 	}
 
 	// Set up shared dependencies for all packages
-	common.SetDeps(&common.Deps{
+	appDeps := &common.Deps{
 		AuthManager:       authManager,
 		DriveAccessFilter: driveFilter,
-	})
+	}
+	common.SetDeps(appDeps)
+
+	// Initialize handler deps with explicit dependency passing to avoid global singleton reads.
+	drive.InitDefaultDriveHandlerDeps(appDeps)
+	gmail.InitDefaultGmailHandlerDeps(appDeps)
+	docs.InitDefaultDocsHandlerDeps(appDeps)
+	sheets.InitDefaultSheetsHandlerDeps(appDeps)
 
 	return nil
 }

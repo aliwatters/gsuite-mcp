@@ -8,8 +8,13 @@ import (
 
 // RegisterTools registers all Sheets tools with the MCP server.
 func RegisterTools(s *server.MCPServer) {
-	// === Sheets Core (Phase 1) ===
+	registerSheetsCoreTools(s)
+	registerSheetsFormattingTools(s)
+	registerSheetsChartsTools(s)
+}
 
+// registerSheetsCoreTools registers Phases 1 and 2 Sheets tools: read, write, and basic operations.
+func registerSheetsCoreTools(s *server.MCPServer) {
 	// sheets_get - Get spreadsheet metadata
 	s.AddTool(mcp.NewTool("sheets_get",
 		mcp.WithDescription("Get spreadsheet metadata including title, sheets list, and properties."),
@@ -79,8 +84,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), common.WithDriveAccessCheck(HandleSheetsClear, "spreadsheet_id"))
 
-	// === Sheets Formatting (Phase 3) ===
+}
 
+// registerSheetsFormattingTools registers Phase 3 Sheets tools: formatting and data validation.
+func registerSheetsFormattingTools(s *server.MCPServer) {
 	// sheets_format_cells - Apply formatting to cell range
 	s.AddTool(mcp.NewTool("sheets_format_cells",
 		mcp.WithDescription("Apply formatting to a cell range: background color, font, bold, italic, number format, alignment."),
@@ -153,8 +160,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), common.WithDriveAccessCheck(HandleSheetsAddDataValidation, "spreadsheet_id"))
 
-	// === Sheets Charts & Pivot Tables (Phase 3) ===
+}
 
+// registerSheetsChartsTools registers Phase 3 Sheets tools: charts, pivot tables, and batch updates.
+func registerSheetsChartsTools(s *server.MCPServer) {
 	// sheets_create_chart - Create embedded chart
 	s.AddTool(mcp.NewTool("sheets_create_chart",
 		mcp.WithDescription("Create an embedded chart from spreadsheet data."),

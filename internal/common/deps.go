@@ -30,15 +30,26 @@ func GetDeps() *Deps {
 }
 
 // ResolveAccountFromRequest extracts and validates the account parameter.
+// It reads from the global deps singleton; use ResolveAccountFromRequestWithDeps
+// to pass deps explicitly.
 func ResolveAccountFromRequest(request mcp.CallToolRequest) (string, error) {
+	return ResolveAccountFromRequestWithDeps(request, GetDeps())
+}
+
+// ResolveAccountFromRequestWithDeps extracts and validates the account parameter
+// using explicitly provided dependencies. Passing nil falls back to the global singleton.
+func ResolveAccountFromRequestWithDeps(request mcp.CallToolRequest, d *Deps) (string, error) {
+	if d == nil {
+		d = GetDeps()
+	}
 	accountParam := ParseStringArg(request.Params.Arguments, "account", "")
 
 	if accountParam == "" {
 		// No account specified - use first authenticated email
 		email := config.GetDefaultEmail()
 		if email == "" {
-			if deps != nil && deps.AuthManager.AuthServerURL != "" {
-				return "", fmt.Errorf("no authenticated accounts found; open %s to authenticate", deps.AuthManager.AuthServerURL)
+			if d != nil && d.AuthManager.AuthServerURL != "" {
+				return "", fmt.Errorf("no authenticated accounts found; open %s to authenticate", d.AuthManager.AuthServerURL)
 			}
 			return "", fmt.Errorf("no authenticated accounts found; run 'gsuite-mcp auth' to authenticate")
 		}
@@ -50,8 +61,8 @@ func ResolveAccountFromRequest(request mcp.CallToolRequest) (string, error) {
 		return accountParam, nil
 	}
 
-	if deps != nil && deps.AuthManager.AuthServerURL != "" {
-		return "", fmt.Errorf("no credentials for %s; open %s?account=%s to authenticate", accountParam, deps.AuthManager.AuthServerURL, url.QueryEscape(accountParam))
+	if d != nil && d.AuthManager.AuthServerURL != "" {
+		return "", fmt.Errorf("no credentials for %s; open %s?account=%s to authenticate", accountParam, d.AuthManager.AuthServerURL, url.QueryEscape(accountParam))
 	}
 	return "", fmt.Errorf("no credentials for %s; run 'gsuite-mcp auth' and sign in with that account", accountParam)
 }

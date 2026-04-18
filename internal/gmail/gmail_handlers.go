@@ -22,7 +22,14 @@ func NewGmailService(ctx context.Context, client *http.Client) (GmailService, er
 	return NewRealGmailService(srv), nil
 }
 
+// InitDefaultGmailHandlerDeps initializes the default Gmail handler deps with explicit deps,
+// avoiding reliance on the global singleton at call time.
+func InitDefaultGmailHandlerDeps(appDeps *common.Deps) {
+	DefaultGmailHandlerDeps = common.NewDefaultHandlerDeps(NewGmailService, appDeps)
+}
+
 // DefaultGmailHandlerDeps holds the default dependencies for production use.
+// Initialize with InitDefaultGmailHandlerDeps after SetDeps to pass deps explicitly.
 var DefaultGmailHandlerDeps = common.NewDefaultHandlerDeps(NewGmailService)
 
 // ResolveGmailServiceOrError resolves a Gmail service, returning an MCP error result on failure.

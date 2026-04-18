@@ -8,8 +8,14 @@ import (
 
 // RegisterTools registers all Drive tools with the MCP server.
 func RegisterTools(s *server.MCPServer) {
-	// === Drive Core (Phase 1) ===
+	registerDriveCoreTools(s)
+	registerDriveSharingTools(s)
+	registerDriveCommentsTools(s)
+	registerDriveRevisionsTools(s)
+}
 
+// registerDriveCoreTools registers core Drive file operations: search, get, download, upload, list, CRUD.
+func registerDriveCoreTools(s *server.MCPServer) {
 	// drive_search - Search files with query syntax
 	s.AddTool(mcp.NewTool("drive_search",
 		mcp.WithDescription("Search Google Drive files including shared drives. Supports metadata queries like \"name contains 'report'\" and full-text content search with \"fullText contains 'keyword'\" (searches inside PDFs, Docs, Sheets, Slides, Office files). Combine with \"and\"/\"or\" operators. Use file_type for easy filtering by type."),
@@ -97,8 +103,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleDriveDelete)
 
-	// === Drive Sharing ===
+}
 
+// registerDriveSharingTools registers Drive sharing and permissions tools.
+func registerDriveSharingTools(s *server.MCPServer) {
 	// drive_share - Share file with users
 	s.AddTool(mcp.NewTool("drive_share",
 		mcp.WithDescription("Share a Google Drive file with a user or group."),
@@ -124,8 +132,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleDriveGetShareableLink)
 
-	// === Drive Comments & Replies ===
+}
 
+// registerDriveCommentsTools registers Drive comments and replies tools.
+func registerDriveCommentsTools(s *server.MCPServer) {
 	// drive_list_comments - List comments on a file
 	s.AddTool(mcp.NewTool("drive_list_comments",
 		mcp.WithDescription("List comments on a Google Drive file."),
@@ -191,8 +201,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleDriveCreateReply)
 
-	// === Drive Revisions ===
+}
 
+// registerDriveRevisionsTools registers Drive revision/version history tools.
+func registerDriveRevisionsTools(s *server.MCPServer) {
 	// drive_list_revisions - List file version history
 	s.AddTool(mcp.NewTool("drive_list_revisions",
 		mcp.WithDescription("List version history (revisions) for a Google Drive file."),
