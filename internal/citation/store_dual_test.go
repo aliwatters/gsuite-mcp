@@ -99,7 +99,9 @@ func TestDualStore_GetConcepts(t *testing.T) {
 	chunks := []Chunk{
 		{ID: "c1", FileID: "f1", FileName: "f.pptx", Content: "test"},
 	}
-	sqlite.SaveChunks(ctx, chunks)
+	if err := sqlite.SaveChunks(ctx, chunks); err != nil {
+		t.Fatalf("SaveChunks: %v", err)
+	}
 
 	mappings := []ConceptMapping{
 		{Concept: "testing", ChunkIDs: []string{"c1"}},

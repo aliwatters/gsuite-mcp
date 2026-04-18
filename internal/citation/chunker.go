@@ -22,23 +22,6 @@ type DocumentChunker interface {
 	Chunk(file *drive.File, data []byte) ([]Chunk, error)
 }
 
-// SlidesChunker extracts chunks from a Google Slides presentation using the Slides API.
-type SlidesChunker struct {
-	slidesService *gslides.Service
-}
-
-// NewSlidesChunker creates a chunker backed by the Slides API.
-func NewSlidesChunker(slidesService *gslides.Service) *SlidesChunker {
-	return &SlidesChunker{slidesService: slidesService}
-}
-
-// ChunkPresentation extracts text per-slide from a Google Slides presentation.
-func (c *SlidesChunker) ChunkPresentation(ctx interface{ Done() <-chan struct{} }, fileID, fileName string) ([]Chunk, error) {
-	// Not called directly; see RealCitationService.chunkSlides.
-	// Kept here for documentation of the pattern.
-	return nil, nil
-}
-
 // PptxChunker extracts chunks from an uploaded .pptx file (zip containing XML slides).
 type PptxChunker struct{}
 

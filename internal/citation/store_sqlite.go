@@ -379,7 +379,10 @@ func (s *SQLiteStore) GetMetadata(_ context.Context) (*IndexInfo, error) {
 			info.ChunkCount = n
 		}
 	}
-	return info, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating metadata rows: %w", err)
+	}
+	return info, nil
 }
 
 func (s *SQLiteStore) SetMetadata(_ context.Context, key, value string) error {
