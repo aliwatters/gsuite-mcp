@@ -39,10 +39,10 @@ type apiCheck struct {
 
 // checkAccountResult holds the per-account result of a check run.
 type checkAccountResult struct {
-	Email      string            `json:"email"`
-	TokenValid bool              `json:"token_valid"`
-	TokenError string            `json:"token_error,omitempty"`
-	APIs       []checkAPIResult  `json:"apis,omitempty"`
+	Email      string           `json:"email"`
+	TokenValid bool             `json:"token_valid"`
+	TokenError string           `json:"token_error,omitempty"`
+	APIs       []checkAPIResult `json:"apis,omitempty"`
 }
 
 // checkAPIResult holds the per-API result for a single account.

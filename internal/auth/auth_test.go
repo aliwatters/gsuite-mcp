@@ -178,12 +178,12 @@ func TestHandleOAuthCallback_AccessDeniedUserCancelled_IsNotUnverifiedApp(t *tes
 
 func TestIsWorkspaceDomain(t *testing.T) {
 	cases := []struct {
-		email    string
-		want     bool
+		email string
+		want  bool
 	}{
 		{"user@gmail.com", false},
 		{"user@googlemail.com", false},
-		{"USER@GMAIL.COM", false},  // case-insensitive
+		{"USER@GMAIL.COM", false}, // case-insensitive
 		{"user@company.com", true},
 		{"user@school.edu", true},
 		{"user@corp.google.com", true},
