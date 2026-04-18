@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
@@ -127,40 +128,95 @@ func (s *RealCitationService) getStore(ctx context.Context, indexID string) (*Du
 	return store, nil
 }
 
+// addDocResult holds the result of processing a single file in AddDocuments.
+type addDocResult struct {
+	chunks      []Chunk
+	indexedFile IndexedFile
+	err         error
+	fileID      string
+}
+
 func (s *RealCitationService) AddDocuments(ctx context.Context, indexID string, fileIDs []string) (int, error) {
 	store, err := s.getStore(ctx, indexID)
 	if err != nil {
 		return 0, err
 	}
 
+	// Fetch file metadata and chunk files concurrently (up to 5 at a time).
+	results := make([]addDocResult, len(fileIDs))
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(5)
+
+	for i, fileID := range fileIDs {
+		i, fileID := i, fileID // capture loop vars
+		g.Go(func() error {
+			file, err := s.driveService.Files.Get(fileID).
+				Fields("id,name,mimeType,modifiedTime").
+				SupportsAllDrives(true).
+				Context(gCtx).Do()
+			if err != nil {
+				results[i] = addDocResult{fileID: fileID, err: fmt.Errorf("getting file %s: %w", fileID, err)}
+				return nil // partial failure — keep going
+			}
+
+			chunks, err := s.chunkFile(gCtx, file)
+			if err != nil {
+				results[i] = addDocResult{fileID: fileID, err: fmt.Errorf("chunking %s: %w", file.Name, err)}
+				return nil // partial failure — keep going
+			}
+
+			results[i] = addDocResult{
+				fileID: fileID,
+				chunks: chunks,
+				indexedFile: IndexedFile{
+					FileID:       file.Id,
+					FileName:     file.Name,
+					MimeType:     file.MimeType,
+					ModifiedTime: file.ModifiedTime,
+					ChunkCount:   len(chunks),
+				},
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return 0, err
+	}
+
+	// Collect results and save sequentially (store is not safe for concurrent writes).
 	totalChunks := 0
-	for _, fileID := range fileIDs {
-		file, err := s.driveService.Files.Get(fileID).Fields("id,name,mimeType,modifiedTime").SupportsAllDrives(true).Context(ctx).Do()
-		if err != nil {
-			return totalChunks, fmt.Errorf("getting file %s: %w", fileID, err)
+	var errs []string
+	for _, r := range results {
+		if r.err != nil {
+			errs = append(errs, r.err.Error())
+			continue
+		}
+		if r.indexedFile.FileID == "" {
+			continue // uninitialized slot (goroutine did not run)
+		}
+		// nil chunks means the file had no extractable content — still record the file
+		// with ChunkCount=0 so the index has a consistent files-row.
+		if r.chunks == nil {
+			r.chunks = []Chunk{}
 		}
 
-		chunks, err := s.chunkFile(ctx, file)
-		if err != nil {
-			return totalChunks, fmt.Errorf("chunking %s: %w", file.Name, err)
+		if err := store.SaveChunks(ctx, r.chunks); err != nil {
+			errs = append(errs, fmt.Sprintf("saving chunks for %s: %v", r.indexedFile.FileName, err))
+			continue
 		}
 
-		if err := store.SaveChunks(ctx, chunks); err != nil {
-			return totalChunks, fmt.Errorf("saving chunks for %s: %w", file.Name, err)
+		if err := store.SaveIndexedFile(ctx, r.indexedFile); err != nil {
+			errs = append(errs, fmt.Sprintf("tracking file %s: %v", r.indexedFile.FileName, err))
+			continue
 		}
 
-		// Track the indexed file
-		if err := store.SaveIndexedFile(ctx, IndexedFile{
-			FileID:       file.Id,
-			FileName:     file.Name,
-			MimeType:     file.MimeType,
-			ModifiedTime: file.ModifiedTime,
-			ChunkCount:   len(chunks),
-		}); err != nil {
-			return totalChunks, fmt.Errorf("tracking file %s: %w", file.Name, err)
-		}
+		totalChunks += len(r.chunks)
+	}
 
-		totalChunks += len(chunks)
+	if len(errs) > 0 {
+		return totalChunks, fmt.Errorf("partial failures (%d/%d files succeeded): %s",
+			len(fileIDs)-len(errs), len(fileIDs), strings.Join(errs, "; "))
 	}
 
 	return totalChunks, nil

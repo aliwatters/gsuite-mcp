@@ -27,7 +27,14 @@ func NewDocsService(ctx context.Context, client *http.Client) (DocsService, erro
 	return NewRealDocsServiceWithHTTP(srv, driveSrv, client), nil
 }
 
+// InitDefaultDocsHandlerDeps initializes the default Docs handler deps with explicit deps,
+// avoiding reliance on the global singleton at call time.
+func InitDefaultDocsHandlerDeps(appDeps *common.Deps) {
+	DefaultDocsHandlerDeps = common.NewDefaultHandlerDeps(NewDocsService, appDeps)
+}
+
 // DefaultDocsHandlerDeps holds the default dependencies for production use.
+// Initialize with InitDefaultDocsHandlerDeps after SetDeps to pass deps explicitly.
 var DefaultDocsHandlerDeps = common.NewDefaultHandlerDeps(NewDocsService)
 
 // ResolveDocsServiceOrError resolves a Docs service, returning an MCP error result on failure.

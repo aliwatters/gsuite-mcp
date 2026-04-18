@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -21,6 +22,14 @@ import (
 	"google.golang.org/api/tasks/v1"
 )
 
+// checkExitCode defines exit code semantics for the check command.
+// These are stable for use in cron jobs and automation scripts.
+const (
+	checkExitOK          = 0 // all checks passed
+	checkExitStale       = 1 // one or more tokens are stale / need re-auth
+	checkExitConfigError = 2 // configuration error (missing client_secret.json, etc.)
+)
+
 // apiCheck defines a single API check to perform.
 type apiCheck struct {
 	name      string
@@ -28,102 +37,233 @@ type apiCheck struct {
 	checkFunc func(ctx context.Context, client *http.Client) error
 }
 
+// checkAccountResult holds the per-account result of a check run.
+type checkAccountResult struct {
+	Email      string           `json:"email"`
+	TokenValid bool             `json:"token_valid"`
+	TokenError string           `json:"token_error,omitempty"`
+	APIs       []checkAPIResult `json:"apis,omitempty"`
+}
+
+// checkAPIResult holds the per-API result for a single account.
+type checkAPIResult struct {
+	Name    string `json:"name"`
+	OK      bool   `json:"ok"`
+	Error   string `json:"error,omitempty"`
+	HelpURL string `json:"help_url,omitempty"`
+}
+
+// checkReport is the full structured output of a check run.
+type checkReport struct {
+	OK            bool                 `json:"ok"`
+	ConfigOK      bool                 `json:"config_ok"`
+	ConfigError   string               `json:"config_error,omitempty"`
+	OAuthPort     int                  `json:"oauth_port,omitempty"`
+	ProjectNumber string               `json:"project_number,omitempty"`
+	Accounts      []checkAccountResult `json:"accounts"`
+	Issues        int                  `json:"issues"`
+}
+
 // runCheck performs preflight validation of configuration, accounts, and API access.
+// It checks for --json in os.Args to select output mode.
 func runCheck() {
-	issues := 0
+	jsonMode := false
+	for _, arg := range os.Args[2:] {
+		if arg == "--json" {
+			jsonMode = true
+		}
+	}
+
+	report := checkReport{
+		Accounts: []checkAccountResult{},
+	}
 
 	// Stage 1: Configuration
-	fmt.Println("Checking configuration...")
-
-	mgr, projectNumber, err := checkConfiguration()
-	if err != nil {
-		fmt.Printf("  ✗ %s\n", err)
-		os.Exit(1)
+	mgr, projectNumber, configErr := checkConfiguration()
+	if configErr != nil {
+		report.ConfigOK = false
+		report.ConfigError = configErr.Error()
+		if jsonMode {
+			outputJSON(report)
+		} else {
+			fmt.Fprintf(os.Stderr, "Configuration error: %v\n", configErr)
+		}
+		os.Exit(checkExitConfigError)
 	}
-	fmt.Printf("  ✓ client_secret.json found\n")
-	if projectNumber != "" {
-		fmt.Printf("  ✓ OAuth client ID (project: %s)\n", projectNumber)
-	}
+	report.ConfigOK = true
+	report.ProjectNumber = projectNumber
 
-	port, envOverride, err := auth.ResolveOAuthPort()
-	if err != nil {
-		fmt.Printf("  ✗ OAuth port: %v\n", err)
-		issues++
-	} else if envOverride {
-		fmt.Printf("  ✓ OAuth port: %d (env override)\n", port)
-	} else {
+	port, _, portErr := auth.ResolveOAuthPort()
+	if portErr != nil {
+		report.ConfigOK = false
+		report.ConfigError = fmt.Sprintf("OAuth port: %v", portErr)
+		if jsonMode {
+			outputJSON(report)
+		} else {
+			fmt.Println("Checking configuration...")
+			fmt.Printf("  ✓ client_secret.json found\n")
+			if projectNumber != "" {
+				fmt.Printf("  ✓ OAuth client ID (project: %s)\n", projectNumber)
+			}
+			fmt.Printf("  ✗ OAuth port: %v\n", portErr)
+		}
+		os.Exit(checkExitConfigError)
+	}
+	report.OAuthPort = port
+
+	if !jsonMode {
+		fmt.Println("Checking configuration...")
+		fmt.Printf("  ✓ client_secret.json found\n")
+		if projectNumber != "" {
+			fmt.Printf("  ✓ OAuth client ID (project: %s)\n", projectNumber)
+		}
 		fmt.Printf("  ✓ OAuth port: %d\n", port)
 	}
 
 	// Stage 2: Accounts
-	fmt.Println("\nChecking accounts...")
-
 	emails, err := config.GetAuthenticatedEmails()
 	if err != nil {
-		fmt.Printf("  ✗ Error reading credentials: %v\n", err)
-		os.Exit(1)
+		if jsonMode {
+			report.ConfigError = fmt.Sprintf("reading credentials: %v", err)
+			outputJSON(report)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error reading credentials: %v\n", err)
+		}
+		os.Exit(checkExitConfigError)
 	}
 	if len(emails) == 0 {
-		fmt.Printf("  ✗ No authenticated accounts found\n")
-		fmt.Printf("    Run 'gsuite-mcp auth' to authenticate a Google account.\n")
-		os.Exit(1)
+		if jsonMode {
+			report.ConfigError = "no authenticated accounts found"
+			outputJSON(report)
+		} else {
+			fmt.Fprintf(os.Stderr, "No authenticated accounts found.\n")
+			fmt.Fprintf(os.Stderr, "Run 'gsuite-mcp auth' to authenticate a Google account.\n")
+		}
+		os.Exit(checkExitStale)
+	}
+
+	if !jsonMode {
+		fmt.Println("\nChecking accounts...")
 	}
 
 	ctx := context.Background()
 	var validEmails []string
+	staleCount := 0
+	// accountIndex maps email → index in report.Accounts for API result attachment.
+	accountIndex := make(map[string]int, len(emails))
 
 	for _, email := range emails {
-		_, err := mgr.GetClientForEmail(ctx, email)
-		if err != nil {
-			fmt.Printf("  ✗ %s — token refresh failed: %v\n", email, err)
-			fmt.Printf("    Run 'gsuite-mcp auth' and sign in with this account to fix.\n")
-			issues++
-			continue
+		acct := checkAccountResult{Email: email}
+		_, tokenErr := mgr.GetClientForEmail(ctx, email)
+		if tokenErr != nil {
+			acct.TokenValid = false
+			acct.TokenError = tokenErr.Error()
+			staleCount++
+			if !jsonMode {
+				fmt.Printf("  ✗ %s — token refresh failed: %v\n", email, tokenErr)
+				fmt.Printf("    Run 'gsuite-mcp auth' and sign in with this account to fix.\n")
+			}
+		} else {
+			acct.TokenValid = true
+			validEmails = append(validEmails, email)
+			if !jsonMode {
+				fmt.Printf("  ✓ %s — token valid\n", email)
+			}
 		}
-		fmt.Printf("  ✓ %s — token valid\n", email)
-		validEmails = append(validEmails, email)
+		accountIndex[email] = len(report.Accounts)
+		report.Accounts = append(report.Accounts, acct)
 	}
 
 	// Stage 3: API access
-	checks := buildAPIChecks()
+	apiChecks := buildAPIChecks()
+	apiIssues := 0
 
 	for _, email := range validEmails {
-		fmt.Printf("\nChecking API access for %s...\n", email)
+		if !jsonMode {
+			fmt.Printf("\nChecking API access for %s...\n", email)
+		}
 
-		client, err := mgr.GetClientForEmail(ctx, email)
-		if err != nil {
-			fmt.Printf("  ✗ %s — failed to get client: %v\n", email, err)
-			issues++
+		idx := accountIndex[email]
+
+		client, clientErr := mgr.GetClientForEmail(ctx, email)
+		if clientErr != nil {
+			if !jsonMode {
+				fmt.Printf("  ✗ %s — failed to get client: %v\n", email, clientErr)
+			}
+			// Mark all APIs as failed for this account
+			for _, check := range apiChecks {
+				report.Accounts[idx].APIs = append(report.Accounts[idx].APIs, checkAPIResult{
+					Name:  check.name,
+					OK:    false,
+					Error: clientErr.Error(),
+				})
+			}
+			apiIssues++
 			continue
 		}
 
-		for _, check := range checks {
-			err := check.checkFunc(ctx, client)
-			if err == nil {
+		for _, check := range apiChecks {
+			apiErr := check.checkFunc(ctx, client)
+			res := checkAPIResult{Name: check.name, OK: apiErr == nil}
+
+			if apiErr != nil {
+				apiIssues++
+				if isAPIDisabled(apiErr) {
+					res.Error = "API not enabled"
+					if projectNumber != "" {
+						res.HelpURL = fmt.Sprintf(
+							"https://console.developers.google.com/apis/api/%s/overview?project=%s",
+							check.apiID, projectNumber)
+					}
+					if !jsonMode {
+						fmt.Printf("  ✗ %s — not enabled\n", check.name)
+						if res.HelpURL != "" {
+							fmt.Printf("    Enable at: %s\n", res.HelpURL)
+						}
+					}
+				} else {
+					res.Error = apiErr.Error()
+					if !jsonMode {
+						fmt.Printf("  ✗ %s — %v\n", check.name, apiErr)
+					}
+				}
+			} else if !jsonMode {
 				fmt.Printf("  ✓ %s\n", check.name)
-				continue
 			}
 
-			if isAPIDisabled(err) {
-				fmt.Printf("  ✗ %s — not enabled\n", check.name)
-				if projectNumber != "" {
-					fmt.Printf("    Enable at: https://console.developers.google.com/apis/api/%s/overview?project=%s\n", check.apiID, projectNumber)
-				}
-				issues++
-			} else {
-				fmt.Printf("  ✗ %s — %v\n", check.name, err)
-				issues++
-			}
+			report.Accounts[idx].APIs = append(report.Accounts[idx].APIs, res)
 		}
 	}
 
-	// Summary
-	fmt.Println()
-	if issues == 0 {
-		fmt.Println("All checks passed!")
+	totalIssues := staleCount + apiIssues
+	report.Issues = totalIssues
+	report.OK = totalIssues == 0
+
+	if jsonMode {
+		outputJSON(report)
 	} else {
-		fmt.Printf("%d issue(s) found.\n", issues)
-		os.Exit(1)
+		fmt.Println()
+		if totalIssues == 0 {
+			fmt.Println("All checks passed!")
+		} else {
+			fmt.Printf("%d issue(s) found.\n", totalIssues)
+		}
+	}
+
+	if staleCount > 0 {
+		os.Exit(checkExitStale)
+	}
+	if totalIssues > 0 {
+		os.Exit(checkExitStale)
+	}
+}
+
+// outputJSON writes the check report as JSON to stdout.
+func outputJSON(report checkReport) {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(report); err != nil {
+		fmt.Fprintf(os.Stderr, "error encoding JSON: %v\n", err)
 	}
 }
 

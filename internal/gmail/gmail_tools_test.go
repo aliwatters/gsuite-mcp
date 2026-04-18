@@ -2,6 +2,7 @@ package gmail
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -733,5 +734,137 @@ func TestGmailSend_ServiceError(t *testing.T) {
 	}
 	if !result.IsError {
 		t.Error("expected error when service fails")
+	}
+}
+
+// === body_format tests ===
+
+// encodeBase64Standard encodes using standard base64 URL encoding (with padding),
+// matching the decoding used by ExtractBodyParts.
+func encodeBase64Standard(s string) string {
+	return base64.URLEncoding.EncodeToString([]byte(s))
+}
+
+// newTestHTMLMessage creates a message with both text/plain and text/html parts.
+func newTestHTMLMessage(id, body string) *gmail.Message {
+	return &gmail.Message{
+		Id:       id,
+		ThreadId: "thread1",
+		Payload: &gmail.MessagePart{
+			MimeType: "multipart/alternative",
+			Parts: []*gmail.MessagePart{
+				{
+					MimeType: "text/plain",
+					Body:     &gmail.MessagePartBody{Data: encodeBase64Standard("plain: " + body)},
+				},
+				{
+					MimeType: "text/html",
+					Body:     &gmail.MessagePartBody{Data: encodeBase64Standard("<p>html: " + body + "</p>")},
+				},
+			},
+		},
+	}
+}
+
+// TestGmailGetMessage_DefaultBodyFormatIsText verifies that the default body_format
+// is text (plain text), not html, to minimise token usage.
+func TestGmailGetMessage_DefaultBodyFormatIsText(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestHTMLMessage("msg1", "hello world")
+	fixtures.MockService.AddMessage(msg)
+
+	// No body_format specified — should default to text.
+	request := makeRequest(map[string]any{
+		"message_id": "msg1",
+	})
+
+	result, err := TestableGmailGetMessage(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	body, _ := response["body"].(string)
+
+	// Default should be plain text, not HTML.
+	if body == "" {
+		t.Fatal("expected body in response")
+	}
+	if body != "plain: hello world" {
+		t.Errorf("default body_format should be text; got body=%q", body)
+	}
+	// HTML body should not be present when using text format.
+	if _, hasHTML := response["body_html"]; hasHTML {
+		t.Error("body_html should not be present when body_format=text (default)")
+	}
+}
+
+// TestGmailGetMessage_ExplicitHTMLBodyFormat verifies that callers can still request HTML explicitly.
+func TestGmailGetMessage_ExplicitHTMLBodyFormat(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestHTMLMessage("msg2", "hello world")
+	fixtures.MockService.AddMessage(msg)
+
+	request := makeRequest(map[string]any{
+		"message_id":  "msg2",
+		"body_format": "html",
+	})
+
+	result, err := TestableGmailGetMessage(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	body, _ := response["body"].(string)
+
+	if body == "" {
+		t.Fatal("expected body in response for html format")
+	}
+	// HTML body should be returned when explicitly requested.
+	if body != "<p>html: hello world</p>" {
+		t.Errorf("expected HTML body; got %q", body)
+	}
+}
+
+// TestGmailGetMessages_DefaultBodyFormatIsText verifies that gmail_get_messages also
+// defaults to text body format.
+func TestGmailGetMessages_DefaultBodyFormatIsText(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestHTMLMessage("msg3", "batch message")
+	fixtures.MockService.AddMessage(msg)
+
+	// No body_format specified — should default to text.
+	request := makeRequest(map[string]any{
+		"message_ids": []any{"msg3"},
+	})
+
+	result, err := TestableGmailGetMessages(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	messages, ok := response["messages"].([]any)
+	if !ok || len(messages) == 0 {
+		t.Fatal("expected messages in response")
+	}
+
+	msg0 := messages[0].(map[string]any)
+	body, _ := msg0["body"].(string)
+	if body != "plain: batch message" {
+		t.Errorf("default body_format for get_messages should be text; got body=%q", body)
 	}
 }

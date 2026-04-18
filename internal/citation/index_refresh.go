@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -23,16 +24,42 @@ func (s *RealCitationService) RefreshIndex(ctx context.Context, indexID string) 
 
 	result := &RefreshResult{}
 
-	// Check each indexed file against Drive
-	for _, prev := range indexed {
-		current, err := s.driveService.Files.Get(prev.FileID).
-			Fields("id,name,mimeType,modifiedTime,trashed").
-			SupportsAllDrives(true).
-			Context(ctx).Do()
-		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", prev.FileName, err))
+	// refreshFileResult holds the outcome of checking a single indexed file.
+	type refreshFileResult struct {
+		prev    IndexedFile
+		current *drive.File
+		err     error
+	}
+
+	// Fetch current Drive metadata for all indexed files concurrently (up to 5 at a time).
+	fileResults := make([]refreshFileResult, len(indexed))
+	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(5)
+
+	for i, prev := range indexed {
+		i, prev := i, prev
+		g.Go(func() error {
+			current, err := s.driveService.Files.Get(prev.FileID).
+				Fields("id,name,mimeType,modifiedTime,trashed").
+				SupportsAllDrives(true).
+				Context(gCtx).Do()
+			fileResults[i] = refreshFileResult{prev: prev, current: current, err: err}
+			return nil // partial failure — keep going
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	// Process results sequentially (store writes and result mutation are not concurrent-safe).
+	for _, fr := range fileResults {
+		if fr.err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", fr.prev.FileName, fr.err))
 			continue
 		}
+		current := fr.current
+		prev := fr.prev
 
 		// File was trashed → remove from index
 		if current.Trashed {

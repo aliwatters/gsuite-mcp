@@ -202,9 +202,18 @@ func (f *DriveAccessFilter) CheckFileAccess(ctx context.Context, client *http.Cl
 // WithDriveAccessCheck wraps an MCP handler to check drive access before execution.
 // paramName is the request parameter containing the file/document/spreadsheet ID.
 // Use this to protect Docs, Sheets, and other services that access Drive files.
-func WithDriveAccessCheck(handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error), paramName string) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// Pass explicit appDeps to avoid reading from the global singleton; omit to fall
+// back to GetDeps() for backward compatibility.
+func WithDriveAccessCheck(handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error), paramName string, appDeps ...*Deps) func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	var injected *Deps
+	if len(appDeps) > 0 {
+		injected = appDeps[0]
+	}
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		d := GetDeps()
+		d := injected
+		if d == nil {
+			d = GetDeps()
+		}
 		if d == nil || d.DriveAccessFilter == nil || !d.DriveAccessFilter.IsActive() {
 			return handler(ctx, request)
 		}

@@ -8,44 +8,71 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-// DriveService defines the interface for Google Drive API operations.
-// This interface enables dependency injection and testing with mocks.
-type DriveService interface {
-	// Files
+// === Drive sub-interfaces (domain-scoped, ≤5 methods each) ===
+
+// DriveFileReader provides read access to Drive file metadata and content.
+type DriveFileReader interface {
 	ListFiles(ctx context.Context, opts *ListFilesOptions) (*drive.FileList, error)
 	GetFile(ctx context.Context, fileID string, fields string) (*drive.File, error)
+	DownloadFile(ctx context.Context, fileID string) (io.ReadCloser, error)
+	ExportFile(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error)
+}
+
+// DriveFileWriter provides write access to Drive file content.
+type DriveFileWriter interface {
 	CreateFile(ctx context.Context, file *drive.File, content io.Reader) (*drive.File, error)
 	UpdateFile(ctx context.Context, fileID string, file *drive.File) (*drive.File, error)
 	MoveFile(ctx context.Context, fileID string, newParentID string, previousParents string) (*drive.File, error)
 	CopyFile(ctx context.Context, fileID string, file *drive.File) (*drive.File, error)
 	DeleteFile(ctx context.Context, fileID string) error
-	DownloadFile(ctx context.Context, fileID string) (io.ReadCloser, error)
-	ExportFile(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error)
+}
 
-	// Drives
-	GetDrive(ctx context.Context, driveID string) (*drive.Drive, error)
-	ListDrives(ctx context.Context, pageSize int64, pageToken string) (*drive.DriveList, error)
-
-	// Permissions
+// DrivePermissionService manages Drive file permissions.
+type DrivePermissionService interface {
 	ListPermissions(ctx context.Context, fileID string) (*drive.PermissionList, error)
 	CreatePermission(ctx context.Context, fileID string, permission *drive.Permission, sendNotification bool) (*drive.Permission, error)
 	DeletePermission(ctx context.Context, fileID string, permissionID string) error
+}
 
-	// Comments
+// DriveCommentService manages Drive file comments.
+type DriveCommentService interface {
 	ListComments(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.CommentList, error)
 	GetComment(ctx context.Context, fileID string, commentID string, fields string, includeDeleted bool) (*drive.Comment, error)
 	CreateComment(ctx context.Context, fileID string, comment *drive.Comment, fields string) (*drive.Comment, error)
 	UpdateComment(ctx context.Context, fileID string, commentID string, comment *drive.Comment, fields string) (*drive.Comment, error)
 	DeleteComment(ctx context.Context, fileID string, commentID string) error
+}
 
-	// Replies
+// DriveReplyService manages Drive comment replies.
+type DriveReplyService interface {
 	ListReplies(ctx context.Context, fileID string, commentID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.ReplyList, error)
 	CreateReply(ctx context.Context, fileID string, commentID string, reply *drive.Reply, fields string) (*drive.Reply, error)
+}
 
-	// Revisions
+// DriveRevisionService manages Drive file revisions.
+type DriveRevisionService interface {
 	ListRevisions(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string) (*drive.RevisionList, error)
 	GetRevision(ctx context.Context, fileID string, revisionID string, fields string) (*drive.Revision, error)
 	DownloadRevision(ctx context.Context, fileID string, revisionID string) (io.ReadCloser, error)
+}
+
+// DriveDriveService provides access to shared drive metadata.
+type DriveDriveService interface {
+	GetDrive(ctx context.Context, driveID string) (*drive.Drive, error)
+	ListDrives(ctx context.Context, pageSize int64, pageToken string) (*drive.DriveList, error)
+}
+
+// DriveService defines the complete interface for Google Drive API operations.
+// It is composed from focused sub-interfaces, each covering a single domain.
+// This interface enables dependency injection and testing with mocks.
+type DriveService interface {
+	DriveFileReader
+	DriveFileWriter
+	DrivePermissionService
+	DriveCommentService
+	DriveReplyService
+	DriveRevisionService
+	DriveDriveService
 }
 
 // ListFilesOptions contains optional parameters for listing files.

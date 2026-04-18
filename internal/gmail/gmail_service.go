@@ -7,64 +7,95 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-// GmailService defines the interface for Gmail operations.
-// This abstraction enables dependency injection and testing.
-type GmailService interface {
-	// Messages
+// === Gmail sub-interfaces (domain-scoped, ≤5 methods each) ===
+
+// GmailMessageReader provides read access to Gmail messages.
+type GmailMessageReader interface {
 	ListMessages(ctx context.Context, query string, maxResults int64, pageToken string) (*gmail.ListMessagesResponse, error)
 	GetMessage(ctx context.Context, messageID, format string) (*gmail.Message, error)
+	GetAttachment(ctx context.Context, messageID, attachmentID string) (*gmail.MessagePartBody, error)
+}
+
+// GmailMessageWriter provides write/mutation operations on Gmail messages.
+type GmailMessageWriter interface {
 	SendMessage(ctx context.Context, message *gmail.Message) (*gmail.Message, error)
 	ModifyMessage(ctx context.Context, messageID string, req *gmail.ModifyMessageRequest) (*gmail.Message, error)
 	TrashMessage(ctx context.Context, messageID string) (*gmail.Message, error)
 	UntrashMessage(ctx context.Context, messageID string) (*gmail.Message, error)
 	BatchModifyMessages(ctx context.Context, req *gmail.BatchModifyMessagesRequest) error
+}
 
-	// Threads
+// GmailThreadService manages Gmail conversation threads.
+type GmailThreadService interface {
 	GetThread(ctx context.Context, threadID, format string) (*gmail.Thread, error)
 	ModifyThread(ctx context.Context, threadID string, req *gmail.ModifyThreadRequest) (*gmail.Thread, error)
 	TrashThread(ctx context.Context, threadID string) (*gmail.Thread, error)
 	UntrashThread(ctx context.Context, threadID string) (*gmail.Thread, error)
+}
 
-	// Labels
+// GmailLabelService manages Gmail labels.
+type GmailLabelService interface {
 	ListLabels(ctx context.Context) (*gmail.ListLabelsResponse, error)
 	GetLabel(ctx context.Context, labelID string) (*gmail.Label, error)
 	CreateLabel(ctx context.Context, label *gmail.Label) (*gmail.Label, error)
 	UpdateLabel(ctx context.Context, labelID string, label *gmail.Label) (*gmail.Label, error)
 	DeleteLabel(ctx context.Context, labelID string) error
+}
 
-	// Drafts
+// GmailDraftService manages Gmail draft messages.
+type GmailDraftService interface {
 	ListDrafts(ctx context.Context, maxResults int64, pageToken string) (*gmail.ListDraftsResponse, error)
 	GetDraft(ctx context.Context, draftID, format string) (*gmail.Draft, error)
 	CreateDraft(ctx context.Context, draft *gmail.Draft) (*gmail.Draft, error)
 	UpdateDraft(ctx context.Context, draftID string, draft *gmail.Draft) (*gmail.Draft, error)
 	DeleteDraft(ctx context.Context, draftID string) error
 	SendDraft(ctx context.Context, draft *gmail.Draft) (*gmail.Message, error)
+}
 
-	// Attachments
-	GetAttachment(ctx context.Context, messageID, attachmentID string) (*gmail.MessagePartBody, error)
-
-	// Filters
+// GmailFilterService manages Gmail filters.
+type GmailFilterService interface {
 	ListFilters(ctx context.Context) (*gmail.ListFiltersResponse, error)
 	CreateFilter(ctx context.Context, filter *gmail.Filter) (*gmail.Filter, error)
 	DeleteFilter(ctx context.Context, filterID string) error
+}
 
-	// Profile & Settings
+// GmailSettingsService manages Gmail account settings.
+type GmailSettingsService interface {
 	GetProfile(ctx context.Context) (*gmail.Profile, error)
 	GetVacationSettings(ctx context.Context) (*gmail.VacationSettings, error)
 	UpdateVacationSettings(ctx context.Context, settings *gmail.VacationSettings) (*gmail.VacationSettings, error)
+}
 
-	// Send-As
+// GmailSendAsService manages Gmail send-as aliases.
+type GmailSendAsService interface {
 	ListSendAs(ctx context.Context) ([]*gmail.SendAs, error)
 	GetSendAs(ctx context.Context, sendAsEmail string) (*gmail.SendAs, error)
 	CreateSendAs(ctx context.Context, sendAs *gmail.SendAs) (*gmail.SendAs, error)
 	UpdateSendAs(ctx context.Context, sendAsEmail string, sendAs *gmail.SendAs) (*gmail.SendAs, error)
 	DeleteSendAs(ctx context.Context, sendAsEmail string) error
 	VerifySendAs(ctx context.Context, sendAsEmail string) error
+}
 
-	// Delegates
+// GmailDelegateService manages Gmail account delegates.
+type GmailDelegateService interface {
 	ListDelegates(ctx context.Context) ([]*gmail.Delegate, error)
 	CreateDelegate(ctx context.Context, delegate *gmail.Delegate) (*gmail.Delegate, error)
 	DeleteDelegate(ctx context.Context, delegateEmail string) error
+}
+
+// GmailService defines the complete interface for Gmail operations.
+// It is composed from focused sub-interfaces, each covering a single domain.
+// This abstraction enables dependency injection and testing.
+type GmailService interface {
+	GmailMessageReader
+	GmailMessageWriter
+	GmailThreadService
+	GmailLabelService
+	GmailDraftService
+	GmailFilterService
+	GmailSettingsService
+	GmailSendAsService
+	GmailDelegateService
 }
 
 // RealGmailService wraps the actual Gmail API service.
