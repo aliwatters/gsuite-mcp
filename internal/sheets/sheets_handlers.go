@@ -22,7 +22,14 @@ func NewSheetsService(ctx context.Context, client *http.Client) (SheetsService, 
 	return NewRealSheetsService(srv), nil
 }
 
+// InitDefaultSheetsHandlerDeps initializes the default Sheets handler deps with explicit deps,
+// avoiding reliance on the global singleton at call time.
+func InitDefaultSheetsHandlerDeps(appDeps *common.Deps) {
+	DefaultSheetsHandlerDeps = common.NewDefaultHandlerDeps(NewSheetsService, appDeps)
+}
+
 // DefaultSheetsHandlerDeps holds the default dependencies for production use.
+// Initialize with InitDefaultSheetsHandlerDeps after SetDeps to pass deps explicitly.
 var DefaultSheetsHandlerDeps = common.NewDefaultHandlerDeps(NewSheetsService)
 
 // ResolveSheetsServiceOrError resolves a Sheets service, returning an MCP error result on failure.
