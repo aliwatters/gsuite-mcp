@@ -50,24 +50,34 @@ func MarshalToolResult(result any) (*mcp.CallToolResult, error) {
 type ServiceConstructor[S any] func(ctx context.Context, client *http.Client) (S, error)
 
 // NewDefaultHandlerDeps creates production HandlerDeps using ResolveAccountFromRequest
-// and a lazyServiceFactory backed by the global auth manager.
-func NewDefaultHandlerDeps[S any](constructor ServiceConstructor[S]) *HandlerDeps[S] {
+// and a serviceFactory backed by the provided deps. If deps is nil, the factory
+// falls back to GetDeps() at call time for backward compatibility.
+func NewDefaultHandlerDeps[S any](constructor ServiceConstructor[S], appDeps ...*Deps) *HandlerDeps[S] {
+	var d *Deps
+	if len(appDeps) > 0 {
+		d = appDeps[0]
+	}
 	return &HandlerDeps[S]{
 		EmailResolver: ResolveAccountFromRequest,
-		ServiceFactory: &lazyServiceFactory[S]{
+		ServiceFactory: &explicitServiceFactory[S]{
 			Constructor: constructor,
+			Deps:        d,
 		},
 	}
 }
 
-// lazyServiceFactory resolves the auth manager lazily at call time (not init time)
-// since common.GetDeps() is nil during package initialization.
-type lazyServiceFactory[S any] struct {
+// explicitServiceFactory uses an explicitly-provided *Deps rather than the global singleton.
+// When Deps is nil it falls back to GetDeps() so existing callers are unaffected.
+type explicitServiceFactory[S any] struct {
 	Constructor ServiceConstructor[S]
+	Deps        *Deps
 }
 
-func (f *lazyServiceFactory[S]) CreateService(ctx context.Context, email string) (S, error) {
-	d := GetDeps()
+func (f *explicitServiceFactory[S]) CreateService(ctx context.Context, email string) (S, error) {
+	d := f.Deps
+	if d == nil {
+		d = GetDeps()
+	}
 	if d == nil || d.AuthManager == nil {
 		var zero S
 		return zero, fmt.Errorf("authentication subsystem not initialized; restart gsuite-mcp and check server startup logs")

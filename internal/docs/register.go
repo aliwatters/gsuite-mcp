@@ -8,8 +8,14 @@ import (
 
 // RegisterTools registers all Docs tools with the MCP server.
 func RegisterTools(s *server.MCPServer) {
-	// === Docs Core (Phase 1) ===
+	registerDocsCoreTools(s)
+	registerDocsFormattingTools(s)
+	registerDocsEnhancedTools(s)
+	registerDocsNamedRangesTools(s)
+}
 
+// registerDocsCoreTools registers Phase 1 Docs tools: create, read, write, insert, replace.
+func registerDocsCoreTools(s *server.MCPServer) {
 	// docs_create - Create a new Google Doc
 	s.AddTool(mcp.NewTool("docs_create",
 		mcp.WithDescription("Create a new Google Doc with the given title."),
@@ -97,8 +103,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), common.WithDriveAccessCheck(HandleDocsBatchUpdate, "document_id"))
 
-	// === Docs Extended (Phase 3) - Advanced Formatting ===
+}
 
+// registerDocsFormattingTools registers Phase 3 Docs tools: advanced text and paragraph formatting.
+func registerDocsFormattingTools(s *server.MCPServer) {
 	// docs_format_text - Apply text formatting
 	s.AddTool(mcp.NewTool("docs_format_text",
 		mcp.WithDescription("Apply formatting (bold, italic, underline, font, size, color) to text range."),
@@ -199,8 +207,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), common.WithDriveAccessCheck(HandleDocsCreateFooter, "document_id"))
 
-	// === Docs Enhanced (Phase 4) ===
+}
 
+// registerDocsEnhancedTools registers Phase 4 Docs tools: structure, markdown, find-replace, export, import.
+func registerDocsEnhancedTools(s *server.MCPServer) {
 	// docs_get_structure - Get document structure with character indices
 	s.AddTool(mcp.NewTool("docs_get_structure",
 		mcp.WithDescription("Get document structure with paragraph boundaries and character indices. Returns element types, named styles, and text previews with real Google Docs indexes for use with batch_update and format_text."),
@@ -262,8 +272,10 @@ func RegisterTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleDocsImportToGoogleDoc)
 
-	// === Docs Named Ranges & Suggestions (Phase 5) ===
+}
 
+// registerDocsNamedRangesTools registers Phase 5 Docs tools: named ranges and suggested edits.
+func registerDocsNamedRangesTools(s *server.MCPServer) {
 	// docs_list_named_ranges - List all named ranges
 	s.AddTool(mcp.NewTool("docs_list_named_ranges",
 		mcp.WithDescription("List all named ranges in a Google Doc. Named ranges are stable anchors for programmatic editing that survive text changes."),
