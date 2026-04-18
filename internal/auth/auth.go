@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,6 +41,10 @@ var (
 
 // ErrNoCredentials indicates that credentials are missing for an account.
 var ErrNoCredentials = errors.New("no credentials")
+
+// ErrUnverifiedApp indicates that the OAuth app has not been verified by Google and the
+// Google Workspace admin has blocked unverified apps for the domain.
+var ErrUnverifiedApp = errors.New("unverified app blocked by Google Workspace admin")
 
 const (
 	// oauthStateTokenSize is the number of random bytes used for CSRF state tokens.
@@ -449,6 +454,50 @@ func sendOAuthError(w http.ResponseWriter, title, message string) {
 	errorTmpl.Execute(w, errorPageData{Title: title, Message: message})
 }
 
+// isWorkspaceDomain returns true when the email is not a personal Google account.
+// This is a heuristic: gmail.com and googlemail.com are consumer domains; everything
+// else is assumed to be a Google Workspace (formerly G Suite) domain.
+func isWorkspaceDomain(email string) bool {
+	if email == "" {
+		return false
+	}
+	at := strings.LastIndex(email, "@")
+	if at < 0 {
+		return false
+	}
+	domain := strings.ToLower(email[at+1:])
+	return domain != "gmail.com" && domain != "googlemail.com"
+}
+
+// printWorkspaceDomainWarning prints a pre-flight warning when the user is attempting
+// to authenticate with a Google Workspace account. Workspace admins may have restricted
+// OAuth access to verified apps only, which would cause access_denied.
+func printWorkspaceDomainWarning(email string) {
+	fmt.Fprintf(os.Stderr, "\n⚠  Workspace domain detected (%s)\n", email)
+	fmt.Fprintf(os.Stderr, "   Google Workspace admins can restrict OAuth to verified apps only.\n")
+	fmt.Fprintf(os.Stderr, "   If authentication fails with 'access denied', see the options below.\n\n")
+}
+
+// printUnverifiedAppHelp prints actionable guidance when Google blocks an unverified app.
+func printUnverifiedAppHelp() {
+	fmt.Fprintln(os.Stderr, "\n"+strings.Repeat("=", 60))
+	fmt.Fprintln(os.Stderr, "ACCESS DENIED — Unverified app blocked by Google Workspace")
+	fmt.Fprintln(os.Stderr, strings.Repeat("=", 60))
+	fmt.Fprintln(os.Stderr, "Your Google Workspace admin has restricted OAuth access to")
+	fmt.Fprintln(os.Stderr, "verified applications only. You have three options:")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "  1. Ask your admin to allow the app:")
+	fmt.Fprintln(os.Stderr, "     Admin Console → Security → API Controls → App Access Control")
+	fmt.Fprintln(os.Stderr, "     → Add the OAuth client ID to the trusted apps list")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "  2. Complete OAuth app verification (if you own the app):")
+	fmt.Fprintln(os.Stderr, "     https://support.google.com/cloud/answer/13463073")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "  3. Use a personal Google account (gmail.com) instead:")
+	fmt.Fprintln(os.Stderr, "     Run 'gsuite-mcp auth' again and sign in with a personal account")
+	fmt.Fprintln(os.Stderr, strings.Repeat("=", 60)+"\n")
+}
+
 // handleOAuthCallback returns a handler function for the OAuth2 callback.
 func handleOAuthCallback(state string, codeCh chan<- string, errCh chan<- error, resultCh <-chan authResult) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -460,6 +509,26 @@ func handleOAuthCallback(state string, codeCh chan<- string, errCh chan<- error,
 
 		if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 			errDesc := r.URL.Query().Get("error_description")
+
+			// Detect unverified-app blocks: Google returns error=access_denied and an
+			// error_description mentioning admin policy or app verification.
+			if errMsg == "access_denied" {
+				descLower := strings.ToLower(errDesc)
+				isWorkspaceBlock := strings.Contains(descLower, "admin") ||
+					strings.Contains(descLower, "unverified") ||
+					strings.Contains(descLower, "policy") ||
+					strings.Contains(descLower, "restricted") ||
+					errDesc == "" // access_denied with no description is also typically an admin block
+				if isWorkspaceBlock {
+					printUnverifiedAppHelp()
+					errCh <- fmt.Errorf("%w: %s", ErrUnverifiedApp, errDesc)
+					sendOAuthError(w, "Access Denied — Unverified App",
+						"Your Google Workspace admin has blocked access to unverified apps. "+
+							"Check the terminal for options.")
+					return
+				}
+			}
+
 			errCh <- fmt.Errorf("OAuth error: %s - %s", errMsg, errDesc)
 			sendOAuthError(w, "Authentication Failed", errDesc)
 			return
