@@ -484,7 +484,7 @@ func scanChunks(rows *sql.Rows) ([]Chunk, error) {
 		if err := rows.Scan(&c.ID, &c.FileID, &c.FileName, &c.Content, &summary,
 			&c.Location.PageNumber, &c.Location.SectionHeading, &c.Location.ParagraphIndex,
 			&c.Location.CharStart, &c.Location.CharEnd); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scanning chunk row: %w", err)
 		}
 		if summary.Valid {
 			c.Summary = summary.String

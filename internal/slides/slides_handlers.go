@@ -2,6 +2,7 @@ package slides
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type SlidesHandlerDeps = common.HandlerDeps[SlidesService]
 func NewSlidesService(ctx context.Context, client *http.Client) (SlidesService, error) {
 	srv, err := slides.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating slides service: %w", err)
 	}
 	return NewRealSlidesService(srv), nil
 }

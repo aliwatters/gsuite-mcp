@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type ChatHandlerDeps = common.HandlerDeps[ChatService]
 func NewChatService(ctx context.Context, client *http.Client) (ChatService, error) {
 	srv, err := chatapi.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating chat service: %w", err)
 	}
 	return NewRealChatService(srv), nil
 }

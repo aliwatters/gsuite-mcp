@@ -2,6 +2,7 @@ package driveactivity
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type DriveActivityHandlerDeps = common.HandlerDeps[DriveActivityService]
 func NewDriveActivityService(ctx context.Context, client *http.Client) (DriveActivityService, error) {
 	srv, err := driveactivity.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating drive activity service: %w", err)
 	}
 	return NewRealDriveActivityService(srv), nil
 }

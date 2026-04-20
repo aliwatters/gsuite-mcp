@@ -2,6 +2,7 @@ package docs
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -18,11 +19,11 @@ type DocsHandlerDeps = common.HandlerDeps[DocsService]
 func NewDocsService(ctx context.Context, client *http.Client) (DocsService, error) {
 	srv, err := docs.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating docs service: %w", err)
 	}
 	driveSrv, err := drive.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating drive service for docs: %w", err)
 	}
 	return NewRealDocsServiceWithHTTP(srv, driveSrv, client), nil
 }

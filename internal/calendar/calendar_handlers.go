@@ -2,6 +2,7 @@ package calendar
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type CalendarHandlerDeps = common.HandlerDeps[CalendarService]
 func NewCalendarService(ctx context.Context, client *http.Client) (CalendarService, error) {
 	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating calendar service: %w", err)
 	}
 	return NewRealCalendarService(srv), nil
 }

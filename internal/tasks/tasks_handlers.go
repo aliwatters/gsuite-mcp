@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type TasksHandlerDeps = common.HandlerDeps[TasksService]
 func NewTasksService(ctx context.Context, client *http.Client) (TasksService, error) {
 	srv, err := tasks.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating tasks service: %w", err)
 	}
 	return NewRealTasksService(srv), nil
 }

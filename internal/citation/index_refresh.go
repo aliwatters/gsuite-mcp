@@ -13,7 +13,7 @@ import (
 func (s *RealCitationService) RefreshIndex(ctx context.Context, indexID string) (*RefreshResult, error) {
 	store, err := s.getStore(ctx, indexID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("RefreshIndex: %w", err)
 	}
 
 	// Get currently indexed files
@@ -46,7 +46,7 @@ func (s *RealCitationService) RefreshIndex(ctx context.Context, indexID string) 
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("RefreshIndex fetching file metadata: %w", err)
 	}
 
 	// Process results sequentially (store writes and result mutation are not concurrent-safe).

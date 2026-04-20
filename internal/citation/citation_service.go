@@ -135,7 +135,7 @@ func (s *RealCitationService) getStore(ctx context.Context, indexID string) (*Du
 
 	store, err := NewDualStore(ctx, indexID, entry.SheetID, s.sheets)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getStore %s: %w", indexID, err)
 	}
 
 	s.mu.Lock()
@@ -263,7 +263,7 @@ func (s *RealCitationService) chunkFile(ctx context.Context, file *drive.File) (
 func (s *RealCitationService) chunkSlides(ctx context.Context, file *drive.File) ([]Chunk, error) {
 	pres, err := s.slides.GetPresentation(ctx, file.Id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get slides presentation %s: %w", file.Name, err)
 	}
 	return extractSlidesText(file.Id, file.Name, pres), nil
 }
@@ -295,13 +295,13 @@ func (s *RealCitationService) chunkPptxBytes(file *drive.File, data []byte) ([]C
 func (s *RealCitationService) chunkExportedText(ctx context.Context, file *drive.File) ([]Chunk, error) {
 	body, err := s.drive.ExportFile(ctx, file.Id, "text/plain")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("exporting %s as text: %w", file.Name, err)
 	}
 	defer body.Close()
 
 	data, err := limitedRead(body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading exported text for %s: %w", file.Name, err)
 	}
 
 	return chunkText(file.Id, file.Name, string(data)), nil
@@ -337,13 +337,13 @@ func (s *RealCitationService) ListIndexes(_ context.Context) ([]IndexInfo, error
 func (s *RealCitationService) GetOverview(ctx context.Context, indexID string) (map[string]any, error) {
 	store, err := s.getStore(ctx, indexID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetOverview: %w", err)
 	}
 
 	// Compute counts from actual data, not metadata (which may be stale)
 	files, err := store.GetIndexedFiles(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetOverview getting indexed files: %w", err)
 	}
 
 	totalChunks := 0
@@ -353,13 +353,13 @@ func (s *RealCitationService) GetOverview(ctx context.Context, indexID string) (
 
 	concepts, err := store.GetConcepts(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetOverview getting concepts: %w", err)
 	}
 
 	// Get corpus summary (level 2)
 	summaries, err := store.GetSummaries(ctx, 2)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetOverview getting summaries: %w", err)
 	}
 
 	conceptNames := make([]string, len(concepts))
@@ -389,7 +389,7 @@ func (s *RealCitationService) GetOverview(ctx context.Context, indexID string) (
 func (s *RealCitationService) Lookup(ctx context.Context, indexID, query string, limit int) ([]Chunk, error) {
 	store, err := s.getStore(ctx, indexID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Lookup: %w", err)
 	}
 	if limit <= 0 {
 		limit = 10
@@ -400,7 +400,7 @@ func (s *RealCitationService) Lookup(ctx context.Context, indexID, query string,
 func (s *RealCitationService) GetChunks(ctx context.Context, indexID string, chunkIDs []string) ([]Chunk, error) {
 	store, err := s.getStore(ctx, indexID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetChunks: %w", err)
 	}
 	return store.GetChunks(ctx, chunkIDs)
 }

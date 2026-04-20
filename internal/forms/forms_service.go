@@ -3,6 +3,7 @@ package forms
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"google.golang.org/api/forms/v1"
 )
@@ -74,7 +75,7 @@ func (s *RealFormsService) ListResponses(ctx context.Context, formID string) ([]
 		}
 		resp, err := call.Do()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("listing form responses for %s: %w", formID, err)
 		}
 		allResponses = append(allResponses, resp.Responses...)
 		if resp.NextPageToken == "" {
@@ -199,7 +200,7 @@ func formatResponse(resp *forms.FormResponse) map[string]any {
 func parseBatchUpdateRequests(requestsJSON string) ([]*forms.Request, error) {
 	var requests []*forms.Request
 	if err := json.Unmarshal([]byte(requestsJSON), &requests); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing forms batch update requests: %w", err)
 	}
 	return requests, nil
 }

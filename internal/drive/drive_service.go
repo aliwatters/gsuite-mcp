@@ -2,6 +2,7 @@ package drive
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"google.golang.org/api/drive/v3"
@@ -179,7 +180,7 @@ func (s *RealDriveService) DownloadFile(ctx context.Context, fileID string) (io.
 	resp, err := s.service.Files.Get(fileID).Context(ctx).
 		SupportsAllDrives(true).Download()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("downloading file %s: %w", fileID, err)
 	}
 	return resp.Body, nil
 }
@@ -188,7 +189,7 @@ func (s *RealDriveService) DownloadFile(ctx context.Context, fileID string) (io.
 func (s *RealDriveService) ExportFile(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error) {
 	resp, err := s.service.Files.Export(fileID, mimeType).Context(ctx).Download()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("exporting file %s as %s: %w", fileID, mimeType, err)
 	}
 	return resp.Body, nil
 }
@@ -331,7 +332,7 @@ func (s *RealDriveService) DownloadRevision(ctx context.Context, fileID string, 
 	resp, err := s.service.Revisions.Get(fileID, revisionID).Context(ctx).
 		AcknowledgeAbuse(true).Download()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("downloading revision %s of file %s: %w", revisionID, fileID, err)
 	}
 	return resp.Body, nil
 }

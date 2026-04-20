@@ -2,6 +2,7 @@ package drive
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strings"
 
@@ -82,7 +83,7 @@ func (f *FilteredDriveService) ListFiles(ctx context.Context, opts *ListFilesOpt
 
 	result, err := f.inner.ListFiles(ctx, innerOpts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listing files: %w", err)
 	}
 
 	// Filter files by drive access
@@ -102,10 +103,10 @@ func (f *FilteredDriveService) GetFile(ctx context.Context, fileID string, field
 	f.ensureResolved(ctx)
 	file, err := f.inner.GetFile(ctx, fileID, ensureDriveIDField(fields))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting file %s: %w", fileID, err)
 	}
 	if err := f.filter.Check(file.DriveId); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetFile drive access check: %w", err)
 	}
 	return file, nil
 }
@@ -114,7 +115,7 @@ func (f *FilteredDriveService) GetFile(ctx context.Context, fileID string, field
 func (f *FilteredDriveService) CreateFile(ctx context.Context, file *drive.File, content io.Reader) (*drive.File, error) {
 	if len(file.Parents) > 0 {
 		if err := f.checkFileAccess(ctx, file.Parents[0]); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("CreateFile parent access check: %w", err)
 		}
 	}
 	return f.inner.CreateFile(ctx, file, content)
@@ -123,7 +124,7 @@ func (f *FilteredDriveService) CreateFile(ctx context.Context, file *drive.File,
 // UpdateFile checks drive access before updating.
 func (f *FilteredDriveService) UpdateFile(ctx context.Context, fileID string, file *drive.File) (*drive.File, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("UpdateFile access check: %w", err)
 	}
 	return f.inner.UpdateFile(ctx, fileID, file)
 }
@@ -131,10 +132,10 @@ func (f *FilteredDriveService) UpdateFile(ctx context.Context, fileID string, fi
 // MoveFile checks both source file and destination drive.
 func (f *FilteredDriveService) MoveFile(ctx context.Context, fileID string, newParentID string, previousParents string) (*drive.File, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("MoveFile source access check: %w", err)
 	}
 	if err := f.checkFileAccess(ctx, newParentID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("MoveFile destination access check: %w", err)
 	}
 	return f.inner.MoveFile(ctx, fileID, newParentID, previousParents)
 }
@@ -142,11 +143,11 @@ func (f *FilteredDriveService) MoveFile(ctx context.Context, fileID string, newP
 // CopyFile checks the source file's drive before copying.
 func (f *FilteredDriveService) CopyFile(ctx context.Context, fileID string, file *drive.File) (*drive.File, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CopyFile source access check: %w", err)
 	}
 	if len(file.Parents) > 0 {
 		if err := f.checkFileAccess(ctx, file.Parents[0]); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("CopyFile destination access check: %w", err)
 		}
 	}
 	return f.inner.CopyFile(ctx, fileID, file)
@@ -155,7 +156,7 @@ func (f *FilteredDriveService) CopyFile(ctx context.Context, fileID string, file
 // DeleteFile checks drive access before deleting.
 func (f *FilteredDriveService) DeleteFile(ctx context.Context, fileID string) error {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return err
+		return fmt.Errorf("DeleteFile access check: %w", err)
 	}
 	return f.inner.DeleteFile(ctx, fileID)
 }
@@ -163,7 +164,7 @@ func (f *FilteredDriveService) DeleteFile(ctx context.Context, fileID string) er
 // DownloadFile checks drive access before downloading.
 func (f *FilteredDriveService) DownloadFile(ctx context.Context, fileID string) (io.ReadCloser, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("DownloadFile access check: %w", err)
 	}
 	return f.inner.DownloadFile(ctx, fileID)
 }
@@ -171,7 +172,7 @@ func (f *FilteredDriveService) DownloadFile(ctx context.Context, fileID string) 
 // ExportFile checks drive access before exporting.
 func (f *FilteredDriveService) ExportFile(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ExportFile access check: %w", err)
 	}
 	return f.inner.ExportFile(ctx, fileID, mimeType)
 }
@@ -182,7 +183,7 @@ func (f *FilteredDriveService) ExportFile(ctx context.Context, fileID string, mi
 func (f *FilteredDriveService) GetDrive(ctx context.Context, driveID string) (*drive.Drive, error) {
 	f.ensureResolved(ctx)
 	if err := f.filter.Check(driveID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetDrive access check: %w", err)
 	}
 	return f.inner.GetDrive(ctx, driveID)
 }
@@ -196,21 +197,21 @@ func (f *FilteredDriveService) ListDrives(ctx context.Context, pageSize int64, p
 
 func (f *FilteredDriveService) ListPermissions(ctx context.Context, fileID string) (*drive.PermissionList, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListPermissions access check: %w", err)
 	}
 	return f.inner.ListPermissions(ctx, fileID)
 }
 
 func (f *FilteredDriveService) CreatePermission(ctx context.Context, fileID string, permission *drive.Permission, sendNotification bool) (*drive.Permission, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CreatePermission access check: %w", err)
 	}
 	return f.inner.CreatePermission(ctx, fileID, permission, sendNotification)
 }
 
 func (f *FilteredDriveService) DeletePermission(ctx context.Context, fileID string, permissionID string) error {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return err
+		return fmt.Errorf("DeletePermission access check: %w", err)
 	}
 	return f.inner.DeletePermission(ctx, fileID, permissionID)
 }
@@ -219,35 +220,35 @@ func (f *FilteredDriveService) DeletePermission(ctx context.Context, fileID stri
 
 func (f *FilteredDriveService) ListComments(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.CommentList, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListComments access check: %w", err)
 	}
 	return f.inner.ListComments(ctx, fileID, fields, pageSize, pageToken, includeDeleted)
 }
 
 func (f *FilteredDriveService) GetComment(ctx context.Context, fileID string, commentID string, fields string, includeDeleted bool) (*drive.Comment, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetComment access check: %w", err)
 	}
 	return f.inner.GetComment(ctx, fileID, commentID, fields, includeDeleted)
 }
 
 func (f *FilteredDriveService) CreateComment(ctx context.Context, fileID string, comment *drive.Comment, fields string) (*drive.Comment, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CreateComment access check: %w", err)
 	}
 	return f.inner.CreateComment(ctx, fileID, comment, fields)
 }
 
 func (f *FilteredDriveService) UpdateComment(ctx context.Context, fileID string, commentID string, comment *drive.Comment, fields string) (*drive.Comment, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("UpdateComment access check: %w", err)
 	}
 	return f.inner.UpdateComment(ctx, fileID, commentID, comment, fields)
 }
 
 func (f *FilteredDriveService) DeleteComment(ctx context.Context, fileID string, commentID string) error {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return err
+		return fmt.Errorf("DeleteComment access check: %w", err)
 	}
 	return f.inner.DeleteComment(ctx, fileID, commentID)
 }
@@ -256,14 +257,14 @@ func (f *FilteredDriveService) DeleteComment(ctx context.Context, fileID string,
 
 func (f *FilteredDriveService) ListReplies(ctx context.Context, fileID string, commentID string, fields string, pageSize int64, pageToken string, includeDeleted bool) (*drive.ReplyList, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListReplies access check: %w", err)
 	}
 	return f.inner.ListReplies(ctx, fileID, commentID, fields, pageSize, pageToken, includeDeleted)
 }
 
 func (f *FilteredDriveService) CreateReply(ctx context.Context, fileID string, commentID string, reply *drive.Reply, fields string) (*drive.Reply, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CreateReply access check: %w", err)
 	}
 	return f.inner.CreateReply(ctx, fileID, commentID, reply, fields)
 }
@@ -272,21 +273,21 @@ func (f *FilteredDriveService) CreateReply(ctx context.Context, fileID string, c
 
 func (f *FilteredDriveService) ListRevisions(ctx context.Context, fileID string, fields string, pageSize int64, pageToken string) (*drive.RevisionList, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ListRevisions access check: %w", err)
 	}
 	return f.inner.ListRevisions(ctx, fileID, fields, pageSize, pageToken)
 }
 
 func (f *FilteredDriveService) GetRevision(ctx context.Context, fileID string, revisionID string, fields string) (*drive.Revision, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetRevision access check: %w", err)
 	}
 	return f.inner.GetRevision(ctx, fileID, revisionID, fields)
 }
 
 func (f *FilteredDriveService) DownloadRevision(ctx context.Context, fileID string, revisionID string) (io.ReadCloser, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("DownloadRevision access check: %w", err)
 	}
 	return f.inner.DownloadRevision(ctx, fileID, revisionID)
 }

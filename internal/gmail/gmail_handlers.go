@@ -2,6 +2,7 @@ package gmail
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type GmailHandlerDeps = common.HandlerDeps[GmailService]
 func NewGmailService(ctx context.Context, client *http.Client) (GmailService, error) {
 	srv, err := gmail.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating gmail service: %w", err)
 	}
 	return NewRealGmailService(srv), nil
 }
