@@ -2,6 +2,7 @@ package gmail
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"google.golang.org/api/gmail/v1"
@@ -251,7 +252,7 @@ func (s *RealGmailService) UpdateVacationSettings(ctx context.Context, settings 
 func (s *RealGmailService) ListSendAs(ctx context.Context) ([]*gmail.SendAs, error) {
 	resp, err := s.service.Users.Settings.SendAs.List(common.GmailUserMe).Context(ctx).Do()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listing send-as addresses: %w", err)
 	}
 	return resp.SendAs, nil
 }
@@ -281,7 +282,7 @@ func (s *RealGmailService) VerifySendAs(ctx context.Context, sendAsEmail string)
 func (s *RealGmailService) ListDelegates(ctx context.Context) ([]*gmail.Delegate, error) {
 	resp, err := s.service.Users.Settings.Delegates.List(common.GmailUserMe).Context(ctx).Do()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listing delegates: %w", err)
 	}
 	return resp.Delegates, nil
 }

@@ -2,6 +2,7 @@ package forms
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type FormsHandlerDeps = common.HandlerDeps[FormsService]
 func NewFormsService(ctx context.Context, client *http.Client) (FormsService, error) {
 	srv, err := forms.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating forms service: %w", err)
 	}
 	return NewRealFormsService(srv), nil
 }

@@ -2,6 +2,7 @@ package meet
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type MeetHandlerDeps = common.HandlerDeps[MeetService]
 func NewMeetService(ctx context.Context, client *http.Client) (MeetService, error) {
 	srv, err := meet.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating meet service: %w", err)
 	}
 	return NewRealMeetService(srv), nil
 }

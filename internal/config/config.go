@@ -173,7 +173,7 @@ func GetAuthenticatedEmails() ([]string, error) {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("reading credentials dir: %w", err)
 	}
 
 	var emails []string

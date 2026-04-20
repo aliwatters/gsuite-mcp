@@ -38,7 +38,7 @@ func readLimited(r io.Reader) ([]byte, error) {
 	limited := io.LimitReader(r, common.DriveMaxFileSize+1)
 	data, err := io.ReadAll(limited)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading file content: %w", err)
 	}
 	if int64(len(data)) > common.DriveMaxFileSize {
 		return nil, fmt.Errorf("response body exceeds maximum size of %d bytes", common.DriveMaxFileSize)
