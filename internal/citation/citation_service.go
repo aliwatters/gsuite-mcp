@@ -14,6 +14,13 @@ import (
 	gslides "google.golang.org/api/slides/v1"
 )
 
+// Compile-time interface satisfaction checks.
+var (
+	_ CitationDriveService  = (*realCitationDriveService)(nil)
+	_ CitationSheetsService = (*realCitationSheetsService)(nil)
+	_ CitationSlidesService = (*realCitationSlidesService)(nil)
+)
+
 // CitationService is the interface for all citation operations.
 type CitationService interface {
 	// CreateIndex creates a new index Sheet in the given folder.
@@ -52,12 +59,12 @@ type CitationService interface {
 
 // RealCitationService implements CitationService using Google APIs.
 type RealCitationService struct {
-	driveService  *drive.Service
-	sheetsService *sheets.Service
-	slidesService *gslides.Service
-	mu            sync.RWMutex
-	stores        map[string]*DualStore // indexID → store
-	config        *CitationConfig
+	drive  CitationDriveService
+	sheets CitationSheetsService
+	slides CitationSlidesService
+	mu     sync.RWMutex
+	stores map[string]*DualStore // indexID → store
+	config *CitationConfig
 }
 
 // CitationConfig holds citation-specific configuration.
@@ -90,12 +97,27 @@ func NewRealCitationService(ctx context.Context, client *http.Client, cfg *Citat
 	}
 
 	return &RealCitationService{
-		driveService:  driveSrv,
-		sheetsService: sheetsSrv,
-		slidesService: slidesSrv,
-		stores:        make(map[string]*DualStore),
-		config:        cfg,
+		drive:  &realCitationDriveService{svc: driveSrv},
+		sheets: &realCitationSheetsService{svc: sheetsSrv},
+		slides: &realCitationSlidesService{svc: slidesSrv},
+		stores: make(map[string]*DualStore),
+		config: cfg,
 	}, nil
+}
+
+// NewRealCitationServiceWithDeps creates a citation service from pre-built interface
+// implementations. This constructor is used in tests with mocked dependencies.
+func NewRealCitationServiceWithDeps(driveSvc CitationDriveService, sheetsSvc CitationSheetsService, slidesSvc CitationSlidesService, cfg *CitationConfig) *RealCitationService {
+	if cfg == nil {
+		cfg = &CitationConfig{Indexes: make(map[string]IndexEntry)}
+	}
+	return &RealCitationService{
+		drive:  driveSvc,
+		sheets: sheetsSvc,
+		slides: slidesSvc,
+		stores: make(map[string]*DualStore),
+		config: cfg,
+	}
 }
 
 func (s *RealCitationService) getStore(ctx context.Context, indexID string) (*DualStore, error) {
@@ -111,7 +133,7 @@ func (s *RealCitationService) getStore(ctx context.Context, indexID string) (*Du
 		return nil, fmt.Errorf("unknown index %q — add it to config", indexID)
 	}
 
-	store, err := NewDualStore(ctx, indexID, entry.SheetID, s.sheetsService)
+	store, err := NewDualStore(ctx, indexID, entry.SheetID, s.sheets)
 	if err != nil {
 		return nil, err
 	}
@@ -150,10 +172,7 @@ func (s *RealCitationService) AddDocuments(ctx context.Context, indexID string, 
 	for i, fileID := range fileIDs {
 		i, fileID := i, fileID // capture loop vars
 		g.Go(func() error {
-			file, err := s.driveService.Files.Get(fileID).
-				Fields("id,name,mimeType,modifiedTime").
-				SupportsAllDrives(true).
-				Context(gCtx).Do()
+			file, err := s.drive.GetFile(gCtx, fileID, "id,name,mimeType,modifiedTime")
 			if err != nil {
 				results[i] = addDocResult{fileID: fileID, err: fmt.Errorf("getting file %s: %w", fileID, err)}
 				return nil // partial failure — keep going
@@ -242,7 +261,7 @@ func (s *RealCitationService) chunkFile(ctx context.Context, file *drive.File) (
 
 // chunkSlides extracts per-slide text from a Google Slides presentation via the Slides API.
 func (s *RealCitationService) chunkSlides(ctx context.Context, file *drive.File) ([]Chunk, error) {
-	pres, err := s.slidesService.Presentations.Get(file.Id).Context(ctx).Do()
+	pres, err := s.slides.GetPresentation(ctx, file.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -252,13 +271,13 @@ func (s *RealCitationService) chunkSlides(ctx context.Context, file *drive.File)
 // chunkDownloadedFile downloads a non-Google-native file and extracts text.
 // For .pptx files, reads text from XML inside the zip. For others, treats content as plain text.
 func (s *RealCitationService) chunkDownloadedFile(ctx context.Context, file *drive.File) ([]Chunk, error) {
-	resp, err := s.driveService.Files.Get(file.Id).SupportsAllDrives(true).Context(ctx).Download()
+	body, err := s.drive.DownloadFile(ctx, file.Id)
 	if err != nil {
 		return nil, fmt.Errorf("downloading %s: %w", file.Name, err)
 	}
-	defer resp.Body.Close()
+	defer body.Close()
 
-	data, err := limitedRead(resp.Body)
+	data, err := limitedRead(body)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", file.Name, err)
 	}
@@ -274,13 +293,13 @@ func (s *RealCitationService) chunkPptxBytes(file *drive.File, data []byte) ([]C
 
 // chunkExportedText exports a Google-native file as plain text and splits into chunks.
 func (s *RealCitationService) chunkExportedText(ctx context.Context, file *drive.File) ([]Chunk, error) {
-	resp, err := s.driveService.Files.Export(file.Id, "text/plain").Context(ctx).Download()
+	body, err := s.drive.ExportFile(ctx, file.Id, "text/plain")
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer body.Close()
 
-	data, err := limitedRead(resp.Body)
+	data, err := limitedRead(body)
 	if err != nil {
 		return nil, err
 	}

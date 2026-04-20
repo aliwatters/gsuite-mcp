@@ -39,10 +39,7 @@ func (s *RealCitationService) RefreshIndex(ctx context.Context, indexID string) 
 	for i, prev := range indexed {
 		i, prev := i, prev
 		g.Go(func() error {
-			current, err := s.driveService.Files.Get(prev.FileID).
-				Fields("id,name,mimeType,modifiedTime,trashed").
-				SupportsAllDrives(true).
-				Context(gCtx).Do()
+			current, err := s.drive.GetFile(gCtx, prev.FileID, "id,name,mimeType,modifiedTime,trashed")
 			fileResults[i] = refreshFileResult{prev: prev, current: current, err: err}
 			return nil // partial failure — keep going
 		})
