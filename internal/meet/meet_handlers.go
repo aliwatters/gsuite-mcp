@@ -22,6 +22,11 @@ func NewMeetService(ctx context.Context, client *http.Client) (MeetService, erro
 	return NewRealMeetService(srv), nil
 }
 
+// InitDefaultMeetHandlerDeps initializes the default Meet handler deps with explicit deps.
+func InitDefaultMeetHandlerDeps(appDeps *common.Deps) {
+	DefaultMeetHandlerDeps = common.NewDefaultHandlerDeps(NewMeetService, appDeps)
+}
+
 // DefaultMeetHandlerDeps holds the default dependencies for production use.
 var DefaultMeetHandlerDeps = common.NewDefaultHandlerDeps(NewMeetService)
 

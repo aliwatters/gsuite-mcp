@@ -22,6 +22,11 @@ func NewContactsService(ctx context.Context, client *http.Client) (ContactsServi
 	return NewRealContactsService(srv), nil
 }
 
+// InitDefaultContactsHandlerDeps initializes the default Contacts handler deps with explicit deps.
+func InitDefaultContactsHandlerDeps(appDeps *common.Deps) {
+	DefaultContactsHandlerDeps = common.NewDefaultHandlerDeps(NewContactsService, appDeps)
+}
+
 // DefaultContactsHandlerDeps holds the default dependencies for production use.
 var DefaultContactsHandlerDeps = common.NewDefaultHandlerDeps(NewContactsService)
 

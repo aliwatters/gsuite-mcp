@@ -16,15 +16,20 @@ type Deps struct {
 	CitationEnabled   bool // true when large_doc_indexing feature is on
 }
 
-// Global instance set during initialization
+// Global instance set during initialization.
+// Deprecated: All service handlers should receive deps explicitly via Init*HandlerDeps.
+// This global is retained only for middleware (WithDriveAccessCheck, WithLargeContentHint)
+// that receive nil deps as a backward-compatibility fallback.
 var deps *Deps
 
-// SetDeps initializes the global dependencies.
+// SetDeps initializes the global dependencies. Called exactly once during startup.
+// Deprecated: Prefer passing *Deps explicitly to Init*HandlerDeps functions.
 func SetDeps(d *Deps) {
 	deps = d
 }
 
 // GetDeps returns the global dependencies.
+// Deprecated: Prefer receiving *Deps explicitly. This remains for middleware fallback paths.
 func GetDeps() *Deps {
 	return deps
 }

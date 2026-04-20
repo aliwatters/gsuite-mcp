@@ -22,6 +22,11 @@ func NewChatService(ctx context.Context, client *http.Client) (ChatService, erro
 	return NewRealChatService(srv), nil
 }
 
+// InitDefaultChatHandlerDeps initializes the default Chat handler deps with explicit deps.
+func InitDefaultChatHandlerDeps(appDeps *common.Deps) {
+	DefaultChatHandlerDeps = common.NewDefaultHandlerDeps(NewChatService, appDeps)
+}
+
 // DefaultChatHandlerDeps holds the default dependencies for production use.
 var DefaultChatHandlerDeps = common.NewDefaultHandlerDeps(NewChatService)
 

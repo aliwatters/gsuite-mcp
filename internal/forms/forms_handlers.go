@@ -22,6 +22,11 @@ func NewFormsService(ctx context.Context, client *http.Client) (FormsService, er
 	return NewRealFormsService(srv), nil
 }
 
+// InitDefaultFormsHandlerDeps initializes the default Forms handler deps with explicit deps.
+func InitDefaultFormsHandlerDeps(appDeps *common.Deps) {
+	DefaultFormsHandlerDeps = common.NewDefaultHandlerDeps(NewFormsService, appDeps)
+}
+
 // DefaultFormsHandlerDeps holds the default dependencies for production use.
 var DefaultFormsHandlerDeps = common.NewDefaultHandlerDeps(NewFormsService)
 

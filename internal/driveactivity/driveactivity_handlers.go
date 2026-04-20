@@ -22,6 +22,11 @@ func NewDriveActivityService(ctx context.Context, client *http.Client) (DriveAct
 	return NewRealDriveActivityService(srv), nil
 }
 
+// InitDefaultDriveActivityHandlerDeps initializes the default DriveActivity handler deps with explicit deps.
+func InitDefaultDriveActivityHandlerDeps(appDeps *common.Deps) {
+	DefaultDriveActivityHandlerDeps = common.NewDefaultHandlerDeps(NewDriveActivityService, appDeps)
+}
+
 // DefaultDriveActivityHandlerDeps holds the default dependencies for production use.
 var DefaultDriveActivityHandlerDeps = common.NewDefaultHandlerDeps(NewDriveActivityService)
 
