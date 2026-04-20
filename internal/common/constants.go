@@ -46,6 +46,7 @@ const (
 	DriveListDefaultMaxResults   = 100
 	DriveListMaxResultsLimit     = 1000
 	DriveMaxFileSize             = 10 * 1024 * 1024 // 10MB
+	DriveMaxExportSize           = 50 * 1024 * 1024 // 50MB — shared by citation indexing and doc export
 )
 
 // Sheets value input options.
