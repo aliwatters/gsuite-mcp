@@ -13,6 +13,10 @@ import (
 // DefaultOAuthPort is the default port used for the OAuth callback server.
 const DefaultOAuthPort = 38917
 
+// configFileMode restricts config.json to owner-only access (matches credential files).
+// Config may contain organizational metadata (drive access rules, sheet IDs, feature flags).
+const configFileMode = 0600
+
 // DriveAccess configures which shared drives are accessible via MCP tools.
 // Set either Allowed (allowlist) or Blocked (blocklist), not both.
 // My Drive is always accessible. If neither is set, all drives are accessible.
@@ -113,7 +117,7 @@ func writeDefaultConfigTo(path string) (bool, error) {
 	}
 	data = append(data, '\n')
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, configFileMode); err != nil {
 		return false, fmt.Errorf("writing config.json: %w", err)
 	}
 

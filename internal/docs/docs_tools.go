@@ -8,8 +8,9 @@ import (
 	"google.golang.org/api/docs/v1"
 )
 
-// maxExportSize is the maximum size for PDF exports (50MB).
-const maxExportSize = 50 * 1024 * 1024
+// maxExportSize is the maximum size for Drive exports (50MB).
+// Uses the shared constant from common to prevent divergence.
+const maxExportSize = common.DriveMaxExportSize
 
 // extractDocumentText extracts plain text from a Google Docs document structure.
 func extractDocumentText(doc *docs.Document) string {

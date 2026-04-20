@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aliwatters/gsuite-mcp/internal/common"
 	"google.golang.org/api/drive/v3"
 	gslides "google.golang.org/api/slides/v1"
 )
@@ -249,9 +250,9 @@ func downloadAndChunk(data []byte, file *drive.File) ([]Chunk, error) {
 	return chunkText(file.Id, file.Name, text), nil
 }
 
-// maxExportSize limits Drive export downloads to 50MB.
-// Declared here to avoid duplication; the service references this constant.
-const exportSizeLimit = 50 * 1024 * 1024
+// exportSizeLimit limits Drive export downloads.
+// Uses the shared constant from common to prevent divergence.
+const exportSizeLimit = common.DriveMaxExportSize
 
 // limitedRead reads at most exportSizeLimit bytes from r.
 func limitedRead(r io.Reader) ([]byte, error) {
