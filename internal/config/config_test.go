@@ -269,6 +269,23 @@ func TestWriteDefaultConfigTo(t *testing.T) {
 		}
 	})
 
+	t.Run("new file has 0600 permissions", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+
+		if _, err := writeDefaultConfigTo(path); err != nil {
+			t.Fatalf("writeDefaultConfigTo() error = %v", err)
+		}
+
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("os.Stat() error = %v", err)
+		}
+		if got := info.Mode().Perm(); got != configFileMode {
+			t.Errorf("new config.json permissions = %04o, want %04o", got, configFileMode)
+		}
+	})
+
 	t.Run("does not overwrite existing", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		path := filepath.Join(tmpDir, "config.json")
@@ -291,6 +308,73 @@ func TestWriteDefaultConfigTo(t *testing.T) {
 		}
 		if cfg.OAuthPort != 5555 {
 			t.Errorf("OAuthPort = %d, want 5555 (original)", cfg.OAuthPort)
+		}
+	})
+
+	t.Run("tightens 0644 to 0600", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+		if err := os.WriteFile(path, []byte(`{"oauth_port": 5555}`), 0644); err != nil {
+			t.Fatalf("Failed to write test config: %v", err)
+		}
+
+		// Confirm the file starts at 0644.
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("os.Stat() error = %v", err)
+		}
+		if info.Mode().Perm() != 0644 {
+			t.Fatalf("precondition failed: expected 0644, got %04o", info.Mode().Perm())
+		}
+
+		created, err := writeDefaultConfigTo(path)
+		if err != nil {
+			t.Fatalf("writeDefaultConfigTo() error = %v", err)
+		}
+		if created {
+			t.Error("writeDefaultConfigTo() returned true, want false")
+		}
+
+		// Permissions must now be 0600.
+		info, err = os.Stat(path)
+		if err != nil {
+			t.Fatalf("os.Stat() after chmod error = %v", err)
+		}
+		if got := info.Mode().Perm(); got != configFileMode {
+			t.Errorf("after tightening, config.json permissions = %04o, want %04o", got, configFileMode)
+		}
+
+		// Content must be unchanged.
+		cfg, err := loadConfigFromPath(path)
+		if err != nil {
+			t.Fatalf("loadConfigFromPath() error = %v", err)
+		}
+		if cfg.OAuthPort != 5555 {
+			t.Errorf("OAuthPort = %d, want 5555 (original content preserved)", cfg.OAuthPort)
+		}
+	})
+
+	t.Run("already 0600 stays unchanged", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "config.json")
+		if err := os.WriteFile(path, []byte(`{"oauth_port": 7777}`), 0600); err != nil {
+			t.Fatalf("Failed to write test config: %v", err)
+		}
+
+		created, err := writeDefaultConfigTo(path)
+		if err != nil {
+			t.Fatalf("writeDefaultConfigTo() error = %v", err)
+		}
+		if created {
+			t.Error("writeDefaultConfigTo() returned true, want false")
+		}
+
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatalf("os.Stat() error = %v", err)
+		}
+		if got := info.Mode().Perm(); got != configFileMode {
+			t.Errorf("config.json permissions = %04o, want %04o", got, configFileMode)
 		}
 	})
 }
