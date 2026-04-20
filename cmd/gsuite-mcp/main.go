@@ -135,13 +135,23 @@ func initializeApp() error {
 		AuthManager:       authManager,
 		DriveAccessFilter: driveFilter,
 	}
+	// SetDeps retained for backward compatibility with WithDriveAccessCheck/WithLargeContentHint
+	// middleware that may receive nil deps. All handler factories now use explicit passing below.
 	common.SetDeps(appDeps)
 
-	// Initialize handler deps with explicit dependency passing to avoid global singleton reads.
+	// Initialize ALL handler deps with explicit dependency passing to avoid global singleton reads.
 	drive.InitDefaultDriveHandlerDeps(appDeps)
 	gmail.InitDefaultGmailHandlerDeps(appDeps)
 	docs.InitDefaultDocsHandlerDeps(appDeps)
 	sheets.InitDefaultSheetsHandlerDeps(appDeps)
+	calendar.InitDefaultCalendarHandlerDeps(appDeps)
+	chat.InitDefaultChatHandlerDeps(appDeps)
+	contacts.InitDefaultContactsHandlerDeps(appDeps)
+	driveactivity.InitDefaultDriveActivityHandlerDeps(appDeps)
+	forms.InitDefaultFormsHandlerDeps(appDeps)
+	meet.InitDefaultMeetHandlerDeps(appDeps)
+	slides.InitDefaultSlidesHandlerDeps(appDeps)
+	tasks.InitDefaultTasksHandlerDeps(appDeps)
 
 	return nil
 }

@@ -23,6 +23,11 @@ func NewSlidesService(ctx context.Context, client *http.Client) (SlidesService, 
 	return NewRealSlidesService(srv), nil
 }
 
+// InitDefaultSlidesHandlerDeps initializes the default Slides handler deps with explicit deps.
+func InitDefaultSlidesHandlerDeps(appDeps *common.Deps) {
+	DefaultSlidesHandlerDeps = common.NewDefaultHandlerDeps(NewSlidesService, appDeps)
+}
+
 // DefaultSlidesHandlerDeps holds the default dependencies for production use.
 var DefaultSlidesHandlerDeps = common.NewDefaultHandlerDeps(NewSlidesService)
 

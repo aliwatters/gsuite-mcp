@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"google.golang.org/api/sheets/v4"
 )
 
 // DualStore writes to both Sheets (source of truth) and SQLite (fast local cache).
@@ -27,8 +25,8 @@ func cacheDir() (string, error) {
 }
 
 // NewDualStore creates a DualStore, rebuilding the SQLite cache from Sheets if needed.
-func NewDualStore(ctx context.Context, indexID, sheetID string, sheetsSrv *sheets.Service) (*DualStore, error) {
-	sheetsStore := NewSheetsStore(sheetsSrv, sheetID)
+func NewDualStore(ctx context.Context, indexID, sheetID string, sheetsSvc CitationSheetsService) (*DualStore, error) {
+	sheetsStore := NewSheetsStore(sheetsSvc, sheetID)
 
 	dir, err := cacheDir()
 	if err != nil {

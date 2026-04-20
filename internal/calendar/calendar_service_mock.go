@@ -32,13 +32,13 @@ func NewMockCalendarService() *MockCalendarService {
 	}
 }
 
-func (m *MockCalendarService) recordCall(method string, args map[string]any) {
+func (m *MockCalendarService) recordCall(method string, args ...any) {
 	m.MethodCalls = append(m.MethodCalls, MethodCall{Method: method, Args: args})
 }
 
 // ListCalendars returns all calendars.
 func (m *MockCalendarService) ListCalendars(ctx context.Context, fields string) (*calendar.CalendarList, error) {
-	m.recordCall("ListCalendars", map[string]any{"fields": fields})
+	m.recordCall("ListCalendars", fields)
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -53,7 +53,7 @@ func (m *MockCalendarService) ListCalendars(ctx context.Context, fields string) 
 
 // ListEvents returns events from a calendar.
 func (m *MockCalendarService) ListEvents(ctx context.Context, calendarID string, opts *ListEventsOptions) (*calendar.Events, error) {
-	m.recordCall("ListEvents", map[string]any{"calendarID": calendarID, "opts": opts})
+	m.recordCall("ListEvents", calendarID, opts)
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -73,7 +73,7 @@ func (m *MockCalendarService) ListEvents(ctx context.Context, calendarID string,
 
 // GetEvent returns an event by ID.
 func (m *MockCalendarService) GetEvent(ctx context.Context, calendarID string, eventID string, fields string) (*calendar.Event, error) {
-	m.recordCall("GetEvent", map[string]any{"calendarID": calendarID, "eventID": eventID, "fields": fields})
+	m.recordCall("GetEvent", calendarID, eventID, fields)
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -93,7 +93,7 @@ func (m *MockCalendarService) GetEvent(ctx context.Context, calendarID string, e
 
 // CreateEvent creates a new event.
 func (m *MockCalendarService) CreateEvent(ctx context.Context, calendarID string, event *calendar.Event, conferenceDataVersion int) (*calendar.Event, error) {
-	m.recordCall("CreateEvent", map[string]any{"calendarID": calendarID, "summary": event.Summary, "conferenceDataVersion": conferenceDataVersion})
+	m.recordCall("CreateEvent", calendarID, event.Summary, conferenceDataVersion)
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -116,7 +116,7 @@ func (m *MockCalendarService) CreateEvent(ctx context.Context, calendarID string
 
 // UpdateEvent updates an existing event.
 func (m *MockCalendarService) UpdateEvent(ctx context.Context, calendarID string, eventID string, event *calendar.Event) (*calendar.Event, error) {
-	m.recordCall("UpdateEvent", map[string]any{"calendarID": calendarID, "eventID": eventID})
+	m.recordCall("UpdateEvent", calendarID, eventID)
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -140,7 +140,7 @@ func (m *MockCalendarService) UpdateEvent(ctx context.Context, calendarID string
 
 // DeleteEvent deletes an event.
 func (m *MockCalendarService) DeleteEvent(ctx context.Context, calendarID string, eventID string) error {
-	m.recordCall("DeleteEvent", map[string]any{"calendarID": calendarID, "eventID": eventID})
+	m.recordCall("DeleteEvent", calendarID, eventID)
 	if m.Error != nil {
 		return m.Error
 	}
@@ -160,7 +160,7 @@ func (m *MockCalendarService) DeleteEvent(ctx context.Context, calendarID string
 
 // QuickAddEvent creates an event from text.
 func (m *MockCalendarService) QuickAddEvent(ctx context.Context, calendarID string, text string) (*calendar.Event, error) {
-	m.recordCall("QuickAddEvent", map[string]any{"calendarID": calendarID, "text": text})
+	m.recordCall("QuickAddEvent", calendarID, text)
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -174,7 +174,7 @@ func (m *MockCalendarService) QuickAddEvent(ctx context.Context, calendarID stri
 
 // ListInstances lists instances of a recurring event.
 func (m *MockCalendarService) ListInstances(ctx context.Context, calendarID string, eventID string, opts *ListInstancesOptions) (*calendar.Events, error) {
-	m.recordCall("ListInstances", map[string]any{"calendarID": calendarID, "eventID": eventID, "opts": opts})
+	m.recordCall("ListInstances", calendarID, eventID, opts)
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -197,7 +197,7 @@ func (m *MockCalendarService) ListInstances(ctx context.Context, calendarID stri
 
 // GetFreeBusy queries free/busy information.
 func (m *MockCalendarService) GetFreeBusy(ctx context.Context, req *calendar.FreeBusyRequest) (*calendar.FreeBusyResponse, error) {
-	m.recordCall("GetFreeBusy", map[string]any{"timeMin": req.TimeMin, "timeMax": req.TimeMax})
+	m.recordCall("GetFreeBusy", req.TimeMin, req.TimeMax)
 	if m.Error != nil {
 		return nil, m.Error
 	}

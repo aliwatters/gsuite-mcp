@@ -23,6 +23,11 @@ func NewTasksService(ctx context.Context, client *http.Client) (TasksService, er
 	return NewRealTasksService(srv), nil
 }
 
+// InitDefaultTasksHandlerDeps initializes the default Tasks handler deps with explicit deps.
+func InitDefaultTasksHandlerDeps(appDeps *common.Deps) {
+	DefaultTasksHandlerDeps = common.NewDefaultHandlerDeps(NewTasksService, appDeps)
+}
+
 // DefaultTasksHandlerDeps holds the default dependencies for production use.
 var DefaultTasksHandlerDeps = common.NewDefaultHandlerDeps(NewTasksService)
 

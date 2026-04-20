@@ -23,7 +23,14 @@ func NewCalendarService(ctx context.Context, client *http.Client) (CalendarServi
 	return NewRealCalendarService(srv), nil
 }
 
+// InitDefaultCalendarHandlerDeps initializes the default Calendar handler deps with explicit deps,
+// avoiding reliance on the global singleton at call time.
+func InitDefaultCalendarHandlerDeps(appDeps *common.Deps) {
+	DefaultCalendarHandlerDeps = common.NewDefaultHandlerDeps(NewCalendarService, appDeps)
+}
+
 // DefaultCalendarHandlerDeps holds the default dependencies for production use.
+// Initialize with InitDefaultCalendarHandlerDeps after SetDeps to pass deps explicitly.
 var DefaultCalendarHandlerDeps = common.NewDefaultHandlerDeps(NewCalendarService)
 
 // ResolveCalendarServiceOrError resolves a Calendar service, returning an MCP error result on failure.

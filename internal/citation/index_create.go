@@ -23,17 +23,14 @@ func (s *RealCitationService) CreateIndex(ctx context.Context, name, folderID st
 			{Properties: &sheets.SheetProperties{Title: "metadata"}},
 		},
 	}
-	created, err := s.sheetsService.Spreadsheets.Create(ss).Context(ctx).Do()
+	created, err := s.sheets.CreateSpreadsheet(ctx, ss)
 	if err != nil {
 		return nil, fmt.Errorf("creating index sheet: %w", err)
 	}
 
 	// Move to folder if specified
 	if folderID != "" {
-		_, err = s.driveService.Files.Update(created.SpreadsheetId, nil).
-			AddParents(folderID).
-			SupportsAllDrives(true).
-			Context(ctx).Do()
+		_, err = s.drive.MoveFile(ctx, created.SpreadsheetId, folderID)
 		if err != nil {
 			return nil, fmt.Errorf("moving sheet to folder: %w", err)
 		}
@@ -51,10 +48,10 @@ func (s *RealCitationService) CreateIndex(ctx context.Context, name, folderID st
 	for r, v := range headers {
 		data = append(data, &sheets.ValueRange{Range: r, Values: v})
 	}
-	_, err = s.sheetsService.Spreadsheets.Values.BatchUpdate(created.SpreadsheetId, &sheets.BatchUpdateValuesRequest{
+	err = s.sheets.BatchUpdateValues(ctx, created.SpreadsheetId, &sheets.BatchUpdateValuesRequest{
 		ValueInputOption: "RAW",
 		Data:             data,
-	}).Context(ctx).Do()
+	})
 	if err != nil {
 		return nil, fmt.Errorf("writing headers: %w", err)
 	}
@@ -68,9 +65,9 @@ func (s *RealCitationService) CreateIndex(ctx context.Context, name, folderID st
 		{"doc_count", "0"},
 		{"chunk_count", "0"},
 	}
-	_, err = s.sheetsService.Spreadsheets.Values.Append(created.SpreadsheetId, "metadata!A2", &sheets.ValueRange{
+	err = s.sheets.AppendValues(ctx, created.SpreadsheetId, "metadata!A2", &sheets.ValueRange{
 		Values: metaRows,
-	}).ValueInputOption("RAW").Context(ctx).Do()
+	})
 	if err != nil {
 		return nil, fmt.Errorf("writing metadata: %w", err)
 	}

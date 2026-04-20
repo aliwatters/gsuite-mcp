@@ -8,11 +8,8 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-// MethodCall records a method invocation for verification in tests.
-type MethodCall struct {
-	Method string
-	Args   []any
-}
+// MethodCall is an alias to common.MethodCall for backward compatibility in tests.
+type MethodCall = common.MethodCall
 
 // MockGmailService is a mock implementation of GmailService for testing.
 type MockGmailService struct {

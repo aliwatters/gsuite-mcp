@@ -33,8 +33,9 @@ func NewDriveServiceConstructor(filter *common.DriveAccessFilter) common.Service
 }
 
 // NewDriveService creates a DriveService from an authenticated HTTP client.
-// If a DriveAccessFilter is configured in the global deps, the service is wrapped
-// with access control. Prefer NewDriveServiceConstructor for explicit dependency passing.
+// Deprecated: This function reads from the global deps singleton. Prefer
+// NewDriveServiceConstructor with explicit filter for new code. Retained for
+// backward compatibility with tests that don't call InitDefaultDriveHandlerDeps.
 func NewDriveService(ctx context.Context, client *http.Client) (DriveService, error) {
 	d := common.GetDeps()
 	var filter *common.DriveAccessFilter

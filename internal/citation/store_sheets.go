@@ -14,13 +14,13 @@ import (
 // SheetsStore reads/writes citation data to a Google Sheet.
 // Not a full IndexStore — used by DualStore for the write path and rebuild.
 type SheetsStore struct {
-	sheetsSrv *sheets.Service
-	sheetID   string
+	svc     CitationSheetsService
+	sheetID string
 }
 
 // NewSheetsStore creates a SheetsStore for the given spreadsheet.
-func NewSheetsStore(srv *sheets.Service, sheetID string) *SheetsStore {
-	return &SheetsStore{sheetsSrv: srv, sheetID: sheetID}
+func NewSheetsStore(svc CitationSheetsService, sheetID string) *SheetsStore {
+	return &SheetsStore{svc: svc, sheetID: sheetID}
 }
 
 // AppendChunks appends chunk rows to the chunks tab.
@@ -29,10 +29,7 @@ func (s *SheetsStore) AppendChunks(ctx context.Context, chunks []Chunk) error {
 	for _, c := range chunks {
 		rows = append(rows, ChunkToSheetRow(c))
 	}
-	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "chunks!A2", &sheets.ValueRange{
-		Values: rows,
-	}).ValueInputOption("RAW").Context(ctx).Do()
-	if err != nil {
+	if err := s.svc.AppendValues(ctx, s.sheetID, "chunks!A2", &sheets.ValueRange{Values: rows}); err != nil {
 		return fmt.Errorf("appending chunks to sheet: %w", err)
 	}
 	return nil
@@ -45,10 +42,7 @@ func (s *SheetsStore) AppendConcepts(ctx context.Context, mappings []ConceptMapp
 		chunkIDsJSON, _ := json.Marshal(m.ChunkIDs)
 		rows = append(rows, []any{m.Concept, string(chunkIDsJSON)})
 	}
-	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "concepts!A2", &sheets.ValueRange{
-		Values: rows,
-	}).ValueInputOption("RAW").Context(ctx).Do()
-	if err != nil {
+	if err := s.svc.AppendValues(ctx, s.sheetID, "concepts!A2", &sheets.ValueRange{Values: rows}); err != nil {
 		return fmt.Errorf("appending concepts to sheet: %w", err)
 	}
 	return nil
@@ -57,10 +51,7 @@ func (s *SheetsStore) AppendConcepts(ctx context.Context, mappings []ConceptMapp
 // AppendSummary appends a summary row to the summaries tab.
 func (s *SheetsStore) AppendSummary(ctx context.Context, summary LevelSummary) error {
 	row := [][]any{{summary.Level, summary.ParentID, summary.Summary}}
-	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "summaries!A2", &sheets.ValueRange{
-		Values: row,
-	}).ValueInputOption("RAW").Context(ctx).Do()
-	if err != nil {
+	if err := s.svc.AppendValues(ctx, s.sheetID, "summaries!A2", &sheets.ValueRange{Values: row}); err != nil {
 		return fmt.Errorf("appending summary to sheet: %w", err)
 	}
 	return nil
@@ -68,7 +59,7 @@ func (s *SheetsStore) AppendSummary(ctx context.Context, summary LevelSummary) e
 
 // ReadAllChunks reads all chunk rows from the Sheet.
 func (s *SheetsStore) ReadAllChunks(ctx context.Context) ([]Chunk, error) {
-	resp, err := s.sheetsSrv.Spreadsheets.Values.Get(s.sheetID, "chunks!A2:K").Context(ctx).Do()
+	resp, err := s.svc.GetValues(ctx, s.sheetID, "chunks!A2:K")
 	if err != nil {
 		return nil, fmt.Errorf("reading chunks: %w", err)
 	}
@@ -82,7 +73,7 @@ func (s *SheetsStore) ReadAllChunks(ctx context.Context) ([]Chunk, error) {
 
 // ReadAllConcepts reads all concept rows from the Sheet.
 func (s *SheetsStore) ReadAllConcepts(ctx context.Context) ([]ConceptMapping, error) {
-	resp, err := s.sheetsSrv.Spreadsheets.Values.Get(s.sheetID, "concepts!A2:B").Context(ctx).Do()
+	resp, err := s.svc.GetValues(ctx, s.sheetID, "concepts!A2:B")
 	if err != nil {
 		return nil, fmt.Errorf("reading concepts: %w", err)
 	}
@@ -103,7 +94,7 @@ func (s *SheetsStore) ReadAllConcepts(ctx context.Context) ([]ConceptMapping, er
 
 // ReadAllSummaries reads all summary rows from the Sheet.
 func (s *SheetsStore) ReadAllSummaries(ctx context.Context) ([]LevelSummary, error) {
-	resp, err := s.sheetsSrv.Spreadsheets.Values.Get(s.sheetID, "summaries!A2:C").Context(ctx).Do()
+	resp, err := s.svc.GetValues(ctx, s.sheetID, "summaries!A2:C")
 	if err != nil {
 		return nil, fmt.Errorf("reading summaries: %w", err)
 	}
@@ -136,7 +127,7 @@ func (s *SheetsStore) ReadAllSummaries(ctx context.Context) ([]LevelSummary, err
 
 // ReadAllMetadata reads all metadata rows from the Sheet.
 func (s *SheetsStore) ReadAllMetadata(ctx context.Context) (map[string]string, error) {
-	resp, err := s.sheetsSrv.Spreadsheets.Values.Get(s.sheetID, "metadata!A2:B").Context(ctx).Do()
+	resp, err := s.svc.GetValues(ctx, s.sheetID, "metadata!A2:B")
 	if err != nil {
 		return nil, fmt.Errorf("reading metadata: %w", err)
 	}
@@ -159,10 +150,7 @@ func (s *SheetsStore) AppendFiles(ctx context.Context, files []IndexedFile) erro
 	for _, f := range files {
 		rows = append(rows, []any{f.FileID, f.FileName, f.MimeType, f.ModifiedTime, f.ChunkCount})
 	}
-	_, err := s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "files!A2", &sheets.ValueRange{
-		Values: rows,
-	}).ValueInputOption("RAW").Context(ctx).Do()
-	if err != nil {
+	if err := s.svc.AppendValues(ctx, s.sheetID, "files!A2", &sheets.ValueRange{Values: rows}); err != nil {
 		return fmt.Errorf("appending files to sheet: %w", err)
 	}
 	return nil
@@ -170,7 +158,7 @@ func (s *SheetsStore) AppendFiles(ctx context.Context, files []IndexedFile) erro
 
 // ReadAllFiles reads all indexed file tracking rows from the Sheet.
 func (s *SheetsStore) ReadAllFiles(ctx context.Context) ([]IndexedFile, error) {
-	resp, err := s.sheetsSrv.Spreadsheets.Values.Get(s.sheetID, "files!A2:E").Context(ctx).Do()
+	resp, err := s.svc.GetValues(ctx, s.sheetID, "files!A2:E")
 	if err != nil {
 		return nil, fmt.Errorf("reading files: %w", err)
 	}
@@ -208,9 +196,7 @@ func (s *SheetsStore) ReadAllFiles(ctx context.Context) ([]IndexedFile, error) {
 
 // RewriteFilesTab clears and rewrites the files tab (used after refresh).
 func (s *SheetsStore) RewriteFilesTab(ctx context.Context, files []IndexedFile) error {
-	// Clear existing data
-	_, err := s.sheetsSrv.Spreadsheets.Values.Clear(s.sheetID, "files!A2:E", &sheets.ClearValuesRequest{}).Context(ctx).Do()
-	if err != nil {
+	if err := s.svc.ClearValues(ctx, s.sheetID, "files!A2:E"); err != nil {
 		return fmt.Errorf("clearing files tab: %w", err)
 	}
 	if len(files) == 0 {
@@ -237,8 +223,7 @@ func (s *SheetsStore) RewriteChunksForFile(ctx context.Context, fileID string) e
 	}
 
 	// Clear and rewrite
-	_, err = s.sheetsSrv.Spreadsheets.Values.Clear(s.sheetID, "chunks!A2:K", &sheets.ClearValuesRequest{}).Context(ctx).Do()
-	if err != nil {
+	if err := s.svc.ClearValues(ctx, s.sheetID, "chunks!A2:K"); err != nil {
 		return fmt.Errorf("clearing chunks tab: %w", err)
 	}
 	if len(remaining) > 0 {
@@ -251,7 +236,7 @@ func (s *SheetsStore) RewriteChunksForFile(ctx context.Context, fileID string) e
 // or appends if not found.
 func (s *SheetsStore) UpdateMetadata(ctx context.Context, key, value string) error {
 	// Read existing metadata to find the row
-	resp, err := s.sheetsSrv.Spreadsheets.Values.Get(s.sheetID, "metadata!A2:B").Context(ctx).Do()
+	resp, err := s.svc.GetValues(ctx, s.sheetID, "metadata!A2:B")
 	if err != nil {
 		return fmt.Errorf("reading metadata: %w", err)
 	}
@@ -262,10 +247,9 @@ func (s *SheetsStore) UpdateMetadata(ctx context.Context, key, value string) err
 			if strings.EqualFold(k, key) {
 				rowNum := i + 2 // 1-indexed, skip header
 				updateRange := fmt.Sprintf("metadata!B%d", rowNum)
-				_, err := s.sheetsSrv.Spreadsheets.Values.Update(s.sheetID, updateRange, &sheets.ValueRange{
+				if err := s.svc.UpdateValues(ctx, s.sheetID, updateRange, &sheets.ValueRange{
 					Values: [][]any{{value}},
-				}).ValueInputOption("RAW").Context(ctx).Do()
-				if err != nil {
+				}); err != nil {
 					return fmt.Errorf("updating metadata %q: %w", key, err)
 				}
 				return nil
@@ -274,10 +258,9 @@ func (s *SheetsStore) UpdateMetadata(ctx context.Context, key, value string) err
 	}
 
 	// Not found — append
-	_, err = s.sheetsSrv.Spreadsheets.Values.Append(s.sheetID, "metadata!A2", &sheets.ValueRange{
+	if err := s.svc.AppendValues(ctx, s.sheetID, "metadata!A2", &sheets.ValueRange{
 		Values: [][]any{{key, value}},
-	}).ValueInputOption("RAW").Context(ctx).Do()
-	if err != nil {
+	}); err != nil {
 		return fmt.Errorf("appending metadata %q: %w", key, err)
 	}
 	return nil
