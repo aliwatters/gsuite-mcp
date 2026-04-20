@@ -5,6 +5,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -103,8 +104,16 @@ func WriteDefaultConfig() (bool, error) {
 
 // writeDefaultConfigTo creates config.json at the given path with defaults.
 // Returns true if the file was created, false if it already existed.
+// If the file exists with broader permissions than configFileMode, they are tightened.
 func writeDefaultConfigTo(path string) (bool, error) {
-	if _, err := os.Stat(path); err == nil {
+	if info, err := os.Stat(path); err == nil {
+		// File exists — tighten permissions if broader than configFileMode.
+		if mode := info.Mode().Perm(); mode&^configFileMode != 0 {
+			log.Printf("config: tightening %s permissions from %04o to %04o", path, mode, configFileMode)
+			if chmodErr := os.Chmod(path, configFileMode); chmodErr != nil {
+				return false, fmt.Errorf("tightening config.json permissions: %w", chmodErr)
+			}
+		}
 		return false, nil
 	} else if !os.IsNotExist(err) {
 		return false, fmt.Errorf("checking config.json: %w", err)
