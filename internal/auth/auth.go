@@ -201,7 +201,7 @@ func (m *Manager) OAuthConfig() *oauth2.Config {
 func NewManager() (*Manager, error) {
 	oauthCfg, err := loadOAuthConfig()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("loading OAuth config: %w", err)
 	}
 
 	return &Manager{
@@ -366,7 +366,7 @@ func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) err
 func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Client, error) {
 	token, err := loadTokenForEmail(email)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("loading token for %s: %w", email, err)
 	}
 
 	oauth2Token := &oauth2.Token{
@@ -423,7 +423,7 @@ func (m *Manager) GetClientOrAuthenticate(ctx context.Context, email string, int
 			return client, nil
 		}
 		if !errors.Is(err, ErrNoCredentials) {
-			return nil, err
+			return nil, fmt.Errorf("getting client for %s: %w", email, err)
 		}
 		// No credentials for specified email
 		if !interactive {

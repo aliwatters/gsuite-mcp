@@ -2,6 +2,7 @@ package drive
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -21,7 +22,7 @@ func NewDriveServiceConstructor(filter *common.DriveAccessFilter) common.Service
 	return func(ctx context.Context, client *http.Client) (DriveService, error) {
 		srv, err := drive.NewService(ctx, option.WithHTTPClient(client))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("creating drive service: %w", err)
 		}
 		real := NewRealDriveService(srv)
 		if filter != nil && filter.IsActive() {

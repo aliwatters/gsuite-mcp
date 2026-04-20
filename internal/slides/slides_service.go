@@ -3,6 +3,7 @@ package slides
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"google.golang.org/api/slides/v1"
 )
@@ -155,7 +156,7 @@ func formatPage(page *slides.Page) map[string]any {
 func parseBatchUpdateRequests(requestsJSON string) ([]*slides.Request, error) {
 	var requests []*slides.Request
 	if err := json.Unmarshal([]byte(requestsJSON), &requests); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing slides batch update requests: %w", err)
 	}
 	return requests, nil
 }

@@ -32,7 +32,7 @@ func NewDualStore(ctx context.Context, indexID, sheetID string, sheetsSrv *sheet
 
 	dir, err := cacheDir()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolving cache dir: %w", err)
 	}
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, fmt.Errorf("creating cache dir: %w", err)

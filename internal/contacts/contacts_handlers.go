@@ -2,6 +2,7 @@ package contacts
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type ContactsHandlerDeps = common.HandlerDeps[ContactsService]
 func NewContactsService(ctx context.Context, client *http.Client) (ContactsService, error) {
 	srv, err := people.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating contacts service: %w", err)
 	}
 	return NewRealContactsService(srv), nil
 }

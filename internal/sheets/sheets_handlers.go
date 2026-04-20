@@ -2,6 +2,7 @@ package sheets
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -17,7 +18,7 @@ type SheetsHandlerDeps = common.HandlerDeps[SheetsService]
 func NewSheetsService(ctx context.Context, client *http.Client) (SheetsService, error) {
 	srv, err := sheets.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating sheets service: %w", err)
 	}
 	return NewRealSheetsService(srv), nil
 }
