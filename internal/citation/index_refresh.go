@@ -45,9 +45,7 @@ func (s *RealCitationService) RefreshIndex(ctx context.Context, indexID string) 
 		})
 	}
 
-	if err := g.Wait(); err != nil {
-		return nil, fmt.Errorf("RefreshIndex fetching file metadata: %w", err)
-	}
+	g.Wait() //nolint:errcheck // goroutines return nil unconditionally; partial failures stored in fileResults
 
 	// Process results sequentially (store writes and result mutation are not concurrent-safe).
 	for _, fr := range fileResults {

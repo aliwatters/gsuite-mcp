@@ -18,8 +18,9 @@ type Deps struct {
 
 // Global instance set during initialization.
 // Deprecated: All service handlers should receive deps explicitly via Init*HandlerDeps.
-// This global is retained only for middleware (WithDriveAccessCheck, WithLargeContentHint)
-// that receive nil deps as a backward-compatibility fallback.
+// This global is retained for middleware (WithDriveAccessCheck, WithLargeContentHint)
+// fallbacks and for callers such as ResolveAccountFromRequest that have not yet been
+// updated to accept deps explicitly.
 var deps *Deps
 
 // SetDeps initializes the global dependencies. Called exactly once during startup.

@@ -250,7 +250,8 @@ func downloadAndChunk(data []byte, file *drive.File) ([]Chunk, error) {
 	return chunkText(file.Id, file.Name, text), nil
 }
 
-// exportSizeLimit limits Drive export downloads.
+// exportSizeLimit limits Drive downloads and exports (applies to both raw file
+// downloads and Google Workspace export conversions).
 // Uses the shared constant from common to prevent divergence.
 const exportSizeLimit = common.DriveMaxExportSize
 

@@ -28,11 +28,11 @@ func (s *RealCitationService) CreateIndex(ctx context.Context, name, folderID st
 		return nil, fmt.Errorf("creating index sheet: %w", err)
 	}
 
-	// Move to folder if specified
+	// Add the new spreadsheet to the specified folder.
 	if folderID != "" {
-		_, err = s.drive.MoveFile(ctx, created.SpreadsheetId, folderID)
+		_, err = s.drive.AddParentFolder(ctx, created.SpreadsheetId, folderID)
 		if err != nil {
-			return nil, fmt.Errorf("moving sheet to folder: %w", err)
+			return nil, fmt.Errorf("adding sheet to folder: %w", err)
 		}
 	}
 
