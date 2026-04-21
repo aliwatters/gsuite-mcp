@@ -37,7 +37,7 @@ func (m *mockCitationDrive) ExportFile(_ context.Context, fileID string, _ strin
 	return nil, io.ErrUnexpectedEOF
 }
 
-func (m *mockCitationDrive) MoveFile(_ context.Context, fileID string, _ string) (*drive.File, error) {
+func (m *mockCitationDrive) AddParentFolder(_ context.Context, fileID string, _ string) (*drive.File, error) {
 	if f, ok := m.files[fileID]; ok {
 		return f, nil
 	}

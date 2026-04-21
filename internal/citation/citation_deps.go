@@ -23,8 +23,9 @@ type CitationDriveService interface {
 	// ExportFile exports a Google Workspace file to the specified MIME type.
 	ExportFile(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error)
 
-	// MoveFile moves a file to a new parent folder.
-	MoveFile(ctx context.Context, fileID string, addParents string) (*drive.File, error)
+	// AddParentFolder adds a parent folder to a file (Drive AddParents API).
+	// This does not remove existing parents; use the Drive package's MoveFile for a full move.
+	AddParentFolder(ctx context.Context, fileID string, parentFolderID string) (*drive.File, error)
 }
 
 // CitationSheetsService defines the Sheets operations used by the citation package.
@@ -83,9 +84,9 @@ func (r *realCitationDriveService) ExportFile(ctx context.Context, fileID string
 	return resp.Body, nil
 }
 
-func (r *realCitationDriveService) MoveFile(ctx context.Context, fileID string, addParents string) (*drive.File, error) {
+func (r *realCitationDriveService) AddParentFolder(ctx context.Context, fileID string, parentFolderID string) (*drive.File, error) {
 	return r.svc.Files.Update(fileID, nil).
-		AddParents(addParents).
+		AddParents(parentFolderID).
 		SupportsAllDrives(true).
 		Context(ctx).Do()
 }

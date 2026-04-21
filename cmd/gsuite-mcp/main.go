@@ -139,7 +139,7 @@ func initializeApp() error {
 	// middleware that may receive nil deps. All handler factories now use explicit passing below.
 	common.SetDeps(appDeps)
 
-	// Initialize ALL handler deps with explicit dependency passing to avoid global singleton reads.
+	// Initialize handler deps with explicit dependency passing so handler logic does not call GetDeps().
 	drive.InitDefaultDriveHandlerDeps(appDeps)
 	gmail.InitDefaultGmailHandlerDeps(appDeps)
 	docs.InitDefaultDocsHandlerDeps(appDeps)
