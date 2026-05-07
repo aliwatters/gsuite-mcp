@@ -17,42 +17,42 @@ func TestableCalendarListEvents(ctx context.Context, request mcp.CallToolRequest
 		return errResult, nil
 	}
 
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", "primary")
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", "primary")
 
 	opts := &ListEventsOptions{
 		Fields: CalendarEventListFields,
 	}
 
 	// Default to showing future events if no time range specified
-	if timeMin := common.ParseStringArg(request.Params.Arguments, "time_min", ""); timeMin != "" {
+	if timeMin := common.ParseStringArg(request.GetArguments(), "time_min", ""); timeMin != "" {
 		opts.TimeMin = timeMin
 	} else {
 		// Default to now
 		opts.TimeMin = time.Now().Format(time.RFC3339)
 	}
 
-	if timeMax := common.ParseStringArg(request.Params.Arguments, "time_max", ""); timeMax != "" {
+	if timeMax := common.ParseStringArg(request.GetArguments(), "time_max", ""); timeMax != "" {
 		opts.TimeMax = timeMax
 	}
 
-	opts.MaxResults = common.ParseMaxResults(request.Params.Arguments, common.CalendarDefaultMaxResults, common.CalendarMaxResultsLimit)
+	opts.MaxResults = common.ParseMaxResults(request.GetArguments(), common.CalendarDefaultMaxResults, common.CalendarMaxResultsLimit)
 
-	if pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", ""); pageToken != "" {
+	if pageToken := common.ParseStringArg(request.GetArguments(), "page_token", ""); pageToken != "" {
 		opts.PageToken = pageToken
 	}
 
-	if query := common.ParseStringArg(request.Params.Arguments, "query", ""); query != "" {
+	if query := common.ParseStringArg(request.GetArguments(), "query", ""); query != "" {
 		opts.Query = query
 	}
 
 	// Expand recurring events into individual instances
-	if common.ParseBoolArg(request.Params.Arguments, "single_events", false) {
+	if common.ParseBoolArg(request.GetArguments(), "single_events", false) {
 		opts.SingleEvents = true
 		opts.OrderBy = "startTime"
 	}
 
 	// Filter by event types (e.g., "focusTime", "outOfOffice")
-	if eventTypesRaw, ok := request.Params.Arguments["event_types"].([]any); ok && len(eventTypesRaw) > 0 {
+	if eventTypesRaw, ok := request.GetArguments()["event_types"].([]any); ok && len(eventTypesRaw) > 0 {
 		eventTypes := make([]string, 0, len(eventTypesRaw))
 		for _, et := range eventTypesRaw {
 			if etStr, ok := et.(string); ok && etStr != "" {
@@ -90,12 +90,12 @@ func TestableCalendarGetEvent(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	eventID, errResult := common.RequireStringArg(request.Params.Arguments, "event_id")
+	eventID, errResult := common.RequireStringArg(request.GetArguments(), "event_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	event, err := srv.GetEvent(ctx, calendarID, eventID, CalendarEventGetFields)
 	if err != nil {
@@ -114,45 +114,45 @@ func TestableCalendarCreateEvent(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	summary, errResult := common.RequireStringArg(request.Params.Arguments, "summary")
+	summary, errResult := common.RequireStringArg(request.GetArguments(), "summary")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	event := &calendar.Event{
 		Summary: summary,
 	}
 
-	if desc := common.ParseStringArg(request.Params.Arguments, "description", ""); desc != "" {
+	if desc := common.ParseStringArg(request.GetArguments(), "description", ""); desc != "" {
 		event.Description = desc
 	}
 
-	if loc := common.ParseStringArg(request.Params.Arguments, "location", ""); loc != "" {
+	if loc := common.ParseStringArg(request.GetArguments(), "location", ""); loc != "" {
 		event.Location = loc
 	}
 
 	// Set start/end times (required start_time, optional end_time/all_day/timezone)
-	if errResult := setNewEventTimes(event, request.Params.Arguments); errResult != nil {
+	if errResult := setNewEventTimes(event, request.GetArguments()); errResult != nil {
 		return errResult, nil
 	}
 
 	// Attendees
-	if attendees := parseAttendees(request.Params.Arguments); attendees != nil {
+	if attendees := parseAttendees(request.GetArguments()); attendees != nil {
 		event.Attendees = attendees
 	}
 
 	// Reminders
-	if reminders := parseReminders(request.Params.Arguments); reminders != nil {
+	if reminders := parseReminders(request.GetArguments()); reminders != nil {
 		event.Reminders = reminders
 	}
 
 	// Google Meet conferencing
-	addConferencing := common.ParseBoolArg(request.Params.Arguments, "add_conferencing", false)
+	addConferencing := common.ParseBoolArg(request.GetArguments(), "add_conferencing", false)
 
 	if addConferencing {
-		startTime := common.ParseStringArg(request.Params.Arguments, "start_time", "")
+		startTime := common.ParseStringArg(request.GetArguments(), "start_time", "")
 		event.ConferenceData = buildConferenceData(calendarID, startTime, summary)
 	}
 
@@ -184,12 +184,12 @@ func TestableCalendarUpdateEvent(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	eventID, errResult := common.RequireStringArg(request.Params.Arguments, "event_id")
+	eventID, errResult := common.RequireStringArg(request.GetArguments(), "event_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	// First, get the existing event
 	event, err := srv.GetEvent(ctx, calendarID, eventID, "")
@@ -198,23 +198,23 @@ func TestableCalendarUpdateEvent(ctx context.Context, request mcp.CallToolReques
 	}
 
 	// Update fields that are provided
-	if summary := common.ParseStringArg(request.Params.Arguments, "summary", ""); summary != "" {
+	if summary := common.ParseStringArg(request.GetArguments(), "summary", ""); summary != "" {
 		event.Summary = summary
 	}
-	if val, ok := request.Params.Arguments["description"].(string); ok {
+	if val, ok := request.GetArguments()["description"].(string); ok {
 		event.Description = val
 	}
-	if val, ok := request.Params.Arguments["location"].(string); ok {
+	if val, ok := request.GetArguments()["location"].(string); ok {
 		event.Location = val
 	}
 
 	// Update times if provided
-	if errResult := updateEventTimes(event, request.Params.Arguments); errResult != nil {
+	if errResult := updateEventTimes(event, request.GetArguments()); errResult != nil {
 		return errResult, nil
 	}
 
 	// Update attendees if provided
-	if attendees := parseAttendees(request.Params.Arguments); attendees != nil {
+	if attendees := parseAttendees(request.GetArguments()); attendees != nil {
 		event.Attendees = attendees
 	}
 
@@ -236,12 +236,12 @@ func TestableCalendarDeleteEvent(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	eventID, errResult := common.RequireStringArg(request.Params.Arguments, "event_id")
+	eventID, errResult := common.RequireStringArg(request.GetArguments(), "event_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	err := srv.DeleteEvent(ctx, calendarID, eventID)
 	if err != nil {
@@ -265,12 +265,12 @@ func TestableCalendarQuickAdd(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	text, errResult := common.RequireStringArg(request.GetArguments(), "text")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	event, err := srv.QuickAddEvent(ctx, calendarID, text)
 	if err != nil {

@@ -85,38 +85,38 @@ func TestableGmailCreateFilter(ctx context.Context, request mcp.CallToolRequest,
 	}
 
 	// Criteria
-	if val := common.ParseStringArg(request.Params.Arguments, "from", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "from", ""); val != "" {
 		filter.Criteria.From = val
 	}
-	if val := common.ParseStringArg(request.Params.Arguments, "to", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "to", ""); val != "" {
 		filter.Criteria.To = val
 	}
-	if val := common.ParseStringArg(request.Params.Arguments, "subject", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "subject", ""); val != "" {
 		filter.Criteria.Subject = val
 	}
-	if val := common.ParseStringArg(request.Params.Arguments, "query", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "query", ""); val != "" {
 		filter.Criteria.Query = val
 	}
-	if val := common.ParseBoolArg(request.Params.Arguments, "has_attachment", false); val {
+	if val := common.ParseBoolArg(request.GetArguments(), "has_attachment", false); val {
 		filter.Criteria.HasAttachment = true
 	}
 
 	// Action
-	if add, ok := request.Params.Arguments["add_label_ids"].([]any); ok {
+	if add, ok := request.GetArguments()["add_label_ids"].([]any); ok {
 		for _, l := range add {
 			if s, ok := l.(string); ok {
 				filter.Action.AddLabelIds = append(filter.Action.AddLabelIds, s)
 			}
 		}
 	}
-	if remove, ok := request.Params.Arguments["remove_label_ids"].([]any); ok {
+	if remove, ok := request.GetArguments()["remove_label_ids"].([]any); ok {
 		for _, l := range remove {
 			if s, ok := l.(string); ok {
 				filter.Action.RemoveLabelIds = append(filter.Action.RemoveLabelIds, s)
 			}
 		}
 	}
-	if val := common.ParseStringArg(request.Params.Arguments, "forward", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "forward", ""); val != "" {
 		filter.Action.Forward = val
 	}
 
@@ -134,7 +134,7 @@ func TestableGmailCreateFilter(ctx context.Context, request mcp.CallToolRequest,
 
 // TestableGmailDeleteFilter deletes a filter.
 func TestableGmailDeleteFilter(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	filterID, errResult := common.RequireStringArg(request.Params.Arguments, "filter_id")
+	filterID, errResult := common.RequireStringArg(request.GetArguments(), "filter_id")
 	if errResult != nil {
 		return errResult, nil
 	}

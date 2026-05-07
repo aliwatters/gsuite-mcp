@@ -48,7 +48,7 @@ func ResolveAccountFromRequestWithDeps(request mcp.CallToolRequest, d *Deps) (st
 	if d == nil {
 		d = GetDeps()
 	}
-	accountParam := ParseStringArg(request.Params.Arguments, "account", "")
+	accountParam := ParseStringArg(request.GetArguments(), "account", "")
 
 	if accountParam == "" {
 		// No account specified - use first authenticated email

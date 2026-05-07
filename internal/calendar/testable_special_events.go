@@ -16,27 +16,27 @@ func TestableCalendarCreateFocusTime(ctx context.Context, request mcp.CallToolRe
 		return errResult, nil
 	}
 
-	summary := common.ParseStringArg(request.Params.Arguments, "summary", "Focus Time")
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	summary := common.ParseStringArg(request.GetArguments(), "summary", "Focus Time")
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	event := &calendar.Event{
 		Summary:   summary,
 		EventType: "focusTime",
 	}
 
-	if desc := common.ParseStringArg(request.Params.Arguments, "description", ""); desc != "" {
+	if desc := common.ParseStringArg(request.GetArguments(), "description", ""); desc != "" {
 		event.Description = desc
 	}
 
 	// Set start/end times
-	if errResult := setNewEventTimes(event, request.Params.Arguments); errResult != nil {
+	if errResult := setNewEventTimes(event, request.GetArguments()); errResult != nil {
 		return errResult, nil
 	}
 
 	// Focus Time uses FocusTimeProperties for auto-decline
-	autoDecline := common.ParseBoolArg(request.Params.Arguments, "auto_decline", true)
-	declineMessage := common.ParseStringArg(request.Params.Arguments, "decline_message", "Declined because I am in focus time.")
-	chatStatus := common.ParseStringArg(request.Params.Arguments, "chat_status", "doNotDisturb")
+	autoDecline := common.ParseBoolArg(request.GetArguments(), "auto_decline", true)
+	declineMessage := common.ParseStringArg(request.GetArguments(), "decline_message", "Declined because I am in focus time.")
+	chatStatus := common.ParseStringArg(request.GetArguments(), "chat_status", "doNotDisturb")
 
 	event.FocusTimeProperties = &calendar.EventFocusTimeProperties{
 		AutoDeclineMode: boolToDeclineMode(autoDecline),
@@ -45,7 +45,7 @@ func TestableCalendarCreateFocusTime(ctx context.Context, request mcp.CallToolRe
 	}
 
 	// Recurrence
-	if rrule := common.ParseStringArg(request.Params.Arguments, "recurrence", ""); rrule != "" {
+	if rrule := common.ParseStringArg(request.GetArguments(), "recurrence", ""); rrule != "" {
 		event.Recurrence = []string{rrule}
 	}
 
@@ -68,26 +68,26 @@ func TestableCalendarCreateOutOfOffice(ctx context.Context, request mcp.CallTool
 		return errResult, nil
 	}
 
-	summary := common.ParseStringArg(request.Params.Arguments, "summary", "Out of office")
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	summary := common.ParseStringArg(request.GetArguments(), "summary", "Out of office")
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	event := &calendar.Event{
 		Summary:   summary,
 		EventType: "outOfOffice",
 	}
 
-	if desc := common.ParseStringArg(request.Params.Arguments, "description", ""); desc != "" {
+	if desc := common.ParseStringArg(request.GetArguments(), "description", ""); desc != "" {
 		event.Description = desc
 	}
 
 	// Set start/end times
-	if errResult := setNewEventTimes(event, request.Params.Arguments); errResult != nil {
+	if errResult := setNewEventTimes(event, request.GetArguments()); errResult != nil {
 		return errResult, nil
 	}
 
 	// Out of Office uses OutOfOfficeProperties for auto-decline
-	autoDecline := common.ParseBoolArg(request.Params.Arguments, "auto_decline", true)
-	declineMessage := common.ParseStringArg(request.Params.Arguments, "decline_message", "I am out of office and unable to attend.")
+	autoDecline := common.ParseBoolArg(request.GetArguments(), "auto_decline", true)
+	declineMessage := common.ParseStringArg(request.GetArguments(), "decline_message", "I am out of office and unable to attend.")
 
 	event.OutOfOfficeProperties = &calendar.EventOutOfOfficeProperties{
 		AutoDeclineMode: boolToDeclineMode(autoDecline),
@@ -95,7 +95,7 @@ func TestableCalendarCreateOutOfOffice(ctx context.Context, request mcp.CallTool
 	}
 
 	// Recurrence
-	if rrule := common.ParseStringArg(request.Params.Arguments, "recurrence", ""); rrule != "" {
+	if rrule := common.ParseStringArg(request.GetArguments(), "recurrence", ""); rrule != "" {
 		event.Recurrence = []string{rrule}
 	}
 

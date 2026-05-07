@@ -21,13 +21,13 @@ func TestableDocsInsertTable(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	rowsFloat, ok := request.Params.Arguments["rows"].(float64)
+	rowsFloat, ok := request.GetArguments()["rows"].(float64)
 	if !ok || rowsFloat < 1 {
 		return mcp.NewToolResultError("rows parameter is required and must be at least 1"), nil
 	}
 	rows := int64(rowsFloat)
 
-	columnsFloat, ok := request.Params.Arguments["columns"].(float64)
+	columnsFloat, ok := request.GetArguments()["columns"].(float64)
 	if !ok || columnsFloat < 1 {
 		return mcp.NewToolResultError("columns parameter is required and must be at least 1"), nil
 	}
@@ -35,7 +35,7 @@ func TestableDocsInsertTable(ctx context.Context, request mcp.CallToolRequest, d
 
 	// Default index to 1 (beginning of document)
 	index := int64(1)
-	if indexFloat, ok := request.Params.Arguments["index"].(float64); ok {
+	if indexFloat, ok := request.GetArguments()["index"].(float64); ok {
 		index = int64(indexFloat)
 		if index < 1 {
 			return mcp.NewToolResultError("index must be at least 1"), nil
@@ -78,17 +78,17 @@ func TestableDocsInsertLink(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	text, errResult := common.RequireStringArg(request.GetArguments(), "text")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	linkURL, errResult := common.RequireStringArg(request.Params.Arguments, "url")
+	linkURL, errResult := common.RequireStringArg(request.GetArguments(), "url")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	indexFloat, ok := request.Params.Arguments["index"].(float64)
+	indexFloat, ok := request.GetArguments()["index"].(float64)
 	if !ok {
 		return mcp.NewToolResultError("index parameter is required (1-based position in document)"), nil
 	}
@@ -156,7 +156,7 @@ func TestableDocsInsertPageBreak(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	indexFloat, ok := request.Params.Arguments["index"].(float64)
+	indexFloat, ok := request.GetArguments()["index"].(float64)
 	if !ok {
 		return mcp.NewToolResultError("index parameter is required (1-based position in document)"), nil
 	}
@@ -197,12 +197,12 @@ func TestableDocsInsertImage(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	imageURI := common.ParseStringArg(request.Params.Arguments, "uri", "")
+	imageURI := common.ParseStringArg(request.GetArguments(), "uri", "")
 	if imageURI == "" {
 		return mcp.NewToolResultError("uri parameter is required (URL of the image)"), nil
 	}
 
-	indexFloat, ok := request.Params.Arguments["index"].(float64)
+	indexFloat, ok := request.GetArguments()["index"].(float64)
 	if !ok {
 		return mcp.NewToolResultError("index parameter is required (1-based position in document)"), nil
 	}
@@ -288,7 +288,7 @@ func handleDocsCreateHeaderOrFooter(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Optionally insert content
-	content, hasContent := request.Params.Arguments["content"].(string)
+	content, hasContent := request.GetArguments()["content"].(string)
 	if hasContent && content != "" && sectionID != "" {
 		contentRequests := []*docs.Request{{
 			InsertText: &docs.InsertTextRequest{

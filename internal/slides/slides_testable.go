@@ -13,7 +13,7 @@ const slidesEditURLFormat = "https://docs.google.com/presentation/d/%s/edit"
 
 // extractRequiredPresentationID extracts, validates, and normalizes the presentation_id parameter.
 func extractRequiredPresentationID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
-	presID := common.ParseStringArg(request.Params.Arguments, "presentation_id", "")
+	presID := common.ParseStringArg(request.GetArguments(), "presentation_id", "")
 	if presID == "" {
 		return "", mcp.NewToolResultError("presentation_id parameter is required")
 	}
@@ -102,7 +102,7 @@ func TestableSlidesGetPage(ctx context.Context, request mcp.CallToolRequest, dep
 		return errResult, nil
 	}
 
-	pageID, errResult := common.RequireStringArg(request.Params.Arguments, "page_id")
+	pageID, errResult := common.RequireStringArg(request.GetArguments(), "page_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -130,7 +130,7 @@ func TestableSlidesGetThumbnail(ctx context.Context, request mcp.CallToolRequest
 		return errResult, nil
 	}
 
-	pageID, errResult := common.RequireStringArg(request.Params.Arguments, "page_id")
+	pageID, errResult := common.RequireStringArg(request.GetArguments(), "page_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -158,7 +158,7 @@ func TestableSlidesCreate(ctx context.Context, request mcp.CallToolRequest, deps
 		return errResult, nil
 	}
 
-	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	title, errResult := common.RequireStringArg(request.GetArguments(), "title")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -190,7 +190,7 @@ func TestableSlidesBatchUpdate(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	requestsJSON, errResult := common.RequireStringArg(request.Params.Arguments, "requests")
+	requestsJSON, errResult := common.RequireStringArg(request.GetArguments(), "requests")
 	if errResult != nil {
 		return errResult, nil
 	}

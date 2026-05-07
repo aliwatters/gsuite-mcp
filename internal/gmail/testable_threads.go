@@ -11,7 +11,7 @@ import (
 
 // TestableGmailGetThread retrieves a thread using the provided service.
 func TestableGmailGetThread(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	threadID, errResult := common.RequireStringArg(request.Params.Arguments, "thread_id")
+	threadID, errResult := common.RequireStringArg(request.GetArguments(), "thread_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -21,14 +21,14 @@ func TestableGmailGetThread(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	format := common.ParseStringArg(request.Params.Arguments, "format", "full")
+	format := common.ParseStringArg(request.GetArguments(), "format", "full")
 
 	thread, err := svc.GetThread(ctx, threadID, format)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Gmail API error: %v", err)), nil
 	}
 
-	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.Params.Arguments)}
+	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments())}
 	messages := make([]map[string]any, 0, len(thread.Messages))
 	for _, msg := range thread.Messages {
 		messages = append(messages, FormatMessageWithOptions(msg, opts))
@@ -45,7 +45,7 @@ func TestableGmailGetThread(ctx context.Context, request mcp.CallToolRequest, de
 
 // TestableGmailThreadArchive archives all messages in a thread (removes INBOX label).
 func TestableGmailThreadArchive(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	threadID, errResult := common.RequireStringArg(request.Params.Arguments, "thread_id")
+	threadID, errResult := common.RequireStringArg(request.GetArguments(), "thread_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -69,7 +69,7 @@ func TestableGmailThreadArchive(ctx context.Context, request mcp.CallToolRequest
 
 // TestableGmailThreadTrash moves an entire thread to trash.
 func TestableGmailThreadTrash(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	threadID, errResult := common.RequireStringArg(request.Params.Arguments, "thread_id")
+	threadID, errResult := common.RequireStringArg(request.GetArguments(), "thread_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -89,7 +89,7 @@ func TestableGmailThreadTrash(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailThreadUntrash restores an entire thread from trash.
 func TestableGmailThreadUntrash(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	threadID, errResult := common.RequireStringArg(request.Params.Arguments, "thread_id")
+	threadID, errResult := common.RequireStringArg(request.GetArguments(), "thread_id")
 	if errResult != nil {
 		return errResult, nil
 	}

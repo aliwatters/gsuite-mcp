@@ -27,8 +27,8 @@ func TestableListConferenceRecords(ctx context.Context, request mcp.CallToolRequ
 		return errResult, nil
 	}
 
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	pageSize := common.ParseMaxResults(request.Params.Arguments, defaultPageSize, 100)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	pageSize := common.ParseMaxResults(request.GetArguments(), defaultPageSize, 100)
 
 	records, nextPageToken, err := srv.ListConferenceRecords(ctx, pageToken, pageSize)
 	if err != nil {
@@ -58,7 +58,7 @@ func TestableGetConferenceRecord(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	name, errResult := common.RequireStringArg(request.GetArguments(), "name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -79,14 +79,14 @@ func TestableListParticipants(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	parent, errResult := common.RequireStringArg(request.Params.Arguments, "conference_record")
+	parent, errResult := common.RequireStringArg(request.GetArguments(), "conference_record")
 	if errResult != nil {
 		return errResult, nil
 	}
 	parent = ensureConferenceRecordName(parent)
 
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	pageSize := common.ParseMaxResults(request.Params.Arguments, defaultPageSize, 100)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	pageSize := common.ParseMaxResults(request.GetArguments(), defaultPageSize, 100)
 
 	participants, nextPageToken, totalSize, err := srv.ListParticipants(ctx, parent, pageToken, pageSize)
 	if err != nil {
@@ -120,13 +120,13 @@ func TestableListTranscripts(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	parent, errResult := common.RequireStringArg(request.Params.Arguments, "conference_record")
+	parent, errResult := common.RequireStringArg(request.GetArguments(), "conference_record")
 	if errResult != nil {
 		return errResult, nil
 	}
 	parent = ensureConferenceRecordName(parent)
 
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
 
 	transcripts, nextPageToken, err := srv.ListTranscripts(ctx, parent, pageToken)
 	if err != nil {
@@ -157,7 +157,7 @@ func TestableGetTranscript(ctx context.Context, request mcp.CallToolRequest, dep
 		return errResult, nil
 	}
 
-	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	name, errResult := common.RequireStringArg(request.GetArguments(), "name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -177,13 +177,13 @@ func TestableListTranscriptEntries(ctx context.Context, request mcp.CallToolRequ
 		return errResult, nil
 	}
 
-	parent, errResult := common.RequireStringArg(request.Params.Arguments, "transcript")
+	parent, errResult := common.RequireStringArg(request.GetArguments(), "transcript")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	pageSize := common.ParseMaxResults(request.Params.Arguments, defaultPageSize, 250)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	pageSize := common.ParseMaxResults(request.GetArguments(), defaultPageSize, 250)
 
 	entries, nextPageToken, err := srv.ListTranscriptEntries(ctx, parent, pageToken, pageSize)
 	if err != nil {

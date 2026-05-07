@@ -12,7 +12,7 @@ import (
 
 // TestableGmailSearch performs a Gmail search using the provided service.
 func TestableGmailSearch(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	query, errResult := common.RequireStringArg(request.Params.Arguments, "query")
+	query, errResult := common.RequireStringArg(request.GetArguments(), "query")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -22,8 +22,8 @@ func TestableGmailSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	maxResults := common.ParseMaxResults(request.Params.Arguments, common.GmailDefaultMaxResults, common.GmailMaxResultsLimit)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	maxResults := common.ParseMaxResults(request.GetArguments(), common.GmailDefaultMaxResults, common.GmailMaxResultsLimit)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
 
 	resp, err := svc.ListMessages(ctx, query, maxResults, pageToken)
 	if err != nil {
@@ -54,7 +54,7 @@ func TestableGmailSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 
 // TestableGmailGetMessage retrieves a single message using the provided service.
 func TestableGmailGetMessage(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageID, errResult := common.RequireStringArg(request.Params.Arguments, "message_id")
+	messageID, errResult := common.RequireStringArg(request.GetArguments(), "message_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -64,20 +64,20 @@ func TestableGmailGetMessage(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	format := common.ParseStringArg(request.Params.Arguments, "format", "full")
+	format := common.ParseStringArg(request.GetArguments(), "format", "full")
 
 	msg, err := svc.GetMessage(ctx, messageID, format)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Gmail API error: %v", err)), nil
 	}
 
-	result := FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: parseBodyFormat(request.Params.Arguments)})
+	result := FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments())})
 	return common.MarshalToolResult(result)
 }
 
 // TestableGmailGetMessages retrieves multiple messages using the provided service.
 func TestableGmailGetMessages(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageIDsRaw, ok := request.Params.Arguments["message_ids"].([]any)
+	messageIDsRaw, ok := request.GetArguments()["message_ids"].([]any)
 	if !ok || len(messageIDsRaw) == 0 {
 		return mcp.NewToolResultError("message_ids parameter is required (array of message IDs)"), nil
 	}
@@ -91,12 +91,12 @@ func TestableGmailGetMessages(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	format := common.ParseStringArg(request.Params.Arguments, "format", "full")
+	format := common.ParseStringArg(request.GetArguments(), "format", "full")
 
 	messages := make([]map[string]any, 0, len(messageIDsRaw))
 	var errors []string
 
-	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.Params.Arguments)}
+	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments())}
 	for _, idRaw := range messageIDsRaw {
 		messageID, ok := idRaw.(string)
 		if !ok {
@@ -125,7 +125,7 @@ func TestableGmailGetMessages(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailSend sends a new email using the provided service.
 func TestableGmailSend(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	if _, errResult := common.RequireStringArg(request.Params.Arguments, "to"); errResult != nil {
+	if _, errResult := common.RequireStringArg(request.GetArguments(), "to"); errResult != nil {
 		return errResult, nil
 	}
 
@@ -134,7 +134,7 @@ func TestableGmailSend(ctx context.Context, request mcp.CallToolRequest, deps *G
 		return errResult, nil
 	}
 
-	message := buildMessageFromArgs(request.Params.Arguments)
+	message := buildMessageFromArgs(request.GetArguments())
 
 	sent, err := svc.SendMessage(ctx, message)
 	if err != nil {
@@ -152,12 +152,12 @@ func TestableGmailSend(ctx context.Context, request mcp.CallToolRequest, deps *G
 
 // TestableGmailReply replies to an email using the provided service.
 func TestableGmailReply(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageID := common.ParseStringArg(request.Params.Arguments, "message_id", "")
+	messageID := common.ParseStringArg(request.GetArguments(), "message_id", "")
 	if messageID == "" {
 		return mcp.NewToolResultError("message_id parameter is required (the message you're replying to)"), nil
 	}
 
-	body, bodyErr := common.RequireStringArg(request.Params.Arguments, "body")
+	body, bodyErr := common.RequireStringArg(request.GetArguments(), "body")
 	if bodyErr != nil {
 		return bodyErr, nil
 	}
@@ -194,11 +194,11 @@ func TestableGmailReply(ctx context.Context, request mcp.CallToolRequest, deps *
 	}
 
 	replyTo := origFrom
-	if to := common.ParseStringArg(request.Params.Arguments, "to", ""); to != "" {
+	if to := common.ParseStringArg(request.GetArguments(), "to", ""); to != "" {
 		replyTo = to
 	}
 
-	replyAll := common.ParseBoolArg(request.Params.Arguments, "reply_all", false)
+	replyAll := common.ParseBoolArg(request.GetArguments(), "reply_all", false)
 
 	var cc string
 	if replyAll {
@@ -211,7 +211,7 @@ func TestableGmailReply(ctx context.Context, request mcp.CallToolRequest, deps *
 		}
 		cc = strings.Join(ccList, ", ")
 	}
-	if ccOverride := common.ParseStringArg(request.Params.Arguments, "cc", ""); ccOverride != "" {
+	if ccOverride := common.ParseStringArg(request.GetArguments(), "cc", ""); ccOverride != "" {
 		cc = ccOverride
 	}
 
@@ -277,7 +277,7 @@ func TestableGmailNotSpam(ctx context.Context, request mcp.CallToolRequest, deps
 
 // TestableGmailTrash moves a message to trash.
 func TestableGmailTrash(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageID, errResult := common.RequireStringArg(request.Params.Arguments, "message_id")
+	messageID, errResult := common.RequireStringArg(request.GetArguments(), "message_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -303,7 +303,7 @@ func TestableGmailTrash(ctx context.Context, request mcp.CallToolRequest, deps *
 
 // TestableGmailUntrash removes a message from trash.
 func TestableGmailUntrash(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageID, errResult := common.RequireStringArg(request.Params.Arguments, "message_id")
+	messageID, errResult := common.RequireStringArg(request.GetArguments(), "message_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -329,12 +329,12 @@ func TestableGmailUntrash(ctx context.Context, request mcp.CallToolRequest, deps
 
 // TestableGmailGetAttachment downloads an attachment.
 func TestableGmailGetAttachment(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	messageID, errResult := common.RequireStringArg(request.Params.Arguments, "message_id")
+	messageID, errResult := common.RequireStringArg(request.GetArguments(), "message_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	attachmentID, errResult := common.RequireStringArg(request.Params.Arguments, "attachment_id")
+	attachmentID, errResult := common.RequireStringArg(request.GetArguments(), "attachment_id")
 	if errResult != nil {
 		return errResult, nil
 	}

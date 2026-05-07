@@ -54,8 +54,8 @@ func TestableDriveListRevisions(ctx context.Context, request mcp.CallToolRequest
 		return idErrResult, nil
 	}
 
-	maxResults := common.ParseMaxResults(request.Params.Arguments, common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	maxResults := common.ParseMaxResults(request.GetArguments(), common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
 
 	resp, err := srv.ListRevisions(ctx, fileID, DriveRevisionListFields, maxResults, pageToken)
 	if err != nil {
@@ -89,7 +89,7 @@ func TestableDriveGetRevision(ctx context.Context, request mcp.CallToolRequest, 
 		return idErrResult, nil
 	}
 
-	revisionID, errResult := common.RequireStringArg(request.Params.Arguments, "revision_id")
+	revisionID, errResult := common.RequireStringArg(request.GetArguments(), "revision_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -117,7 +117,7 @@ func TestableDriveDownloadRevision(ctx context.Context, request mcp.CallToolRequ
 		return idErrResult, nil
 	}
 
-	revisionID, errResult := common.RequireStringArg(request.Params.Arguments, "revision_id")
+	revisionID, errResult := common.RequireStringArg(request.GetArguments(), "revision_id")
 	if errResult != nil {
 		return errResult, nil
 	}

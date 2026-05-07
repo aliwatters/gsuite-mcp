@@ -25,7 +25,7 @@ var googleWorkspaceExportMIME = map[string]string{
 // extractRequiredFileID extracts, validates, and normalizes the file_id parameter.
 // Returns the cleaned ID or an error result if missing.
 func extractRequiredFileID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
-	fileID := common.ParseStringArg(request.Params.Arguments, "file_id", "")
+	fileID := common.ParseStringArg(request.GetArguments(), "file_id", "")
 	if fileID == "" {
 		return "", mcp.NewToolResultError("file_id parameter is required")
 	}

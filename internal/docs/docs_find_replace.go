@@ -22,13 +22,13 @@ func TestableDocsFindAndReplace(ctx context.Context, request mcp.CallToolRequest
 		return errResult, nil
 	}
 
-	findText, errResult := common.RequireStringArg(request.Params.Arguments, "find_text")
+	findText, errResult := common.RequireStringArg(request.GetArguments(), "find_text")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	replaceText := common.ParseStringArg(request.Params.Arguments, "replace_text", "")
-	matchCase := common.ParseBoolArg(request.Params.Arguments, "match_case", true)
+	replaceText := common.ParseStringArg(request.GetArguments(), "replace_text", "")
+	matchCase := common.ParseBoolArg(request.GetArguments(), "match_case", true)
 
 	replaceReq := &docs.ReplaceAllTextRequest{
 		ContainsText: &docs.SubstringMatchCriteria{

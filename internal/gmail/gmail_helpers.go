@@ -91,7 +91,7 @@ func buildEmailMessage(msg EmailMessage) string {
 // operations (archive, star, mark read, spam, etc.). It extracts message_id from
 // the request, applies the specified label changes, and returns a standard result.
 func modifyMessageLabels(ctx context.Context, svc GmailService, request mcp.CallToolRequest, addLabels, removeLabels []string) (*mcp.CallToolResult, error) {
-	messageID, errResult := common.RequireStringArg(request.Params.Arguments, "message_id")
+	messageID, errResult := common.RequireStringArg(request.GetArguments(), "message_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -113,7 +113,7 @@ func modifyMessageLabels(ctx context.Context, svc GmailService, request mcp.Call
 // operations (batch archive, batch trash). It extracts message_ids from the
 // request, applies the specified label changes, and returns a standard result.
 func batchModifyLabels(ctx context.Context, svc GmailService, request mcp.CallToolRequest, addLabels, removeLabels []string, countKey string) (*mcp.CallToolResult, error) {
-	messageIDs := extractStringArray(request.Params.Arguments["message_ids"])
+	messageIDs := extractStringArray(request.GetArguments()["message_ids"])
 	if len(messageIDs) == 0 {
 		return mcp.NewToolResultError("message_ids parameter is required"), nil
 	}

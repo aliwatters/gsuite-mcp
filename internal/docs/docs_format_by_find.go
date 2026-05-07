@@ -131,16 +131,16 @@ func TestableDocsFormatByFind(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	findText, errResult := common.RequireStringArg(request.Params.Arguments, "find_text")
+	findText, errResult := common.RequireStringArg(request.GetArguments(), "find_text")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	matchCase := common.ParseBoolArg(request.Params.Arguments, "match_case", true)
-	matchAll := common.ParseBoolArg(request.Params.Arguments, "match_all", true)
+	matchCase := common.ParseBoolArg(request.GetArguments(), "match_case", true)
+	matchAll := common.ParseBoolArg(request.GetArguments(), "match_all", true)
 
 	// Validate and collect formatting fields
-	fields, validationErr := collectFields(request.Params.Arguments, textFormatFields)
+	fields, validationErr := collectFields(request.GetArguments(), textFormatFields)
 	if validationErr != nil {
 		return validationErr, nil
 	}
@@ -161,7 +161,7 @@ func TestableDocsFormatByFind(ctx context.Context, request mcp.CallToolRequest, 
 	}
 
 	// Build formatting requests for each match
-	textStyle := buildTextStyle(request.Params.Arguments)
+	textStyle := buildTextStyle(request.GetArguments())
 	fieldMask := strings.Join(fields, ",")
 
 	var requests []*docs.Request

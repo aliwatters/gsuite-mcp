@@ -16,8 +16,8 @@ func TestableChatListSpaces(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	pageSize := common.ParseMaxResults(request.Params.Arguments, 20, 100)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	pageSize := common.ParseMaxResults(request.GetArguments(), 20, 100)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
 
 	spaces, nextPageToken, err := srv.ListSpaces(ctx, pageSize, pageToken)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestableChatGetSpace(ctx context.Context, request mcp.CallToolRequest, deps
 		return errResult, nil
 	}
 
-	spaceName, errResult := common.RequireStringArg(request.Params.Arguments, "space_name")
+	spaceName, errResult := common.RequireStringArg(request.GetArguments(), "space_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -69,12 +69,12 @@ func TestableChatCreateSpace(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	displayName, errResult := common.RequireStringArg(request.Params.Arguments, "display_name")
+	displayName, errResult := common.RequireStringArg(request.GetArguments(), "display_name")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	spaceType := common.ParseStringArg(request.Params.Arguments, "space_type", "SPACE")
+	spaceType := common.ParseStringArg(request.GetArguments(), "space_type", "SPACE")
 
 	space, err := srv.CreateSpace(ctx, displayName, spaceType)
 	if err != nil {
@@ -91,15 +91,15 @@ func TestableChatListMessages(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	spaceName, errResult := common.RequireStringArg(request.Params.Arguments, "space_name")
+	spaceName, errResult := common.RequireStringArg(request.GetArguments(), "space_name")
 	if errResult != nil {
 		return errResult, nil
 	}
 
 	spaceName = normalizeSpaceName(spaceName)
-	pageSize := common.ParseMaxResults(request.Params.Arguments, 25, 100)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	filter := common.ParseStringArg(request.Params.Arguments, "filter", "")
+	pageSize := common.ParseMaxResults(request.GetArguments(), 25, 100)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	filter := common.ParseStringArg(request.GetArguments(), "filter", "")
 
 	messages, nextPageToken, err := srv.ListMessages(ctx, spaceName, pageSize, pageToken, filter)
 	if err != nil {
@@ -129,7 +129,7 @@ func TestableChatGetMessage(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	messageName, errResult := common.RequireStringArg(request.Params.Arguments, "message_name")
+	messageName, errResult := common.RequireStringArg(request.GetArguments(), "message_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -149,18 +149,18 @@ func TestableChatSendMessage(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	spaceName, errResult := common.RequireStringArg(request.Params.Arguments, "space_name")
+	spaceName, errResult := common.RequireStringArg(request.GetArguments(), "space_name")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	text, errResult := common.RequireStringArg(request.GetArguments(), "text")
 	if errResult != nil {
 		return errResult, nil
 	}
 
 	spaceName = normalizeSpaceName(spaceName)
-	threadName := common.ParseStringArg(request.Params.Arguments, "thread_name", "")
+	threadName := common.ParseStringArg(request.GetArguments(), "thread_name", "")
 
 	msg, err := srv.SendMessage(ctx, spaceName, text, threadName)
 	if err != nil {
@@ -177,12 +177,12 @@ func TestableChatCreateReaction(ctx context.Context, request mcp.CallToolRequest
 		return errResult, nil
 	}
 
-	messageName, errResult := common.RequireStringArg(request.Params.Arguments, "message_name")
+	messageName, errResult := common.RequireStringArg(request.GetArguments(), "message_name")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	emoji, errResult := common.RequireStringArg(request.Params.Arguments, "emoji")
+	emoji, errResult := common.RequireStringArg(request.GetArguments(), "emoji")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -209,7 +209,7 @@ func TestableChatDeleteReaction(ctx context.Context, request mcp.CallToolRequest
 		return errResult, nil
 	}
 
-	reactionName, errResult := common.RequireStringArg(request.Params.Arguments, "reaction_name")
+	reactionName, errResult := common.RequireStringArg(request.GetArguments(), "reaction_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -231,14 +231,14 @@ func TestableChatListMembers(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	spaceName, errResult := common.RequireStringArg(request.Params.Arguments, "space_name")
+	spaceName, errResult := common.RequireStringArg(request.GetArguments(), "space_name")
 	if errResult != nil {
 		return errResult, nil
 	}
 
 	spaceName = normalizeSpaceName(spaceName)
-	pageSize := common.ParseMaxResults(request.Params.Arguments, 100, 1000)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	pageSize := common.ParseMaxResults(request.GetArguments(), 100, 1000)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
 
 	members, nextPageToken, err := srv.ListMembers(ctx, spaceName, pageSize, pageToken)
 	if err != nil {

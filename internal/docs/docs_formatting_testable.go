@@ -135,7 +135,7 @@ func TestableDocsFormatText(ctx context.Context, request mcp.CallToolRequest, de
 		return idxErrResult, nil
 	}
 
-	fields, validationErr := collectFields(request.Params.Arguments, textFormatFields)
+	fields, validationErr := collectFields(request.GetArguments(), textFormatFields)
 	if validationErr != nil {
 		return validationErr, nil
 	}
@@ -143,7 +143,7 @@ func TestableDocsFormatText(ctx context.Context, request mcp.CallToolRequest, de
 		return mcp.NewToolResultError("at least one formatting option must be specified"), nil
 	}
 
-	textStyle := buildTextStyle(request.Params.Arguments)
+	textStyle := buildTextStyle(request.GetArguments())
 	requests := []*docs.Request{{
 		UpdateTextStyle: &docs.UpdateTextStyleRequest{
 			Range: &docs.Range{
@@ -229,7 +229,7 @@ func TestableDocsSetParagraphStyle(ctx context.Context, request mcp.CallToolRequ
 		return idxErrResult, nil
 	}
 
-	fields, validationErr := collectFields(request.Params.Arguments, paragraphStyleFields)
+	fields, validationErr := collectFields(request.GetArguments(), paragraphStyleFields)
 	if validationErr != nil {
 		return validationErr, nil
 	}
@@ -237,7 +237,7 @@ func TestableDocsSetParagraphStyle(ctx context.Context, request mcp.CallToolRequ
 		return mcp.NewToolResultError("at least one paragraph style option must be specified"), nil
 	}
 
-	paraStyle := buildParagraphStyle(request.Params.Arguments)
+	paraStyle := buildParagraphStyle(request.GetArguments())
 	requests := []*docs.Request{{
 		UpdateParagraphStyle: &docs.UpdateParagraphStyleRequest{
 			Range: &docs.Range{
@@ -282,7 +282,7 @@ func TestableDocsCreateList(ctx context.Context, request mcp.CallToolRequest, de
 	}
 
 	bulletPreset := "BULLET_DISC_CIRCLE_SQUARE"
-	if preset, ok := request.Params.Arguments["bullet_preset"].(string); ok && preset != "" {
+	if preset, ok := request.GetArguments()["bullet_preset"].(string); ok && preset != "" {
 		validPresets := map[string]bool{
 			"BULLET_DISC_CIRCLE_SQUARE":              true,
 			"BULLET_DIAMONDX_ARROW3D_SQUARE":         true,

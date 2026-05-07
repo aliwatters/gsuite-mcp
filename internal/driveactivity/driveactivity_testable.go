@@ -20,11 +20,11 @@ func TestableDriveActivityQuery(ctx context.Context, request mcp.CallToolRequest
 		return errResult, nil
 	}
 
-	itemID := common.ParseStringArg(request.Params.Arguments, "item_id", "")
-	folderID := common.ParseStringArg(request.Params.Arguments, "folder_id", "")
-	filter := common.ParseStringArg(request.Params.Arguments, "filter", "")
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	pageSize := common.ParseMaxResults(request.Params.Arguments, 20, 100)
+	itemID := common.ParseStringArg(request.GetArguments(), "item_id", "")
+	folderID := common.ParseStringArg(request.GetArguments(), "folder_id", "")
+	filter := common.ParseStringArg(request.GetArguments(), "filter", "")
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	pageSize := common.ParseMaxResults(request.GetArguments(), 20, 100)
 
 	if itemID == "" && folderID == "" {
 		return mcp.NewToolResultError("either item_id or folder_id parameter is required"), nil

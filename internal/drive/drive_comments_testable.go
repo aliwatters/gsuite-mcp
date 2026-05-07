@@ -79,9 +79,9 @@ func TestableDriveListComments(ctx context.Context, request mcp.CallToolRequest,
 		return idErrResult, nil
 	}
 
-	maxResults := common.ParseMaxResults(request.Params.Arguments, common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	includeDeleted := common.ParseBoolArg(request.Params.Arguments, "include_deleted", false)
+	maxResults := common.ParseMaxResults(request.GetArguments(), common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	includeDeleted := common.ParseBoolArg(request.GetArguments(), "include_deleted", false)
 
 	resp, err := srv.ListComments(ctx, fileID, DriveCommentListFields, maxResults, pageToken, includeDeleted)
 	if err != nil {
@@ -115,12 +115,12 @@ func TestableDriveGetComment(ctx context.Context, request mcp.CallToolRequest, d
 		return idErrResult, nil
 	}
 
-	commentID, errResult := common.RequireStringArg(request.Params.Arguments, "comment_id")
+	commentID, errResult := common.RequireStringArg(request.GetArguments(), "comment_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	includeDeleted := common.ParseBoolArg(request.Params.Arguments, "include_deleted", false)
+	includeDeleted := common.ParseBoolArg(request.GetArguments(), "include_deleted", false)
 
 	comment, err := srv.GetComment(ctx, fileID, commentID, DriveCommentFields, includeDeleted)
 	if err != nil {
@@ -145,7 +145,7 @@ func TestableDriveCreateComment(ctx context.Context, request mcp.CallToolRequest
 		return idErrResult, nil
 	}
 
-	content, errResult := common.RequireStringArg(request.Params.Arguments, "content")
+	content, errResult := common.RequireStringArg(request.GetArguments(), "content")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -177,12 +177,12 @@ func TestableDriveUpdateComment(ctx context.Context, request mcp.CallToolRequest
 		return idErrResult, nil
 	}
 
-	commentID, errResult := common.RequireStringArg(request.Params.Arguments, "comment_id")
+	commentID, errResult := common.RequireStringArg(request.GetArguments(), "comment_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	content, errResult := common.RequireStringArg(request.Params.Arguments, "content")
+	content, errResult := common.RequireStringArg(request.GetArguments(), "content")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -214,7 +214,7 @@ func TestableDriveDeleteComment(ctx context.Context, request mcp.CallToolRequest
 		return idErrResult, nil
 	}
 
-	commentID, errResult := common.RequireStringArg(request.Params.Arguments, "comment_id")
+	commentID, errResult := common.RequireStringArg(request.GetArguments(), "comment_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -246,14 +246,14 @@ func TestableDriveListReplies(ctx context.Context, request mcp.CallToolRequest, 
 		return idErrResult, nil
 	}
 
-	commentID, errResult := common.RequireStringArg(request.Params.Arguments, "comment_id")
+	commentID, errResult := common.RequireStringArg(request.GetArguments(), "comment_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	maxResults := common.ParseMaxResults(request.Params.Arguments, common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	includeDeleted := common.ParseBoolArg(request.Params.Arguments, "include_deleted", false)
+	maxResults := common.ParseMaxResults(request.GetArguments(), common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	includeDeleted := common.ParseBoolArg(request.GetArguments(), "include_deleted", false)
 
 	resp, err := srv.ListReplies(ctx, fileID, commentID, DriveReplyListFields, maxResults, pageToken, includeDeleted)
 	if err != nil {
@@ -288,12 +288,12 @@ func TestableDriveCreateReply(ctx context.Context, request mcp.CallToolRequest, 
 		return idErrResult, nil
 	}
 
-	commentID, errResult := common.RequireStringArg(request.Params.Arguments, "comment_id")
+	commentID, errResult := common.RequireStringArg(request.GetArguments(), "comment_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	content, errResult := common.RequireStringArg(request.Params.Arguments, "content")
+	content, errResult := common.RequireStringArg(request.GetArguments(), "content")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -303,7 +303,7 @@ func TestableDriveCreateReply(ctx context.Context, request mcp.CallToolRequest, 
 	}
 
 	// Support resolve/reopen action
-	action := common.ParseStringArg(request.Params.Arguments, "action", "")
+	action := common.ParseStringArg(request.GetArguments(), "action", "")
 	if action != "" {
 		if action != "resolve" && action != "reopen" {
 			return mcp.NewToolResultError("invalid action: must be 'resolve' or 'reopen'"), nil

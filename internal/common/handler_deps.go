@@ -137,7 +137,7 @@ type TestFixtures[S any] struct {
 func NewTestFixtures[S any](mockService S) *TestFixtures[S] {
 	defaultEmail := TestEmail
 	emailResolver := func(request mcp.CallToolRequest) (string, error) {
-		if accountParam, ok := request.Params.Arguments["account"].(string); ok && accountParam != "" {
+		if accountParam, ok := request.GetArguments()["account"].(string); ok && accountParam != "" {
 			return accountParam, nil
 		}
 		return defaultEmail, nil

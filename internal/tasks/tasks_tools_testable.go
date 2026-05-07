@@ -17,8 +17,8 @@ func TestableTasksListTasklists(ctx context.Context, request mcp.CallToolRequest
 	}
 
 	opts := &ListTaskListsOptions{}
-	opts.MaxResults = common.ParseMaxResults(request.Params.Arguments, common.TasksDefaultMaxResults, common.TasksMaxResultsLimit)
-	opts.PageToken = common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	opts.MaxResults = common.ParseMaxResults(request.GetArguments(), common.TasksDefaultMaxResults, common.TasksMaxResultsLimit)
+	opts.PageToken = common.ParseStringArg(request.GetArguments(), "page_token", "")
 
 	resp, err := srv.ListTaskLists(ctx, opts)
 	if err != nil {
@@ -50,17 +50,17 @@ func TestableTasksList(ctx context.Context, request mcp.CallToolRequest, deps *T
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
+	taskListID := common.ParseStringArg(request.GetArguments(), "tasklist_id", common.DefaultTaskListID)
 
 	opts := &ListTasksOptions{}
-	opts.MaxResults = common.ParseMaxResults(request.Params.Arguments, common.TasksDefaultMaxResults, common.TasksMaxResultsLimit)
-	opts.PageToken = common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	opts.ShowCompleted = common.ParseBoolArg(request.Params.Arguments, "show_completed", true)
-	if common.ParseBoolArg(request.Params.Arguments, "show_hidden", false) {
+	opts.MaxResults = common.ParseMaxResults(request.GetArguments(), common.TasksDefaultMaxResults, common.TasksMaxResultsLimit)
+	opts.PageToken = common.ParseStringArg(request.GetArguments(), "page_token", "")
+	opts.ShowCompleted = common.ParseBoolArg(request.GetArguments(), "show_completed", true)
+	if common.ParseBoolArg(request.GetArguments(), "show_hidden", false) {
 		opts.ShowHidden = true
 	}
-	opts.DueMin = common.ParseStringArg(request.Params.Arguments, "due_min", "")
-	opts.DueMax = common.ParseStringArg(request.Params.Arguments, "due_max", "")
+	opts.DueMin = common.ParseStringArg(request.GetArguments(), "due_min", "")
+	opts.DueMax = common.ParseStringArg(request.GetArguments(), "due_max", "")
 
 	resp, err := srv.ListTasks(ctx, taskListID, opts)
 	if err != nil {
@@ -88,12 +88,12 @@ func TestableTasksGet(ctx context.Context, request mcp.CallToolRequest, deps *Ta
 		return errResult, nil
 	}
 
-	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	taskID, errResult := common.RequireStringArg(request.GetArguments(), "task_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
+	taskListID := common.ParseStringArg(request.GetArguments(), "tasklist_id", common.DefaultTaskListID)
 
 	task, err := srv.GetTask(ctx, taskListID, taskID)
 	if err != nil {
@@ -112,27 +112,27 @@ func TestableTasksCreate(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	title, errResult := common.RequireStringArg(request.GetArguments(), "title")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
+	taskListID := common.ParseStringArg(request.GetArguments(), "tasklist_id", common.DefaultTaskListID)
 
 	task := &tasks.Task{
 		Title: title,
 	}
 
-	if notes := common.ParseStringArg(request.Params.Arguments, "notes", ""); notes != "" {
+	if notes := common.ParseStringArg(request.GetArguments(), "notes", ""); notes != "" {
 		task.Notes = notes
 	}
 
-	if due := common.ParseStringArg(request.Params.Arguments, "due", ""); due != "" {
+	if due := common.ParseStringArg(request.GetArguments(), "due", ""); due != "" {
 		task.Due = due
 	}
 
 	var createOpts *CreateTaskOptions
-	if parent := common.ParseStringArg(request.Params.Arguments, "parent", ""); parent != "" {
+	if parent := common.ParseStringArg(request.GetArguments(), "parent", ""); parent != "" {
 		createOpts = &CreateTaskOptions{Parent: parent}
 	}
 
@@ -153,12 +153,12 @@ func TestableTasksUpdate(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	taskID, errResult := common.RequireStringArg(request.GetArguments(), "task_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
+	taskListID := common.ParseStringArg(request.GetArguments(), "tasklist_id", common.DefaultTaskListID)
 
 	// First, get the existing task
 	task, err := srv.GetTask(ctx, taskListID, taskID)
@@ -167,14 +167,14 @@ func TestableTasksUpdate(ctx context.Context, request mcp.CallToolRequest, deps 
 	}
 
 	// Update fields that are provided
-	if title := common.ParseStringArg(request.Params.Arguments, "title", ""); title != "" {
+	if title := common.ParseStringArg(request.GetArguments(), "title", ""); title != "" {
 		task.Title = title
 	}
 	// For notes and due, we need to handle empty string as "no change" if the key is missing,
 	// but common.ParseStringArg handles that by checking for existence.
 	// However, if the user explicitly passes empty string to clear it, we might want to allow it.
 	// But the current implementation logic was:
-	// if notes, ok := request.Params.Arguments["notes"].(string); ok { task.Notes = notes }
+	// if notes, ok := request.GetArguments()["notes"].(string); ok { task.Notes = notes }
 	// This means if "notes" is present (even empty), it updates.
 	// ParseStringArg returns default if missing OR empty. This might be a slight behavior change if empty string was allowed.
 	// But usually empty string means clear.
@@ -184,10 +184,10 @@ func TestableTasksUpdate(ctx context.Context, request mcp.CallToolRequest, deps 
 	// If I want to support clearing, I need to know if it was passed.
 	// Let's stick to the original logic for updates where empty string matters.
 
-	if val, ok := request.Params.Arguments["notes"].(string); ok {
+	if val, ok := request.GetArguments()["notes"].(string); ok {
 		task.Notes = val
 	}
-	if val, ok := request.Params.Arguments["due"].(string); ok {
+	if val, ok := request.GetArguments()["due"].(string); ok {
 		task.Due = val
 	}
 
@@ -208,12 +208,12 @@ func TestableTasksComplete(ctx context.Context, request mcp.CallToolRequest, dep
 		return errResult, nil
 	}
 
-	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	taskID, errResult := common.RequireStringArg(request.GetArguments(), "task_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
+	taskListID := common.ParseStringArg(request.GetArguments(), "tasklist_id", common.DefaultTaskListID)
 
 	// Get the existing task
 	task, err := srv.GetTask(ctx, taskListID, taskID)
@@ -242,12 +242,12 @@ func TestableTasksDelete(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	taskID, errResult := common.RequireStringArg(request.GetArguments(), "task_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
+	taskListID := common.ParseStringArg(request.GetArguments(), "tasklist_id", common.DefaultTaskListID)
 
 	err := srv.DeleteTask(ctx, taskListID, taskID)
 	if err != nil {
@@ -273,7 +273,7 @@ func TestableTasksCreateTasklist(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	title, errResult := common.RequireStringArg(request.GetArguments(), "title")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -304,12 +304,12 @@ func TestableTasksUpdateTasklist(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	taskListID, errResult := common.RequireStringArg(request.Params.Arguments, "tasklist_id")
+	taskListID, errResult := common.RequireStringArg(request.GetArguments(), "tasklist_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	title, errResult := common.RequireStringArg(request.GetArguments(), "title")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -345,7 +345,7 @@ func TestableTasksDeleteTasklist(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	taskListID, errResult := common.RequireStringArg(request.Params.Arguments, "tasklist_id")
+	taskListID, errResult := common.RequireStringArg(request.GetArguments(), "tasklist_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -373,22 +373,22 @@ func TestableTasksMove(ctx context.Context, request mcp.CallToolRequest, deps *T
 		return errResult, nil
 	}
 
-	taskID, errResult := common.RequireStringArg(request.Params.Arguments, "task_id")
+	taskID, errResult := common.RequireStringArg(request.GetArguments(), "task_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
+	taskListID := common.ParseStringArg(request.GetArguments(), "tasklist_id", common.DefaultTaskListID)
 
 	opts := &MoveTaskOptions{}
 
 	// Optional: set parent (for making subtasks)
-	if parent := common.ParseStringArg(request.Params.Arguments, "parent", ""); parent != "" {
+	if parent := common.ParseStringArg(request.GetArguments(), "parent", ""); parent != "" {
 		opts.Parent = parent
 	}
 
 	// Optional: set previous sibling (for ordering)
-	if previous := common.ParseStringArg(request.Params.Arguments, "previous", ""); previous != "" {
+	if previous := common.ParseStringArg(request.GetArguments(), "previous", ""); previous != "" {
 		opts.Previous = previous
 	}
 
@@ -410,7 +410,7 @@ func TestableTasksClearCompleted(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	taskListID := common.ParseStringArg(request.Params.Arguments, "tasklist_id", common.DefaultTaskListID)
+	taskListID := common.ParseStringArg(request.GetArguments(), "tasklist_id", common.DefaultTaskListID)
 
 	err := srv.ClearCompleted(ctx, taskListID)
 	if err != nil {

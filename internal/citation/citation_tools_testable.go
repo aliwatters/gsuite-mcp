@@ -17,11 +17,11 @@ func TestableCitationCreateIndex(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	name := common.ParseStringArg(request.Params.Arguments, "name", "")
+	name := common.ParseStringArg(request.GetArguments(), "name", "")
 	if name == "" {
 		return mcp.NewToolResultError("name is required"), nil
 	}
-	folderID := common.ParseStringArg(request.Params.Arguments, "folder_id", "")
+	folderID := common.ParseStringArg(request.GetArguments(), "folder_id", "")
 
 	info, err := srv.CreateIndex(ctx, name, folderID)
 	if err != nil {
@@ -38,12 +38,12 @@ func TestableCitationAddDocuments(ctx context.Context, request mcp.CallToolReque
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
 
-	fileIDsRaw := common.ParseStringArg(request.Params.Arguments, "file_ids", "")
+	fileIDsRaw := common.ParseStringArg(request.GetArguments(), "file_ids", "")
 	if fileIDsRaw == "" {
 		return mcp.NewToolResultError("file_ids is required (comma-separated or JSON array)"), nil
 	}
@@ -71,12 +71,12 @@ func TestableCitationSaveConcepts(ctx context.Context, request mcp.CallToolReque
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
 
-	mappingsJSON := common.ParseStringArg(request.Params.Arguments, "mappings", "")
+	mappingsJSON := common.ParseStringArg(request.GetArguments(), "mappings", "")
 	if mappingsJSON == "" {
 		return mcp.NewToolResultError("mappings is required (JSON array of {concept, chunk_ids})"), nil
 	}
@@ -100,12 +100,12 @@ func TestableCitationSaveSummary(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
 
-	args := request.Params.Arguments
+	args := request.GetArguments()
 	level := 0
 	if v, ok := args["level"].(float64); ok {
 		level = int(v)
@@ -145,7 +145,7 @@ func TestableCitationGetOverview(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
@@ -165,17 +165,17 @@ func TestableCitationLookup(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
-	query := common.ParseStringArg(request.Params.Arguments, "query", "")
+	query := common.ParseStringArg(request.GetArguments(), "query", "")
 	if query == "" {
 		return mcp.NewToolResultError("query is required"), nil
 	}
 
 	limit := 10
-	if v, ok := request.Params.Arguments["limit"].(float64); ok && v > 0 {
+	if v, ok := request.GetArguments()["limit"].(float64); ok && v > 0 {
 		limit = int(v)
 	}
 
@@ -213,12 +213,12 @@ func TestableCitationGetChunks(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
 
-	chunkIDsRaw := common.ParseStringArg(request.Params.Arguments, "chunk_ids", "")
+	chunkIDsRaw := common.ParseStringArg(request.GetArguments(), "chunk_ids", "")
 	if chunkIDsRaw == "" {
 		return mcp.NewToolResultError("chunk_ids is required"), nil
 	}
@@ -239,17 +239,17 @@ func TestableCitationVerifyClaim(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
-	claim := common.ParseStringArg(request.Params.Arguments, "claim", "")
+	claim := common.ParseStringArg(request.GetArguments(), "claim", "")
 	if claim == "" {
 		return mcp.NewToolResultError("claim is required"), nil
 	}
 
 	limit := 5
-	if v, ok := request.Params.Arguments["limit"].(float64); ok && v > 0 {
+	if v, ok := request.GetArguments()["limit"].(float64); ok && v > 0 {
 		limit = int(v)
 	}
 
@@ -282,11 +282,11 @@ func TestableCitationFormatCitation(ctx context.Context, request mcp.CallToolReq
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
-	chunkID := common.ParseStringArg(request.Params.Arguments, "chunk_id", "")
+	chunkID := common.ParseStringArg(request.GetArguments(), "chunk_id", "")
 	if chunkID == "" {
 		return mcp.NewToolResultError("chunk_id is required"), nil
 	}
@@ -330,7 +330,7 @@ func TestableCitationRefresh(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	indexID := common.ParseStringArg(request.Params.Arguments, "index_id", "")
+	indexID := common.ParseStringArg(request.GetArguments(), "index_id", "")
 	if indexID == "" {
 		return mcp.NewToolResultError("index_id is required"), nil
 	}
