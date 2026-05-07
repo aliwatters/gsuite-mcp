@@ -11,14 +11,17 @@ Complete Google Workspace MCP server — Gmail, Calendar, Drive, Docs, Tasks, Sh
 **[→ Full Installation Guide](INSTALLATION.md)** — Get running in under 10 minutes
 
 ```bash
-# Build
-go build -o ~/.local/bin/gsuite-mcp
+git clone https://github.com/aliwatters/gsuite-mcp.git
+cd gsuite-mcp
+./install.sh
 
 # Authenticate
 gsuite-mcp auth personal
 
 # Add to your MCP client config
 ```
+
+`install.sh` builds the binary to `~/.local/bin/gsuite-mcp` and skips a rebuild if the installed version already matches HEAD. Re-run with `--force` or `FORCE_REBUILD=1` to force a rebuild. Set `INSTALL_PREFIX` to change the install location.
 
 ## Why gsuite-mcp?
 

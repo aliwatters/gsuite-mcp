@@ -31,6 +31,11 @@ const (
 	serverVersion = "0.2.2"
 )
 
+// GitCommit is injected at build time via:
+//
+//	go build -ldflags "-X main.GitCommit=$(git rev-parse --short HEAD)"
+var GitCommit string
+
 func main() {
 	// Parse --config-dir flag or GSUITE_MCP_CONFIG_DIR env var before subcommand dispatch.
 	// This must happen first so all config.* path functions resolve correctly.
@@ -55,7 +60,11 @@ func main() {
 			printUsage()
 			return
 		case "version", "--version", "-v":
-			fmt.Printf("%s %s\n", serverName, serverVersion)
+			if GitCommit != "" {
+				fmt.Printf("%s %s (%s)\n", serverName, serverVersion, GitCommit)
+			} else {
+				fmt.Printf("%s %s\n", serverName, serverVersion)
+			}
 			return
 		}
 	}
