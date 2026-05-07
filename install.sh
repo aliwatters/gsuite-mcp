@@ -25,7 +25,10 @@
 #
 # Notes:
 #   - Idempotent: running twice in a row is a no-op the second time.
-#   - Standalone: works without dotfiles. Only requires Go, git, and POSIX shell.
+#   - Standalone: works without dotfiles. Requires Go, git, and bash (3.2+).
+#   - Rebuild is triggered only by committed changes (new git HEAD). Uncommitted
+#     edits do not change HEAD, so run with --force if you want to rebuild after
+#     local changes without committing first.
 
 set -euo pipefail
 
@@ -48,7 +51,7 @@ case "${1:-}" in
         ;;
     *)
         echo "Error: unknown argument: $1" >&2
-        echo "Usage: $0 [--force]" >&2
+        echo "Usage: $0 [--force|-f] [--help|-h]" >&2
         exit 1
         ;;
 esac
@@ -56,7 +59,7 @@ esac
 # Reject extra positional args so typos don't pass silently.
 if [[ $# -gt 0 ]]; then
     echo "Error: unexpected extra arguments: $*" >&2
-    echo "Usage: $0 [--force]" >&2
+    echo "Usage: $0 [--force|-f] [--help|-h]" >&2
     exit 1
 fi
 

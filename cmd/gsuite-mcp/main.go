@@ -31,9 +31,9 @@ const (
 	serverVersion = "0.2.2"
 )
 
-// GitCommit is injected at build time via:
+// GitCommit is injected at build time via (run from the repo root):
 //
-//	go build -ldflags "-X main.GitCommit=$(git rev-parse --short HEAD)"
+//	go build -ldflags "-X main.GitCommit=$(git rev-parse --short HEAD)" ./cmd/gsuite-mcp/
 var GitCommit string
 
 func main() {
