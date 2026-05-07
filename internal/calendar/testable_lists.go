@@ -59,12 +59,12 @@ func TestableCalendarFreeBusy(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	timeMin := common.ParseStringArg(request.Params.Arguments, "time_min", "")
+	timeMin := common.ParseStringArg(request.GetArguments(), "time_min", "")
 	if timeMin == "" {
 		return mcp.NewToolResultError("time_min parameter is required (RFC3339 format)"), nil
 	}
 
-	timeMax := common.ParseStringArg(request.Params.Arguments, "time_max", "")
+	timeMax := common.ParseStringArg(request.GetArguments(), "time_max", "")
 	if timeMax == "" {
 		return mcp.NewToolResultError("time_max parameter is required (RFC3339 format)"), nil
 	}
@@ -73,7 +73,7 @@ func TestableCalendarFreeBusy(ctx context.Context, request mcp.CallToolRequest, 
 	var items []*calendar.FreeBusyRequestItem
 
 	// Check for calendar_ids parameter (array)
-	if calendarIDsRaw, ok := request.Params.Arguments["calendar_ids"].([]any); ok && len(calendarIDsRaw) > 0 {
+	if calendarIDsRaw, ok := request.GetArguments()["calendar_ids"].([]any); ok && len(calendarIDsRaw) > 0 {
 		for _, id := range calendarIDsRaw {
 			if calID, ok := id.(string); ok && calID != "" {
 				items = append(items, &calendar.FreeBusyRequestItem{Id: calID})
@@ -126,27 +126,27 @@ func TestableCalendarListInstances(ctx context.Context, request mcp.CallToolRequ
 		return errResult, nil
 	}
 
-	eventID, errResult := common.RequireStringArg(request.Params.Arguments, "event_id")
+	eventID, errResult := common.RequireStringArg(request.GetArguments(), "event_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	opts := &ListInstancesOptions{
 		Fields: CalendarEventListFields,
 	}
 
-	if timeMin := common.ParseStringArg(request.Params.Arguments, "time_min", ""); timeMin != "" {
+	if timeMin := common.ParseStringArg(request.GetArguments(), "time_min", ""); timeMin != "" {
 		opts.TimeMin = timeMin
 	}
 
-	if timeMax := common.ParseStringArg(request.Params.Arguments, "time_max", ""); timeMax != "" {
+	if timeMax := common.ParseStringArg(request.GetArguments(), "time_max", ""); timeMax != "" {
 		opts.TimeMax = timeMax
 	}
 
-	opts.MaxResults = common.ParseMaxResults(request.Params.Arguments, common.CalendarDefaultMaxResults, common.CalendarMaxResultsLimit)
-	opts.PageToken = common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	opts.MaxResults = common.ParseMaxResults(request.GetArguments(), common.CalendarDefaultMaxResults, common.CalendarMaxResultsLimit)
+	opts.PageToken = common.ParseStringArg(request.GetArguments(), "page_token", "")
 
 	resp, err := srv.ListInstances(ctx, calendarID, eventID, opts)
 	if err != nil {
@@ -174,12 +174,12 @@ func TestableCalendarUpdateInstance(ctx context.Context, request mcp.CallToolReq
 		return errResult, nil
 	}
 
-	instanceID, errResult := common.RequireStringArg(request.Params.Arguments, "instance_id")
+	instanceID, errResult := common.RequireStringArg(request.GetArguments(), "instance_id")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	calendarID := common.ParseStringArg(request.Params.Arguments, "calendar_id", common.DefaultCalendarID)
+	calendarID := common.ParseStringArg(request.GetArguments(), "calendar_id", common.DefaultCalendarID)
 
 	// First, get the existing instance
 	event, err := srv.GetEvent(ctx, calendarID, instanceID, "")
@@ -188,18 +188,18 @@ func TestableCalendarUpdateInstance(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Update fields that are provided
-	if summary := common.ParseStringArg(request.Params.Arguments, "summary", ""); summary != "" {
+	if summary := common.ParseStringArg(request.GetArguments(), "summary", ""); summary != "" {
 		event.Summary = summary
 	}
-	if val, ok := request.Params.Arguments["description"].(string); ok {
+	if val, ok := request.GetArguments()["description"].(string); ok {
 		event.Description = val
 	}
-	if val, ok := request.Params.Arguments["location"].(string); ok {
+	if val, ok := request.GetArguments()["location"].(string); ok {
 		event.Location = val
 	}
 
 	// Update times if provided
-	if errResult := updateEventTimes(event, request.Params.Arguments); errResult != nil {
+	if errResult := updateEventTimes(event, request.GetArguments()); errResult != nil {
 		return errResult, nil
 	}
 

@@ -21,13 +21,13 @@ func TestableDriveShare(ctx context.Context, request mcp.CallToolRequest, deps *
 		return idErrResult, nil
 	}
 
-	email, errResult := common.RequireStringArg(request.Params.Arguments, "email")
+	email, errResult := common.RequireStringArg(request.GetArguments(), "email")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	role := common.ParseStringArg(request.Params.Arguments, "role", "reader")
-	permType := common.ParseStringArg(request.Params.Arguments, "type", "user")
+	role := common.ParseStringArg(request.GetArguments(), "role", "reader")
+	permType := common.ParseStringArg(request.GetArguments(), "type", "user")
 
 	permission := &drive.Permission{
 		Type:         permType,
@@ -35,7 +35,7 @@ func TestableDriveShare(ctx context.Context, request mcp.CallToolRequest, deps *
 		EmailAddress: email,
 	}
 
-	sendNotification := common.ParseBoolArg(request.Params.Arguments, "send_notification", true)
+	sendNotification := common.ParseBoolArg(request.GetArguments(), "send_notification", true)
 
 	created, err := srv.CreatePermission(ctx, fileID, permission, sendNotification)
 	if err != nil {

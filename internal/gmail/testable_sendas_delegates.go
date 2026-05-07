@@ -41,7 +41,7 @@ func TestableGmailGetSendAs(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	email, errResult := common.RequireStringArg(request.Params.Arguments, "send_as_email")
+	email, errResult := common.RequireStringArg(request.GetArguments(), "send_as_email")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -61,7 +61,7 @@ func TestableGmailCreateSendAs(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	email, errResult := common.RequireStringArg(request.Params.Arguments, "send_as_email")
+	email, errResult := common.RequireStringArg(request.GetArguments(), "send_as_email")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -70,35 +70,35 @@ func TestableGmailCreateSendAs(ctx context.Context, request mcp.CallToolRequest,
 		SendAsEmail: email,
 	}
 
-	if val := common.ParseStringArg(request.Params.Arguments, "display_name", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "display_name", ""); val != "" {
 		sendAs.DisplayName = val
 	}
-	if val := common.ParseStringArg(request.Params.Arguments, "reply_to_address", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "reply_to_address", ""); val != "" {
 		sendAs.ReplyToAddress = val
 	}
-	if val := common.ParseStringArg(request.Params.Arguments, "signature", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "signature", ""); val != "" {
 		sendAs.Signature = val
 	}
-	if val, ok := request.Params.Arguments["is_default"].(bool); ok && val {
+	if val, ok := request.GetArguments()["is_default"].(bool); ok && val {
 		sendAs.IsDefault = val
 	}
 
 	// SMTP configuration for external send-as
-	smtpHost := common.ParseStringArg(request.Params.Arguments, "smtp_host", "")
+	smtpHost := common.ParseStringArg(request.GetArguments(), "smtp_host", "")
 	if smtpHost != "" {
 		sendAs.SmtpMsa = &gmail.SmtpMsa{
 			Host: smtpHost,
 		}
-		if port, ok := request.Params.Arguments["smtp_port"].(float64); ok {
+		if port, ok := request.GetArguments()["smtp_port"].(float64); ok {
 			sendAs.SmtpMsa.Port = int64(port)
 		}
-		if val := common.ParseStringArg(request.Params.Arguments, "smtp_username", ""); val != "" {
+		if val := common.ParseStringArg(request.GetArguments(), "smtp_username", ""); val != "" {
 			sendAs.SmtpMsa.Username = val
 		}
-		if val := common.ParseStringArg(request.Params.Arguments, "smtp_password", ""); val != "" {
+		if val := common.ParseStringArg(request.GetArguments(), "smtp_password", ""); val != "" {
 			sendAs.SmtpMsa.Password = val
 		}
-		if val := common.ParseStringArg(request.Params.Arguments, "smtp_security_mode", ""); val != "" {
+		if val := common.ParseStringArg(request.GetArguments(), "smtp_security_mode", ""); val != "" {
 			sendAs.SmtpMsa.SecurityMode = val
 		}
 	}
@@ -121,23 +121,23 @@ func TestableGmailUpdateSendAs(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	email, errResult := common.RequireStringArg(request.Params.Arguments, "send_as_email")
+	email, errResult := common.RequireStringArg(request.GetArguments(), "send_as_email")
 	if errResult != nil {
 		return errResult, nil
 	}
 
 	sendAs := &gmail.SendAs{}
 
-	if val := common.ParseStringArg(request.Params.Arguments, "display_name", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "display_name", ""); val != "" {
 		sendAs.DisplayName = val
 	}
-	if val := common.ParseStringArg(request.Params.Arguments, "reply_to_address", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "reply_to_address", ""); val != "" {
 		sendAs.ReplyToAddress = val
 	}
-	if val := common.ParseStringArg(request.Params.Arguments, "signature", ""); val != "" {
+	if val := common.ParseStringArg(request.GetArguments(), "signature", ""); val != "" {
 		sendAs.Signature = val
 	}
-	if val, ok := request.Params.Arguments["is_default"].(bool); ok {
+	if val, ok := request.GetArguments()["is_default"].(bool); ok {
 		sendAs.IsDefault = val
 	}
 
@@ -159,7 +159,7 @@ func TestableGmailDeleteSendAs(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	email, errResult := common.RequireStringArg(request.Params.Arguments, "send_as_email")
+	email, errResult := common.RequireStringArg(request.GetArguments(), "send_as_email")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -183,7 +183,7 @@ func TestableGmailVerifySendAs(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	email, errResult := common.RequireStringArg(request.Params.Arguments, "send_as_email")
+	email, errResult := common.RequireStringArg(request.GetArguments(), "send_as_email")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -232,7 +232,7 @@ func TestableGmailCreateDelegate(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	email, errResult := common.RequireStringArg(request.Params.Arguments, "delegate_email")
+	email, errResult := common.RequireStringArg(request.GetArguments(), "delegate_email")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -259,7 +259,7 @@ func TestableGmailDeleteDelegate(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	email, errResult := common.RequireStringArg(request.Params.Arguments, "delegate_email")
+	email, errResult := common.RequireStringArg(request.GetArguments(), "delegate_email")
 	if errResult != nil {
 		return errResult, nil
 	}

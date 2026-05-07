@@ -18,17 +18,17 @@ func TestableDocsImportToGoogleDoc(ctx context.Context, request mcp.CallToolRequ
 		return errResult, nil
 	}
 
-	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	title, errResult := common.RequireStringArg(request.GetArguments(), "title")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	content, errResult := common.RequireStringArg(request.Params.Arguments, "content")
+	content, errResult := common.RequireStringArg(request.GetArguments(), "content")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	contentType := common.ParseStringArg(request.Params.Arguments, "content_type", "text/plain")
+	contentType := common.ParseStringArg(request.GetArguments(), "content_type", "text/plain")
 
 	// Validate content type
 	validTypes := map[string]bool{
@@ -48,7 +48,7 @@ func TestableDocsImportToGoogleDoc(ctx context.Context, request mcp.CallToolRequ
 	}
 
 	parentID := ""
-	if pid := common.ParseStringArg(request.Params.Arguments, "parent_id", ""); pid != "" {
+	if pid := common.ParseStringArg(request.GetArguments(), "parent_id", ""); pid != "" {
 		parentID = common.ExtractGoogleResourceID(pid)
 	}
 

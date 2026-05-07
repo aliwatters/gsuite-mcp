@@ -218,7 +218,7 @@ func WithDriveAccessCheck(handler func(context.Context, mcp.CallToolRequest) (*m
 			return handler(ctx, request)
 		}
 
-		fileID := ParseStringArg(request.Params.Arguments, paramName, "")
+		fileID := ParseStringArg(request.GetArguments(), paramName, "")
 		if fileID == "" {
 			return handler(ctx, request)
 		}

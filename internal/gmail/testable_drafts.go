@@ -16,8 +16,8 @@ func TestableGmailListDrafts(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	maxResults := common.ParseMaxResults(request.Params.Arguments, common.GmailDefaultMaxResults, common.GmailMaxResultsLimit)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
+	maxResults := common.ParseMaxResults(request.GetArguments(), common.GmailDefaultMaxResults, common.GmailMaxResultsLimit)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
 
 	resp, err := svc.ListDrafts(ctx, maxResults, pageToken)
 	if err != nil {
@@ -53,7 +53,7 @@ func TestableGmailListDrafts(ctx context.Context, request mcp.CallToolRequest, d
 
 // TestableGmailGetDraft retrieves a draft by ID.
 func TestableGmailGetDraft(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	draftID, errResult := common.RequireStringArg(request.Params.Arguments, "draft_id")
+	draftID, errResult := common.RequireStringArg(request.GetArguments(), "draft_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -63,7 +63,7 @@ func TestableGmailGetDraft(ctx context.Context, request mcp.CallToolRequest, dep
 		return errResult, nil
 	}
 
-	format := common.ParseStringArg(request.Params.Arguments, "format", "full")
+	format := common.ParseStringArg(request.GetArguments(), "format", "full")
 
 	draft, err := svc.GetDraft(ctx, draftID, format)
 	if err != nil {
@@ -83,7 +83,7 @@ func TestableGmailGetDraft(ctx context.Context, request mcp.CallToolRequest, dep
 
 // TestableGmailUpdateDraft updates an existing draft.
 func TestableGmailUpdateDraft(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	draftID, errResult := common.RequireStringArg(request.Params.Arguments, "draft_id")
+	draftID, errResult := common.RequireStringArg(request.GetArguments(), "draft_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -94,7 +94,7 @@ func TestableGmailUpdateDraft(ctx context.Context, request mcp.CallToolRequest, 
 	}
 
 	draft := &gmail.Draft{
-		Message: buildMessageFromArgs(request.Params.Arguments),
+		Message: buildMessageFromArgs(request.GetArguments()),
 	}
 
 	updated, err := svc.UpdateDraft(ctx, draftID, draft)
@@ -115,7 +115,7 @@ func TestableGmailUpdateDraft(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailDeleteDraft deletes a draft.
 func TestableGmailDeleteDraft(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	draftID, errResult := common.RequireStringArg(request.Params.Arguments, "draft_id")
+	draftID, errResult := common.RequireStringArg(request.GetArguments(), "draft_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -140,7 +140,7 @@ func TestableGmailDeleteDraft(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailSendDraft sends a draft.
 func TestableGmailSendDraft(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	draftID, errResult := common.RequireStringArg(request.Params.Arguments, "draft_id")
+	draftID, errResult := common.RequireStringArg(request.GetArguments(), "draft_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -175,10 +175,10 @@ func TestableGmailDraft(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	message := buildMessageFromArgs(request.Params.Arguments)
+	message := buildMessageFromArgs(request.GetArguments())
 
 	// Support creating draft as reply
-	if threadID := common.ParseStringArg(request.Params.Arguments, "thread_id", ""); threadID != "" {
+	if threadID := common.ParseStringArg(request.GetArguments(), "thread_id", ""); threadID != "" {
 		message.ThreadId = threadID
 	}
 

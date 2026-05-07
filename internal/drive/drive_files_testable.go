@@ -19,13 +19,13 @@ func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	query, errResult := common.RequireStringArg(request.Params.Arguments, "query")
+	query, errResult := common.RequireStringArg(request.GetArguments(), "query")
 	if errResult != nil {
 		return errResult, nil
 	}
 
 	// Apply friendly file_type filter if provided
-	fileType := common.ParseStringArg(request.Params.Arguments, "file_type", "")
+	fileType := common.ParseStringArg(request.GetArguments(), "file_type", "")
 	if fileType != "" {
 		mimeType, ok := friendlyFileTypes[strings.ToLower(fileType)]
 		if !ok {
@@ -43,9 +43,9 @@ func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 		}
 	}
 
-	maxResults := common.ParseMaxResults(request.Params.Arguments, common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	corpora := common.ParseStringArg(request.Params.Arguments, "corpora", "allDrives")
+	maxResults := common.ParseMaxResults(request.GetArguments(), common.DriveSearchDefaultMaxResults, common.DriveSearchMaxResultsLimit)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	corpora := common.ParseStringArg(request.GetArguments(), "corpora", "allDrives")
 
 	resp, err := srv.ListFiles(ctx, &ListFilesOptions{
 		Query:     query,
@@ -160,12 +160,12 @@ func TestableDriveUpload(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	name, errResult := common.RequireStringArg(request.GetArguments(), "name")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	contentStr, errResult := common.RequireStringArg(request.Params.Arguments, "content")
+	contentStr, errResult := common.RequireStringArg(request.GetArguments(), "content")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -177,7 +177,7 @@ func TestableDriveUpload(ctx context.Context, request mcp.CallToolRequest, deps 
 
 	// Decode content if base64 encoded
 	var data []byte
-	encoding := common.ParseStringArg(request.Params.Arguments, "encoding", "")
+	encoding := common.ParseStringArg(request.GetArguments(), "encoding", "")
 	if encoding == "base64" {
 		var err error
 		data, err = base64.StdEncoding.DecodeString(contentStr)
@@ -196,15 +196,15 @@ func TestableDriveUpload(ctx context.Context, request mcp.CallToolRequest, deps 
 		Name: name,
 	}
 
-	if parentID := common.ParseStringArg(request.Params.Arguments, "parent_id", ""); parentID != "" {
+	if parentID := common.ParseStringArg(request.GetArguments(), "parent_id", ""); parentID != "" {
 		file.Parents = []string{common.ExtractGoogleResourceID(parentID)}
 	}
 
-	if mimeType := common.ParseStringArg(request.Params.Arguments, "mime_type", ""); mimeType != "" {
+	if mimeType := common.ParseStringArg(request.GetArguments(), "mime_type", ""); mimeType != "" {
 		file.MimeType = mimeType
 	}
 
-	if description := common.ParseStringArg(request.Params.Arguments, "description", ""); description != "" {
+	if description := common.ParseStringArg(request.GetArguments(), "description", ""); description != "" {
 		file.Description = description
 	}
 
@@ -232,15 +232,15 @@ func TestableDriveList(ctx context.Context, request mcp.CallToolRequest, deps *D
 		return errResult, nil
 	}
 
-	folderID := common.ParseStringArg(request.Params.Arguments, "folder_id", "root")
+	folderID := common.ParseStringArg(request.GetArguments(), "folder_id", "root")
 	if folderID != "root" {
 		folderID = common.ExtractGoogleResourceID(folderID)
 	}
 
 	query := fmt.Sprintf("'%s' in parents and trashed = false", folderID)
-	maxResults := common.ParseMaxResults(request.Params.Arguments, common.DriveListDefaultMaxResults, common.DriveListMaxResultsLimit)
-	pageToken := common.ParseStringArg(request.Params.Arguments, "page_token", "")
-	orderBy := common.ParseStringArg(request.Params.Arguments, "order_by", "name")
+	maxResults := common.ParseMaxResults(request.GetArguments(), common.DriveListDefaultMaxResults, common.DriveListMaxResultsLimit)
+	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
+	orderBy := common.ParseStringArg(request.GetArguments(), "order_by", "name")
 
 	resp, err := srv.ListFiles(ctx, &ListFilesOptions{
 		Query:     query,
@@ -281,7 +281,7 @@ func TestableDriveCreateFolder(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	name, errResult := common.RequireStringArg(request.GetArguments(), "name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -291,11 +291,11 @@ func TestableDriveCreateFolder(ctx context.Context, request mcp.CallToolRequest,
 		MimeType: "application/vnd.google-apps.folder",
 	}
 
-	if parentID := common.ParseStringArg(request.Params.Arguments, "parent_id", ""); parentID != "" {
+	if parentID := common.ParseStringArg(request.GetArguments(), "parent_id", ""); parentID != "" {
 		folder.Parents = []string{common.ExtractGoogleResourceID(parentID)}
 	}
 
-	if description := common.ParseStringArg(request.Params.Arguments, "description", ""); description != "" {
+	if description := common.ParseStringArg(request.GetArguments(), "description", ""); description != "" {
 		folder.Description = description
 	}
 
@@ -326,7 +326,7 @@ func TestableDriveMove(ctx context.Context, request mcp.CallToolRequest, deps *D
 		return idErrResult, nil
 	}
 
-	newParentID, errResult := common.RequireStringArg(request.Params.Arguments, "new_parent_id")
+	newParentID, errResult := common.RequireStringArg(request.GetArguments(), "new_parent_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -371,11 +371,11 @@ func TestableDriveCopy(ctx context.Context, request mcp.CallToolRequest, deps *D
 
 	copyFile := &drive.File{}
 
-	if name := common.ParseStringArg(request.Params.Arguments, "name", ""); name != "" {
+	if name := common.ParseStringArg(request.GetArguments(), "name", ""); name != "" {
 		copyFile.Name = name
 	}
 
-	if parentID := common.ParseStringArg(request.Params.Arguments, "parent_id", ""); parentID != "" {
+	if parentID := common.ParseStringArg(request.GetArguments(), "parent_id", ""); parentID != "" {
 		copyFile.Parents = []string{common.ExtractGoogleResourceID(parentID)}
 	}
 

@@ -12,7 +12,7 @@ import (
 // extractRequiredMessageIDs extracts and validates the message_ids parameter from the request.
 // Returns the raw slice for early validation and the parsed string IDs.
 func extractRequiredMessageIDs(request mcp.CallToolRequest) ([]string, *mcp.CallToolResult) {
-	messageIDsRaw, ok := request.Params.Arguments["message_ids"].([]any)
+	messageIDsRaw, ok := request.GetArguments()["message_ids"].([]any)
 	if !ok || len(messageIDsRaw) == 0 {
 		return nil, mcp.NewToolResultError("message_ids parameter is required (array)")
 	}
@@ -83,7 +83,7 @@ func TestableGmailListLabels(ctx context.Context, request mcp.CallToolRequest, d
 
 // TestableGmailCreateLabel creates a new label.
 func TestableGmailCreateLabel(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	name, errResult := common.RequireStringArg(request.GetArguments(), "name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -97,10 +97,10 @@ func TestableGmailCreateLabel(ctx context.Context, request mcp.CallToolRequest, 
 		Name: name,
 	}
 
-	if vis := common.ParseStringArg(request.Params.Arguments, "label_list_visibility", ""); vis != "" {
+	if vis := common.ParseStringArg(request.GetArguments(), "label_list_visibility", ""); vis != "" {
 		label.LabelListVisibility = vis
 	}
-	if vis := common.ParseStringArg(request.Params.Arguments, "message_list_visibility", ""); vis != "" {
+	if vis := common.ParseStringArg(request.GetArguments(), "message_list_visibility", ""); vis != "" {
 		label.MessageListVisibility = vis
 	}
 
@@ -120,7 +120,7 @@ func TestableGmailCreateLabel(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailDeleteLabel deletes a label.
 func TestableGmailDeleteLabel(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	labelID, errResult := common.RequireStringArg(request.Params.Arguments, "label_id")
+	labelID, errResult := common.RequireStringArg(request.GetArguments(), "label_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -145,7 +145,7 @@ func TestableGmailDeleteLabel(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailUpdateLabel updates a label.
 func TestableGmailUpdateLabel(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	labelID, errResult := common.RequireStringArg(request.Params.Arguments, "label_id")
+	labelID, errResult := common.RequireStringArg(request.GetArguments(), "label_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -159,13 +159,13 @@ func TestableGmailUpdateLabel(ctx context.Context, request mcp.CallToolRequest, 
 		Id: labelID,
 	}
 
-	if name := common.ParseStringArg(request.Params.Arguments, "name", ""); name != "" {
+	if name := common.ParseStringArg(request.GetArguments(), "name", ""); name != "" {
 		label.Name = name
 	}
-	if vis := common.ParseStringArg(request.Params.Arguments, "label_list_visibility", ""); vis != "" {
+	if vis := common.ParseStringArg(request.GetArguments(), "label_list_visibility", ""); vis != "" {
 		label.LabelListVisibility = vis
 	}
-	if vis := common.ParseStringArg(request.Params.Arguments, "message_list_visibility", ""); vis != "" {
+	if vis := common.ParseStringArg(request.GetArguments(), "message_list_visibility", ""); vis != "" {
 		label.MessageListVisibility = vis
 	}
 
@@ -185,7 +185,7 @@ func TestableGmailUpdateLabel(ctx context.Context, request mcp.CallToolRequest, 
 
 // TestableGmailModifyMessage modifies labels on a message.
 func TestableGmailModifyMessage(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	if _, errResult := common.RequireStringArg(request.Params.Arguments, "message_id"); errResult != nil {
+	if _, errResult := common.RequireStringArg(request.GetArguments(), "message_id"); errResult != nil {
 		return errResult, nil
 	}
 
@@ -194,13 +194,13 @@ func TestableGmailModifyMessage(ctx context.Context, request mcp.CallToolRequest
 		return errResult, nil
 	}
 
-	addLabels, removeLabels := extractAddRemoveLabels(request.Params.Arguments)
+	addLabels, removeLabels := extractAddRemoveLabels(request.GetArguments())
 	return modifyMessageLabels(ctx, svc, request, addLabels, removeLabels)
 }
 
 // TestableGmailModifyThread modifies labels on a thread.
 func TestableGmailModifyThread(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
-	threadID, errResult := common.RequireStringArg(request.Params.Arguments, "thread_id")
+	threadID, errResult := common.RequireStringArg(request.GetArguments(), "thread_id")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -210,7 +210,7 @@ func TestableGmailModifyThread(ctx context.Context, request mcp.CallToolRequest,
 		return errResult, nil
 	}
 
-	addLabels, removeLabels := extractAddRemoveLabels(request.Params.Arguments)
+	addLabels, removeLabels := extractAddRemoveLabels(request.GetArguments())
 	modifyRequest := &gmail.ModifyThreadRequest{
 		AddLabelIds:    addLabels,
 		RemoveLabelIds: removeLabels,
@@ -236,7 +236,7 @@ func TestableGmailBatchModify(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	addLabels, removeLabels := extractAddRemoveLabels(request.Params.Arguments)
+	addLabels, removeLabels := extractAddRemoveLabels(request.GetArguments())
 	req := &gmail.BatchModifyMessagesRequest{
 		Ids:            ids,
 		AddLabelIds:    addLabels,

@@ -13,7 +13,7 @@ import (
 // extractRequiredSpreadsheetID extracts, validates, and normalizes the spreadsheet_id parameter.
 // Returns the cleaned ID or an error result if missing.
 func extractRequiredSpreadsheetID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
-	spreadsheetID := common.ParseStringArg(request.Params.Arguments, "spreadsheet_id", "")
+	spreadsheetID := common.ParseStringArg(request.GetArguments(), "spreadsheet_id", "")
 	if spreadsheetID == "" {
 		return "", mcp.NewToolResultError("spreadsheet_id parameter is required")
 	}
@@ -93,7 +93,7 @@ func TestableSheetsRead(ctx context.Context, request mcp.CallToolRequest, deps *
 		return idErrResult, nil
 	}
 
-	readRange := common.ParseStringArg(request.Params.Arguments, "range", "")
+	readRange := common.ParseStringArg(request.GetArguments(), "range", "")
 	if readRange == "" {
 		return mcp.NewToolResultError("range parameter is required (A1 notation, e.g., 'Sheet1!A1:C10')"), nil
 	}
@@ -135,12 +135,12 @@ func TestableSheetsWrite(ctx context.Context, request mcp.CallToolRequest, deps 
 		return idErrResult, nil
 	}
 
-	writeRange := common.ParseStringArg(request.Params.Arguments, "range", "")
+	writeRange := common.ParseStringArg(request.GetArguments(), "range", "")
 	if writeRange == "" {
 		return mcp.NewToolResultError("range parameter is required (A1 notation, e.g., 'Sheet1!A1:C3')"), nil
 	}
 
-	valuesRaw, ok := request.Params.Arguments["values"]
+	valuesRaw, ok := request.GetArguments()["values"]
 	if !ok {
 		return mcp.NewToolResultError("values parameter is required (2D array of values)"), nil
 	}
@@ -150,7 +150,7 @@ func TestableSheetsWrite(ctx context.Context, request mcp.CallToolRequest, deps 
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid values format: %v", err)), nil
 	}
 
-	valueInputOption := parseValueInputOption(request.Params.Arguments)
+	valueInputOption := parseValueInputOption(request.GetArguments())
 
 	resp, err := srv.UpdateValues(ctx, spreadsheetID, writeRange, values, valueInputOption)
 	if err != nil {
@@ -182,12 +182,12 @@ func TestableSheetsAppend(ctx context.Context, request mcp.CallToolRequest, deps
 		return idErrResult, nil
 	}
 
-	appendRange := common.ParseStringArg(request.Params.Arguments, "range", "")
+	appendRange := common.ParseStringArg(request.GetArguments(), "range", "")
 	if appendRange == "" {
 		return mcp.NewToolResultError("range parameter is required (A1 notation for table to append to, e.g., 'Sheet1!A:C')"), nil
 	}
 
-	valuesRaw, ok := request.Params.Arguments["values"]
+	valuesRaw, ok := request.GetArguments()["values"]
 	if !ok {
 		return mcp.NewToolResultError("values parameter is required (2D array of values)"), nil
 	}
@@ -197,7 +197,7 @@ func TestableSheetsAppend(ctx context.Context, request mcp.CallToolRequest, deps
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid values format: %v", err)), nil
 	}
 
-	valueInputOption := parseValueInputOption(request.Params.Arguments)
+	valueInputOption := parseValueInputOption(request.GetArguments())
 
 	resp, err := srv.AppendValues(ctx, spreadsheetID, appendRange, values, valueInputOption)
 	if err != nil {
@@ -228,7 +228,7 @@ func TestableSheetsCreate(ctx context.Context, request mcp.CallToolRequest, deps
 		return errResult, nil
 	}
 
-	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	title, errResult := common.RequireStringArg(request.GetArguments(), "title")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -261,7 +261,7 @@ func TestableSheetsBatchRead(ctx context.Context, request mcp.CallToolRequest, d
 		return idErrResult, nil
 	}
 
-	rangesRaw, ok := request.Params.Arguments["ranges"].([]any)
+	rangesRaw, ok := request.GetArguments()["ranges"].([]any)
 	if !ok || len(rangesRaw) == 0 {
 		return mcp.NewToolResultError("ranges parameter is required (array of A1 notation ranges)"), nil
 	}
@@ -312,12 +312,12 @@ func TestableSheetsBatchWrite(ctx context.Context, request mcp.CallToolRequest, 
 		return idErrResult, nil
 	}
 
-	dataRaw, ok := request.Params.Arguments["data"].([]any)
+	dataRaw, ok := request.GetArguments()["data"].([]any)
 	if !ok || len(dataRaw) == 0 {
 		return mcp.NewToolResultError("data parameter is required (array of {range, values} objects)"), nil
 	}
 
-	valueInputOption := parseValueInputOption(request.Params.Arguments)
+	valueInputOption := parseValueInputOption(request.GetArguments())
 
 	var data []*sheets.ValueRange
 	for i, entry := range dataRaw {
@@ -372,7 +372,7 @@ func TestableSheetsClear(ctx context.Context, request mcp.CallToolRequest, deps 
 		return idErrResult, nil
 	}
 
-	clearRange := common.ParseStringArg(request.Params.Arguments, "range", "")
+	clearRange := common.ParseStringArg(request.GetArguments(), "range", "")
 	if clearRange == "" {
 		return mcp.NewToolResultError("range parameter is required (A1 notation, e.g., 'Sheet1!A1:C10')"), nil
 	}

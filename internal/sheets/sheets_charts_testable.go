@@ -27,7 +27,7 @@ func TestableSheetsCreateChart(ctx context.Context, request mcp.CallToolRequest,
 		return idErrResult, nil
 	}
 
-	chartType := common.ParseStringArg(request.Params.Arguments, "chart_type", "")
+	chartType := common.ParseStringArg(request.GetArguments(), "chart_type", "")
 	if chartType == "" {
 		return mcp.NewToolResultError("chart_type parameter is required (BAR, LINE, AREA, COLUMN, SCATTER, COMBO, STEPPED_AREA, PIE)"), nil
 	}
@@ -35,10 +35,10 @@ func TestableSheetsCreateChart(ctx context.Context, request mcp.CallToolRequest,
 		return mcp.NewToolResultError("chart_type must be one of: BAR, LINE, AREA, COLUMN, SCATTER, COMBO, STEPPED_AREA, PIE"), nil
 	}
 
-	title := common.ParseStringArg(request.Params.Arguments, "title", "")
+	title := common.ParseStringArg(request.GetArguments(), "title", "")
 
 	// Parse source data range
-	sourceRange, rangeErr := parseCellRange(request.Params.Arguments)
+	sourceRange, rangeErr := parseCellRange(request.GetArguments())
 	if rangeErr != nil {
 		return rangeErr, nil
 	}
@@ -56,7 +56,7 @@ func TestableSheetsCreateChart(ctx context.Context, request mcp.CallToolRequest,
 	}
 
 	// Optionally set legend position
-	if legendPos, ok := request.Params.Arguments["legend_position"].(string); ok && legendPos != "" {
+	if legendPos, ok := request.GetArguments()["legend_position"].(string); ok && legendPos != "" {
 		basicChart.LegendPosition = legendPos
 	}
 
@@ -68,10 +68,10 @@ func TestableSheetsCreateChart(ctx context.Context, request mcp.CallToolRequest,
 	// Overlay position (default to anchoring at row 0, col 0 of the same sheet)
 	anchorRow := int64(0)
 	anchorCol := int64(0)
-	if ar, ok := request.Params.Arguments["anchor_row"].(float64); ok {
+	if ar, ok := request.GetArguments()["anchor_row"].(float64); ok {
 		anchorRow = int64(ar)
 	}
-	if ac, ok := request.Params.Arguments["anchor_col"].(float64); ok {
+	if ac, ok := request.GetArguments()["anchor_col"].(float64); ok {
 		anchorCol = int64(ac)
 	}
 
@@ -127,7 +127,7 @@ func TestableSheetsUpdateChart(ctx context.Context, request mcp.CallToolRequest,
 		return idErrResult, nil
 	}
 
-	chartIDFloat, ok := request.Params.Arguments["chart_id"].(float64)
+	chartIDFloat, ok := request.GetArguments()["chart_id"].(float64)
 	if !ok {
 		return mcp.NewToolResultError("chart_id parameter is required"), nil
 	}
@@ -136,12 +136,12 @@ func TestableSheetsUpdateChart(ctx context.Context, request mcp.CallToolRequest,
 	chartSpec := &sheets.ChartSpec{}
 	var fields []string
 
-	if title, ok := request.Params.Arguments["title"].(string); ok {
+	if title, ok := request.GetArguments()["title"].(string); ok {
 		chartSpec.Title = title
 		fields = append(fields, "title")
 	}
 
-	if chartType, ok := request.Params.Arguments["chart_type"].(string); ok && chartType != "" {
+	if chartType, ok := request.GetArguments()["chart_type"].(string); ok && chartType != "" {
 		if !validChartTypes[chartType] {
 			return mcp.NewToolResultError("chart_type must be one of: BAR, LINE, AREA, COLUMN, SCATTER, COMBO, STEPPED_AREA, PIE"), nil
 		}
@@ -191,7 +191,7 @@ func TestableSheetsDeleteChart(ctx context.Context, request mcp.CallToolRequest,
 		return idErrResult, nil
 	}
 
-	chartIDFloat, ok := request.Params.Arguments["chart_id"].(float64)
+	chartIDFloat, ok := request.GetArguments()["chart_id"].(float64)
 	if !ok {
 		return mcp.NewToolResultError("chart_id parameter is required"), nil
 	}
@@ -232,13 +232,13 @@ func TestableSheetsCreatePivotTable(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Source data range (uses "source_sheet_id" instead of "sheet_id")
-	sourceRange, rangeErr := parseGridRange(request.Params.Arguments, "source_sheet_id")
+	sourceRange, rangeErr := parseGridRange(request.GetArguments(), "source_sheet_id")
 	if rangeErr != nil {
 		return rangeErr, nil
 	}
 
 	// Target location
-	targetSheetIDFloat, ok := request.Params.Arguments["target_sheet_id"].(float64)
+	targetSheetIDFloat, ok := request.GetArguments()["target_sheet_id"].(float64)
 	if !ok {
 		return mcp.NewToolResultError("target_sheet_id parameter is required (sheet ID where pivot table is placed)"), nil
 	}
@@ -246,10 +246,10 @@ func TestableSheetsCreatePivotTable(ctx context.Context, request mcp.CallToolReq
 
 	targetRow := int64(0)
 	targetCol := int64(0)
-	if tr, ok := request.Params.Arguments["target_row"].(float64); ok {
+	if tr, ok := request.GetArguments()["target_row"].(float64); ok {
 		targetRow = int64(tr)
 	}
-	if tc, ok := request.Params.Arguments["target_col"].(float64); ok {
+	if tc, ok := request.GetArguments()["target_col"].(float64); ok {
 		targetCol = int64(tc)
 	}
 
@@ -259,7 +259,7 @@ func TestableSheetsCreatePivotTable(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Row grouping columns (array of column indices)
-	if rowsRaw, ok := request.Params.Arguments["row_source_columns"].([]any); ok {
+	if rowsRaw, ok := request.GetArguments()["row_source_columns"].([]any); ok {
 		for _, r := range rowsRaw {
 			if colIdx, ok := r.(float64); ok {
 				pivotTable.Rows = append(pivotTable.Rows, &sheets.PivotGroup{
@@ -271,7 +271,7 @@ func TestableSheetsCreatePivotTable(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Column grouping columns
-	if colsRaw, ok := request.Params.Arguments["col_source_columns"].([]any); ok {
+	if colsRaw, ok := request.GetArguments()["col_source_columns"].([]any); ok {
 		for _, c := range colsRaw {
 			if colIdx, ok := c.(float64); ok {
 				pivotTable.Columns = append(pivotTable.Columns, &sheets.PivotGroup{
@@ -283,7 +283,7 @@ func TestableSheetsCreatePivotTable(ctx context.Context, request mcp.CallToolReq
 	}
 
 	// Values (aggregation)
-	if valuesRaw, ok := request.Params.Arguments["value_columns"].([]any); ok {
+	if valuesRaw, ok := request.GetArguments()["value_columns"].([]any); ok {
 		for _, v := range valuesRaw {
 			if valMap, ok := v.(map[string]any); ok {
 				colIdx, colOk := valMap["column"].(float64)

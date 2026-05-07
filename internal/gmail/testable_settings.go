@@ -71,28 +71,28 @@ func TestableGmailSetVacation(ctx context.Context, request mcp.CallToolRequest, 
 
 	settings := &gmail.VacationSettings{}
 
-	if val, ok := request.Params.Arguments["enabled"].(bool); ok {
+	if val, ok := request.GetArguments()["enabled"].(bool); ok {
 		settings.EnableAutoReply = val
 	}
-	if val, ok := request.Params.Arguments["subject"].(string); ok {
+	if val, ok := request.GetArguments()["subject"].(string); ok {
 		settings.ResponseSubject = val
 	}
-	if val, ok := request.Params.Arguments["body"].(string); ok {
+	if val, ok := request.GetArguments()["body"].(string); ok {
 		settings.ResponseBodyPlainText = val
 	}
-	if val, ok := request.Params.Arguments["body_html"].(string); ok {
+	if val, ok := request.GetArguments()["body_html"].(string); ok {
 		settings.ResponseBodyHtml = val
 	}
-	if val, ok := request.Params.Arguments["restrict_to_contacts"].(bool); ok {
+	if val, ok := request.GetArguments()["restrict_to_contacts"].(bool); ok {
 		settings.RestrictToContacts = val
 	}
-	if val, ok := request.Params.Arguments["restrict_to_domain"].(bool); ok {
+	if val, ok := request.GetArguments()["restrict_to_domain"].(bool); ok {
 		settings.RestrictToDomain = val
 	}
-	if val, ok := request.Params.Arguments["start_time"].(float64); ok {
+	if val, ok := request.GetArguments()["start_time"].(float64); ok {
 		settings.StartTime = int64(val)
 	}
-	if val, ok := request.Params.Arguments["end_time"].(float64); ok {
+	if val, ok := request.GetArguments()["end_time"].(float64); ok {
 		settings.EndTime = int64(val)
 	}
 

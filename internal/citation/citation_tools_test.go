@@ -106,13 +106,7 @@ func (m *mockCitationService) RefreshIndex(_ context.Context, _ string) (*Refres
 // makeToolRequest creates a CallToolRequest with the given arguments.
 func makeToolRequest(args map[string]any) mcp.CallToolRequest {
 	return mcp.CallToolRequest{
-		Params: struct {
-			Name      string         `json:"name"`
-			Arguments map[string]any `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
+		Params: mcp.CallToolParams{
 			Arguments: args,
 		},
 	}

@@ -17,7 +17,7 @@ const docsEditURLFormat = "https://docs.google.com/document/d/%s/edit"
 // extractRequiredDocID extracts, validates, and normalizes the document_id parameter.
 // Returns the cleaned ID or an error result if missing.
 func extractRequiredDocID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
-	docID := common.ParseStringArg(request.Params.Arguments, "document_id", "")
+	docID := common.ParseStringArg(request.GetArguments(), "document_id", "")
 	if docID == "" {
 		return "", mcp.NewToolResultError("document_id parameter is required")
 	}
@@ -27,7 +27,7 @@ func extractRequiredDocID(request mcp.CallToolRequest) (string, *mcp.CallToolRes
 // extractIndexRange extracts and validates start_index and end_index from a request.
 // Both must be present, start_index >= 1, and end_index > start_index.
 func extractIndexRange(request mcp.CallToolRequest) (startIndex, endIndex int64, errResult *mcp.CallToolResult) {
-	startIndexFloat, ok := request.Params.Arguments["start_index"].(float64)
+	startIndexFloat, ok := request.GetArguments()["start_index"].(float64)
 	if !ok {
 		return 0, 0, mcp.NewToolResultError("start_index parameter is required (1-based position in document)")
 	}
@@ -36,7 +36,7 @@ func extractIndexRange(request mcp.CallToolRequest) (startIndex, endIndex int64,
 		return 0, 0, mcp.NewToolResultError("start_index must be at least 1")
 	}
 
-	endIndexFloat, ok := request.Params.Arguments["end_index"].(float64)
+	endIndexFloat, ok := request.GetArguments()["end_index"].(float64)
 	if !ok {
 		return 0, 0, mcp.NewToolResultError("end_index parameter is required (1-based position in document)")
 	}
@@ -55,7 +55,7 @@ func TestableDocsCreate(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	title, errResult := common.RequireStringArg(request.GetArguments(), "title")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -149,7 +149,7 @@ func TestableDocsAppendText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	text, errResult := common.RequireStringArg(request.GetArguments(), "text")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -209,12 +209,12 @@ func TestableDocsInsertText(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	text, errResult := common.RequireStringArg(request.Params.Arguments, "text")
+	text, errResult := common.RequireStringArg(request.GetArguments(), "text")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	indexFloat, ok := request.Params.Arguments["index"].(float64)
+	indexFloat, ok := request.GetArguments()["index"].(float64)
 	if !ok {
 		return mcp.NewToolResultError("index parameter is required (1-based position in document)"), nil
 	}
@@ -256,15 +256,15 @@ func TestableDocsReplaceText(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	findText, errResult := common.RequireStringArg(request.Params.Arguments, "find_text")
+	findText, errResult := common.RequireStringArg(request.GetArguments(), "find_text")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	replaceText := common.ParseStringArg(request.Params.Arguments, "replace_text", "")
+	replaceText := common.ParseStringArg(request.GetArguments(), "replace_text", "")
 	// replace_text can be empty (to delete matched text)
 
-	matchCase := common.ParseBoolArg(request.Params.Arguments, "match_case", false)
+	matchCase := common.ParseBoolArg(request.GetArguments(), "match_case", false)
 
 	replaceReq := &docs.ReplaceAllTextRequest{
 		ContainsText: &docs.SubstringMatchCriteria{
@@ -351,7 +351,7 @@ func TestableDocsBatchUpdate(ctx context.Context, request mcp.CallToolRequest, d
 		return errResult, nil
 	}
 
-	requestsJSON := common.ParseStringArg(request.Params.Arguments, "requests", "")
+	requestsJSON := common.ParseStringArg(request.GetArguments(), "requests", "")
 	if requestsJSON == "" {
 		return mcp.NewToolResultError("requests parameter is required (JSON array of batch update requests)"), nil
 	}

@@ -23,14 +23,14 @@ func TestableContactsList(ctx context.Context, request mcp.CallToolRequest, deps
 
 	// Person fields
 	personFields := DefaultPersonFields
-	if pf, ok := request.Params.Arguments["person_fields"].(string); ok && pf != "" {
+	if pf, ok := request.GetArguments()["person_fields"].(string); ok && pf != "" {
 		personFields = pf
 	}
 	opts.PersonFields = personFields
 
 	// Page size (default 100, max 1000)
 	pageSize := int32(common.ContactsDefaultPageSize)
-	if ps, ok := request.Params.Arguments["page_size"].(float64); ok && ps > 0 {
+	if ps, ok := request.GetArguments()["page_size"].(float64); ok && ps > 0 {
 		pageSize = int32(ps)
 		if pageSize > common.ContactsMaxPageSize {
 			pageSize = common.ContactsMaxPageSize
@@ -39,12 +39,12 @@ func TestableContactsList(ctx context.Context, request mcp.CallToolRequest, deps
 	opts.PageSize = pageSize
 
 	// Page token for pagination
-	if pageToken, ok := request.Params.Arguments["page_token"].(string); ok && pageToken != "" {
+	if pageToken, ok := request.GetArguments()["page_token"].(string); ok && pageToken != "" {
 		opts.PageToken = pageToken
 	}
 
 	// Sort order
-	if sortOrder, ok := request.Params.Arguments["sort_order"].(string); ok && sortOrder != "" {
+	if sortOrder, ok := request.GetArguments()["sort_order"].(string); ok && sortOrder != "" {
 		opts.SortOrder = sortOrder
 	}
 
@@ -75,7 +75,7 @@ func TestableContactsGet(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	resourceName, errResult := common.RequireStringArg(request.GetArguments(), "resource_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -84,7 +84,7 @@ func TestableContactsGet(ctx context.Context, request mcp.CallToolRequest, deps 
 
 	// Person fields
 	personFields := DefaultPersonFields
-	if pf, ok := request.Params.Arguments["person_fields"].(string); ok && pf != "" {
+	if pf, ok := request.GetArguments()["person_fields"].(string); ok && pf != "" {
 		personFields = pf
 	}
 
@@ -109,7 +109,7 @@ func TestableContactsSearch(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	query, errResult := common.RequireStringArg(request.Params.Arguments, "query")
+	query, errResult := common.RequireStringArg(request.GetArguments(), "query")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -118,14 +118,14 @@ func TestableContactsSearch(ctx context.Context, request mcp.CallToolRequest, de
 
 	// Read mask (default person fields)
 	readMask := DefaultPersonFields
-	if rm, ok := request.Params.Arguments["read_mask"].(string); ok && rm != "" {
+	if rm, ok := request.GetArguments()["read_mask"].(string); ok && rm != "" {
 		readMask = rm
 	}
 	opts.ReadMask = readMask
 
 	// Page size (default 30, max 30 for search)
 	pageSize := int32(common.ContactsSearchDefaultPageSize)
-	if ps, ok := request.Params.Arguments["page_size"].(float64); ok && ps > 0 {
+	if ps, ok := request.GetArguments()["page_size"].(float64); ok && ps > 0 {
 		pageSize = int32(ps)
 		if pageSize > common.ContactsSearchMaxPageSize {
 			pageSize = common.ContactsSearchMaxPageSize
@@ -167,36 +167,36 @@ func TestableContactsCreate(ctx context.Context, request mcp.CallToolRequest, de
 	person := &people.Person{}
 
 	// Names (given_name is required)
-	givenName, errResult := common.RequireStringArg(request.Params.Arguments, "given_name")
+	givenName, errResult := common.RequireStringArg(request.GetArguments(), "given_name")
 	if errResult != nil {
 		return errResult, nil
 	}
 	person.Names = []*people.Name{{GivenName: givenName}}
-	if familyName, ok := request.Params.Arguments["family_name"].(string); ok && familyName != "" {
+	if familyName, ok := request.GetArguments()["family_name"].(string); ok && familyName != "" {
 		person.Names[0].FamilyName = familyName
 	}
 
 	// Email addresses
-	if emails := parseEmailsFromRequest(request.Params.Arguments); emails != nil {
+	if emails := parseEmailsFromRequest(request.GetArguments()); emails != nil {
 		person.EmailAddresses = emails
 	}
 
 	// Phone numbers
-	if phones := parsePhonesFromRequest(request.Params.Arguments); phones != nil {
+	if phones := parsePhonesFromRequest(request.GetArguments()); phones != nil {
 		person.PhoneNumbers = phones
 	}
 
 	// Organization
-	if company, ok := request.Params.Arguments["company"].(string); ok && company != "" {
+	if company, ok := request.GetArguments()["company"].(string); ok && company != "" {
 		org := &people.Organization{Name: company}
-		if title, ok := request.Params.Arguments["job_title"].(string); ok {
+		if title, ok := request.GetArguments()["job_title"].(string); ok {
 			org.Title = title
 		}
 		person.Organizations = []*people.Organization{org}
 	}
 
 	// Notes/biography
-	if notes, ok := request.Params.Arguments["notes"].(string); ok && notes != "" {
+	if notes, ok := request.GetArguments()["notes"].(string); ok && notes != "" {
 		person.Biographies = []*people.Biography{{Value: notes}}
 	}
 
@@ -218,7 +218,7 @@ func TestableContactsUpdate(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	resourceName, errResult := common.RequireStringArg(request.GetArguments(), "resource_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -230,7 +230,7 @@ func TestableContactsUpdate(ctx context.Context, request mcp.CallToolRequest, de
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to get contact: %v", err)), nil
 	}
 
-	updateFields := applyContactUpdates(existing, request.Params.Arguments)
+	updateFields := applyContactUpdates(existing, request.GetArguments())
 	if len(updateFields) == 0 {
 		return mcp.NewToolResultError("No fields to update - provide at least one field to modify"), nil
 	}
@@ -253,7 +253,7 @@ func TestableContactsDelete(ctx context.Context, request mcp.CallToolRequest, de
 		return errResult, nil
 	}
 
-	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	resourceName, errResult := common.RequireStringArg(request.GetArguments(), "resource_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -287,18 +287,18 @@ func TestableContactsListGroups(ctx context.Context, request mcp.CallToolRequest
 
 	// Group fields
 	groupFields := DefaultGroupFields
-	if gf, ok := request.Params.Arguments["group_fields"].(string); ok && gf != "" {
+	if gf, ok := request.GetArguments()["group_fields"].(string); ok && gf != "" {
 		groupFields = gf
 	}
 	opts.GroupFields = groupFields
 
 	// Page size
-	if pageSize, ok := request.Params.Arguments["page_size"].(float64); ok && pageSize > 0 {
+	if pageSize, ok := request.GetArguments()["page_size"].(float64); ok && pageSize > 0 {
 		opts.PageSize = int32(pageSize)
 	}
 
 	// Page token
-	if pageToken, ok := request.Params.Arguments["page_token"].(string); ok && pageToken != "" {
+	if pageToken, ok := request.GetArguments()["page_token"].(string); ok && pageToken != "" {
 		opts.PageToken = pageToken
 	}
 
@@ -331,7 +331,7 @@ func TestableContactsGetGroup(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	resourceName, errResult := common.RequireStringArg(request.GetArguments(), "resource_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -342,13 +342,13 @@ func TestableContactsGetGroup(ctx context.Context, request mcp.CallToolRequest, 
 
 	// Group fields
 	groupFields := DefaultGroupFields + ",memberResourceNames"
-	if gf, ok := request.Params.Arguments["group_fields"].(string); ok && gf != "" {
+	if gf, ok := request.GetArguments()["group_fields"].(string); ok && gf != "" {
 		groupFields = gf
 	}
 	opts.GroupFields = groupFields
 
 	// Max members
-	if maxMembers, ok := request.Params.Arguments["max_members"].(float64); ok && maxMembers > 0 {
+	if maxMembers, ok := request.GetArguments()["max_members"].(float64); ok && maxMembers > 0 {
 		opts.MaxMembers = int32(maxMembers)
 	}
 
@@ -369,7 +369,7 @@ func TestableContactsCreateGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	name, errResult := common.RequireStringArg(request.GetArguments(), "name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -392,12 +392,12 @@ func TestableContactsUpdateGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	resourceName, errResult := common.RequireStringArg(request.GetArguments(), "resource_name")
 	if errResult != nil {
 		return errResult, nil
 	}
 
-	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	name, errResult := common.RequireStringArg(request.GetArguments(), "name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -422,7 +422,7 @@ func TestableContactsDeleteGroup(ctx context.Context, request mcp.CallToolReques
 		return errResult, nil
 	}
 
-	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	resourceName, errResult := common.RequireStringArg(request.GetArguments(), "resource_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -450,7 +450,7 @@ func TestableContactsModifyGroupMembers(ctx context.Context, request mcp.CallToo
 		return errResult, nil
 	}
 
-	resourceName, errResult := common.RequireStringArg(request.Params.Arguments, "resource_name")
+	resourceName, errResult := common.RequireStringArg(request.GetArguments(), "resource_name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -460,7 +460,7 @@ func TestableContactsModifyGroupMembers(ctx context.Context, request mcp.CallToo
 	var addMembers, removeMembers []string
 
 	// Add members
-	if addRaw, ok := request.Params.Arguments["add_members"].([]any); ok && len(addRaw) > 0 {
+	if addRaw, ok := request.GetArguments()["add_members"].([]any); ok && len(addRaw) > 0 {
 		addMembers = make([]string, 0, len(addRaw))
 		for _, m := range addRaw {
 			if memberStr, ok := m.(string); ok {
@@ -470,7 +470,7 @@ func TestableContactsModifyGroupMembers(ctx context.Context, request mcp.CallToo
 	}
 
 	// Remove members
-	if removeRaw, ok := request.Params.Arguments["remove_members"].([]any); ok && len(removeRaw) > 0 {
+	if removeRaw, ok := request.GetArguments()["remove_members"].([]any); ok && len(removeRaw) > 0 {
 		removeMembers = make([]string, 0, len(removeRaw))
 		for _, m := range removeRaw {
 			if memberStr, ok := m.(string); ok {

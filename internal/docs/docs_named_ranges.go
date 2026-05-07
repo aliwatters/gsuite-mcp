@@ -70,7 +70,7 @@ func TestableDocsCreateNamedRange(ctx context.Context, request mcp.CallToolReque
 		return errResult, nil
 	}
 
-	name, errResult := common.RequireStringArg(request.Params.Arguments, "name")
+	name, errResult := common.RequireStringArg(request.GetArguments(), "name")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -128,7 +128,7 @@ func TestableDocsDeleteNamedRange(ctx context.Context, request mcp.CallToolReque
 		return errResult, nil
 	}
 
-	namedRangeID, errResult := common.RequireStringArg(request.Params.Arguments, "named_range_id")
+	namedRangeID, errResult := common.RequireStringArg(request.GetArguments(), "named_range_id")
 	if errResult != nil {
 		return errResult, nil
 	}

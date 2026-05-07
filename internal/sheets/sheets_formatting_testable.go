@@ -126,7 +126,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 		return idErrResult, nil
 	}
 
-	gridRange, rangeErr := parseCellRange(request.Params.Arguments)
+	gridRange, rangeErr := parseCellRange(request.GetArguments())
 	if rangeErr != nil {
 		return rangeErr, nil
 	}
@@ -136,7 +136,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 	var fields []string
 
 	// Background color
-	if bgColor, ok := request.Params.Arguments["background_color"].(string); ok && bgColor != "" {
+	if bgColor, ok := request.GetArguments()["background_color"].(string); ok && bgColor != "" {
 		color, err := parseHexColor(bgColor)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid background_color: %v", err)), nil
@@ -149,7 +149,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 	textFormat := &sheets.TextFormat{}
 	hasTextFormat := false
 
-	if bold, ok := request.Params.Arguments["bold"].(bool); ok {
+	if bold, ok := request.GetArguments()["bold"].(bool); ok {
 		textFormat.Bold = bold
 		if !bold {
 			textFormat.ForceSendFields = append(textFormat.ForceSendFields, "Bold")
@@ -157,7 +157,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 		hasTextFormat = true
 		fields = append(fields, "userEnteredFormat.textFormat.bold")
 	}
-	if italic, ok := request.Params.Arguments["italic"].(bool); ok {
+	if italic, ok := request.GetArguments()["italic"].(bool); ok {
 		textFormat.Italic = italic
 		if !italic {
 			textFormat.ForceSendFields = append(textFormat.ForceSendFields, "Italic")
@@ -165,7 +165,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 		hasTextFormat = true
 		fields = append(fields, "userEnteredFormat.textFormat.italic")
 	}
-	if underline, ok := request.Params.Arguments["underline"].(bool); ok {
+	if underline, ok := request.GetArguments()["underline"].(bool); ok {
 		textFormat.Underline = underline
 		if !underline {
 			textFormat.ForceSendFields = append(textFormat.ForceSendFields, "Underline")
@@ -173,7 +173,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 		hasTextFormat = true
 		fields = append(fields, "userEnteredFormat.textFormat.underline")
 	}
-	if strikethrough, ok := request.Params.Arguments["strikethrough"].(bool); ok {
+	if strikethrough, ok := request.GetArguments()["strikethrough"].(bool); ok {
 		textFormat.Strikethrough = strikethrough
 		if !strikethrough {
 			textFormat.ForceSendFields = append(textFormat.ForceSendFields, "Strikethrough")
@@ -181,17 +181,17 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 		hasTextFormat = true
 		fields = append(fields, "userEnteredFormat.textFormat.strikethrough")
 	}
-	if fontFamily, ok := request.Params.Arguments["font_family"].(string); ok && fontFamily != "" {
+	if fontFamily, ok := request.GetArguments()["font_family"].(string); ok && fontFamily != "" {
 		textFormat.FontFamily = fontFamily
 		hasTextFormat = true
 		fields = append(fields, "userEnteredFormat.textFormat.fontFamily")
 	}
-	if fontSize, ok := request.Params.Arguments["font_size"].(float64); ok && fontSize > 0 {
+	if fontSize, ok := request.GetArguments()["font_size"].(float64); ok && fontSize > 0 {
 		textFormat.FontSize = int64(fontSize)
 		hasTextFormat = true
 		fields = append(fields, "userEnteredFormat.textFormat.fontSize")
 	}
-	if fgColor, ok := request.Params.Arguments["foreground_color"].(string); ok && fgColor != "" {
+	if fgColor, ok := request.GetArguments()["foreground_color"].(string); ok && fgColor != "" {
 		color, err := parseHexColor(fgColor)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid foreground_color: %v", err)), nil
@@ -206,8 +206,8 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 	}
 
 	// Number format
-	if numberFormat, ok := request.Params.Arguments["number_format"].(string); ok && numberFormat != "" {
-		numberFormatType := common.ParseStringArg(request.Params.Arguments, "number_format_type", "NUMBER")
+	if numberFormat, ok := request.GetArguments()["number_format"].(string); ok && numberFormat != "" {
+		numberFormatType := common.ParseStringArg(request.GetArguments(), "number_format_type", "NUMBER")
 		validTypes := map[string]bool{
 			"TEXT": true, "NUMBER": true, "PERCENT": true, "CURRENCY": true,
 			"DATE": true, "TIME": true, "DATE_TIME": true, "SCIENTIFIC": true,
@@ -223,7 +223,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 	}
 
 	// Horizontal alignment
-	if hAlign, ok := request.Params.Arguments["horizontal_alignment"].(string); ok && hAlign != "" {
+	if hAlign, ok := request.GetArguments()["horizontal_alignment"].(string); ok && hAlign != "" {
 		validAlignments := map[string]bool{"LEFT": true, "CENTER": true, "RIGHT": true}
 		if !validAlignments[hAlign] {
 			return mcp.NewToolResultError("horizontal_alignment must be one of: LEFT, CENTER, RIGHT"), nil
@@ -233,7 +233,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 	}
 
 	// Vertical alignment
-	if vAlign, ok := request.Params.Arguments["vertical_alignment"].(string); ok && vAlign != "" {
+	if vAlign, ok := request.GetArguments()["vertical_alignment"].(string); ok && vAlign != "" {
 		validAlignments := map[string]bool{"TOP": true, "MIDDLE": true, "BOTTOM": true}
 		if !validAlignments[vAlign] {
 			return mcp.NewToolResultError("vertical_alignment must be one of: TOP, MIDDLE, BOTTOM"), nil
@@ -243,7 +243,7 @@ func TestableSheetsFormatCells(ctx context.Context, request mcp.CallToolRequest,
 	}
 
 	// Wrap strategy
-	if wrapStrategy, ok := request.Params.Arguments["wrap_strategy"].(string); ok && wrapStrategy != "" {
+	if wrapStrategy, ok := request.GetArguments()["wrap_strategy"].(string); ok && wrapStrategy != "" {
 		validStrategies := map[string]bool{"OVERFLOW_CELL": true, "LEGACY_WRAP": true, "CLIP": true, "WRAP": true}
 		if !validStrategies[wrapStrategy] {
 			return mcp.NewToolResultError("wrap_strategy must be one of: OVERFLOW_CELL, LEGACY_WRAP, CLIP, WRAP"), nil
@@ -294,12 +294,12 @@ func TestableSheetsAddConditionalFormat(ctx context.Context, request mcp.CallToo
 		return idErrResult, nil
 	}
 
-	gridRange, rangeErr := parseCellRange(request.Params.Arguments)
+	gridRange, rangeErr := parseCellRange(request.GetArguments())
 	if rangeErr != nil {
 		return rangeErr, nil
 	}
 
-	ruleType := common.ParseStringArg(request.Params.Arguments, "rule_type", "")
+	ruleType := common.ParseStringArg(request.GetArguments(), "rule_type", "")
 	if ruleType == "" {
 		return mcp.NewToolResultError("rule_type parameter is required (BOOLEAN or GRADIENT)"), nil
 	}
@@ -308,14 +308,14 @@ func TestableSheetsAddConditionalFormat(ctx context.Context, request mcp.CallToo
 
 	switch ruleType {
 	case "BOOLEAN":
-		conditionType := common.ParseStringArg(request.Params.Arguments, "condition_type", "")
+		conditionType := common.ParseStringArg(request.GetArguments(), "condition_type", "")
 		if conditionType == "" {
 			return mcp.NewToolResultError("condition_type is required for BOOLEAN rules (e.g., NUMBER_GREATER, TEXT_CONTAINS, CUSTOM_FORMULA)"), nil
 		}
 
 		// Parse condition values
 		var conditionValues []*sheets.ConditionValue
-		if valuesRaw, ok := request.Params.Arguments["condition_values"].([]any); ok {
+		if valuesRaw, ok := request.GetArguments()["condition_values"].([]any); ok {
 			for _, v := range valuesRaw {
 				if s, ok := v.(string); ok {
 					conditionValues = append(conditionValues, &sheets.ConditionValue{UserEnteredValue: s})
@@ -332,27 +332,27 @@ func TestableSheetsAddConditionalFormat(ctx context.Context, request mcp.CallToo
 
 		// Parse format for matching cells
 		format := &sheets.CellFormat{}
-		if bgColor, ok := request.Params.Arguments["format_background_color"].(string); ok && bgColor != "" {
+		if bgColor, ok := request.GetArguments()["format_background_color"].(string); ok && bgColor != "" {
 			color, err := parseHexColor(bgColor)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Invalid format_background_color: %v", err)), nil
 			}
 			format.BackgroundColor = color
 		}
-		if fgColor, ok := request.Params.Arguments["format_text_color"].(string); ok && fgColor != "" {
+		if fgColor, ok := request.GetArguments()["format_text_color"].(string); ok && fgColor != "" {
 			color, err := parseHexColor(fgColor)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Invalid format_text_color: %v", err)), nil
 			}
 			format.TextFormat = &sheets.TextFormat{ForegroundColor: color}
 		}
-		if bold, ok := request.Params.Arguments["format_bold"].(bool); ok && bold {
+		if bold, ok := request.GetArguments()["format_bold"].(bool); ok && bold {
 			if format.TextFormat == nil {
 				format.TextFormat = &sheets.TextFormat{}
 			}
 			format.TextFormat.Bold = true
 		}
-		if italic, ok := request.Params.Arguments["format_italic"].(bool); ok && italic {
+		if italic, ok := request.GetArguments()["format_italic"].(bool); ok && italic {
 			if format.TextFormat == nil {
 				format.TextFormat = &sheets.TextFormat{}
 			}
@@ -368,47 +368,47 @@ func TestableSheetsAddConditionalFormat(ctx context.Context, request mcp.CallToo
 	case "GRADIENT":
 		gradientRule := &sheets.GradientRule{}
 
-		if minColor, ok := request.Params.Arguments["min_color"].(string); ok && minColor != "" {
+		if minColor, ok := request.GetArguments()["min_color"].(string); ok && minColor != "" {
 			color, err := parseHexColor(minColor)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Invalid min_color: %v", err)), nil
 			}
-			minType := common.ParseStringArg(request.Params.Arguments, "min_type", "MIN")
+			minType := common.ParseStringArg(request.GetArguments(), "min_type", "MIN")
 			gradientRule.Minpoint = &sheets.InterpolationPoint{
 				Color: color,
 				Type:  minType,
 			}
-			if minValue, ok := request.Params.Arguments["min_value"].(string); ok && minValue != "" {
+			if minValue, ok := request.GetArguments()["min_value"].(string); ok && minValue != "" {
 				gradientRule.Minpoint.Value = minValue
 			}
 		}
 
-		if midColor, ok := request.Params.Arguments["mid_color"].(string); ok && midColor != "" {
+		if midColor, ok := request.GetArguments()["mid_color"].(string); ok && midColor != "" {
 			color, err := parseHexColor(midColor)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Invalid mid_color: %v", err)), nil
 			}
-			midType := common.ParseStringArg(request.Params.Arguments, "mid_type", "PERCENTILE")
+			midType := common.ParseStringArg(request.GetArguments(), "mid_type", "PERCENTILE")
 			gradientRule.Midpoint = &sheets.InterpolationPoint{
 				Color: color,
 				Type:  midType,
 			}
-			if midValue, ok := request.Params.Arguments["mid_value"].(string); ok && midValue != "" {
+			if midValue, ok := request.GetArguments()["mid_value"].(string); ok && midValue != "" {
 				gradientRule.Midpoint.Value = midValue
 			}
 		}
 
-		if maxColor, ok := request.Params.Arguments["max_color"].(string); ok && maxColor != "" {
+		if maxColor, ok := request.GetArguments()["max_color"].(string); ok && maxColor != "" {
 			color, err := parseHexColor(maxColor)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("Invalid max_color: %v", err)), nil
 			}
-			maxType := common.ParseStringArg(request.Params.Arguments, "max_type", "MAX")
+			maxType := common.ParseStringArg(request.GetArguments(), "max_type", "MAX")
 			gradientRule.Maxpoint = &sheets.InterpolationPoint{
 				Color: color,
 				Type:  maxType,
 			}
-			if maxValue, ok := request.Params.Arguments["max_value"].(string); ok && maxValue != "" {
+			if maxValue, ok := request.GetArguments()["max_value"].(string); ok && maxValue != "" {
 				gradientRule.Maxpoint.Value = maxValue
 			}
 		}
@@ -461,19 +461,19 @@ func TestableSheetsAddDataValidation(ctx context.Context, request mcp.CallToolRe
 		return idErrResult, nil
 	}
 
-	gridRange, rangeErr := parseCellRange(request.Params.Arguments)
+	gridRange, rangeErr := parseCellRange(request.GetArguments())
 	if rangeErr != nil {
 		return rangeErr, nil
 	}
 
-	validationType := common.ParseStringArg(request.Params.Arguments, "validation_type", "")
+	validationType := common.ParseStringArg(request.GetArguments(), "validation_type", "")
 	if validationType == "" {
 		return mcp.NewToolResultError("validation_type parameter is required (e.g., ONE_OF_LIST, NUMBER_BETWEEN, CUSTOM_FORMULA)"), nil
 	}
 
 	// Parse condition values
 	var conditionValues []*sheets.ConditionValue
-	if valuesRaw, ok := request.Params.Arguments["values"].([]any); ok {
+	if valuesRaw, ok := request.GetArguments()["values"].([]any); ok {
 		for _, v := range valuesRaw {
 			if s, ok := v.(string); ok {
 				conditionValues = append(conditionValues, &sheets.ConditionValue{UserEnteredValue: s})
@@ -481,9 +481,9 @@ func TestableSheetsAddDataValidation(ctx context.Context, request mcp.CallToolRe
 		}
 	}
 
-	strict := common.ParseBoolArg(request.Params.Arguments, "strict", true)
-	showDropdown := common.ParseBoolArg(request.Params.Arguments, "show_dropdown", true)
-	inputMessage := common.ParseStringArg(request.Params.Arguments, "input_message", "")
+	strict := common.ParseBoolArg(request.GetArguments(), "strict", true)
+	showDropdown := common.ParseBoolArg(request.GetArguments(), "show_dropdown", true)
+	inputMessage := common.ParseStringArg(request.GetArguments(), "input_message", "")
 
 	dataValidation := &sheets.DataValidationRule{
 		Condition: &sheets.BooleanCondition{
@@ -531,7 +531,7 @@ func TestableSheetsBatchUpdateSpreadsheet(ctx context.Context, request mcp.CallT
 		return idErrResult, nil
 	}
 
-	requestsJSON := common.ParseStringArg(request.Params.Arguments, "requests", "")
+	requestsJSON := common.ParseStringArg(request.GetArguments(), "requests", "")
 	if requestsJSON == "" {
 		return mcp.NewToolResultError("requests parameter is required (JSON array of batch update requests)"), nil
 	}

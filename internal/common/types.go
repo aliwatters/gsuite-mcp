@@ -35,13 +35,7 @@ func WasMethodCalled(calls []MethodCall, method string) bool {
 // This helper function is used across test files.
 func CreateMCPRequest(args map[string]any) mcp.CallToolRequest {
 	return mcp.CallToolRequest{
-		Params: struct {
-			Name      string         `json:"name"`
-			Arguments map[string]any `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
+		Params: mcp.CallToolParams{
 			Arguments: args,
 		},
 	}

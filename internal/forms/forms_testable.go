@@ -13,7 +13,7 @@ const formsEditURLFormat = "https://docs.google.com/forms/d/%s/edit"
 
 // extractRequiredFormID extracts, validates, and normalizes the form_id parameter.
 func extractRequiredFormID(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
-	formID := common.ParseStringArg(request.Params.Arguments, "form_id", "")
+	formID := common.ParseStringArg(request.GetArguments(), "form_id", "")
 	if formID == "" {
 		return "", mcp.NewToolResultError("form_id parameter is required")
 	}
@@ -74,7 +74,7 @@ func TestableFormsCreate(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	title, errResult := common.RequireStringArg(request.Params.Arguments, "title")
+	title, errResult := common.RequireStringArg(request.GetArguments(), "title")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -109,7 +109,7 @@ func TestableFormsBatchUpdate(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	requestsJSON, errResult := common.RequireStringArg(request.Params.Arguments, "requests")
+	requestsJSON, errResult := common.RequireStringArg(request.GetArguments(), "requests")
 	if errResult != nil {
 		return errResult, nil
 	}
@@ -175,7 +175,7 @@ func TestableFormsGetResponse(ctx context.Context, request mcp.CallToolRequest, 
 		return errResult, nil
 	}
 
-	responseID, errResult := common.RequireStringArg(request.Params.Arguments, "response_id")
+	responseID, errResult := common.RequireStringArg(request.GetArguments(), "response_id")
 	if errResult != nil {
 		return errResult, nil
 	}
