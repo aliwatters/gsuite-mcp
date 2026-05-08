@@ -207,7 +207,7 @@ Or go to Google Cloud Console → APIs & Services → Library and enable the req
 Your token may have been created before you enabled all APIs. Delete your token and re-authenticate:
 
 ```bash
-rm ~/.config/gsuite-mcp/credentials/<your-email>.json
+rm ~/.config/gsuite-mcp/credentials/you@example.com.json
 gsuite-mcp auth
 ```
 
@@ -241,7 +241,7 @@ You may need to re-authenticate when:
 For a clean re-auth:
 
 ```bash
-rm ~/.config/gsuite-mcp/credentials/<your-email>.json
+rm ~/.config/gsuite-mcp/credentials/you@example.com.json
 gsuite-mcp auth
 ```
 
@@ -279,7 +279,7 @@ mv ~/Downloads/client_secret_*.json ~/.config/gsuite-mcp/client_secret.json
 7. Re-authenticate (the old token is no longer valid with the new credential):
 
 ```bash
-rm ~/.config/gsuite-mcp/credentials/<your-email>.json
+rm ~/.config/gsuite-mcp/credentials/you@example.com.json
 gsuite-mcp auth
 ```
 
