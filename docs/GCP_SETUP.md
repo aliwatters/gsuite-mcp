@@ -284,9 +284,11 @@ If anything fails, the output includes specific fix instructions.
 
 ### "redirect_uri_mismatch"
 
-**Cause**: You created a "Web application" credential instead of "Desktop app".
+**Cause**: You created a "Web application" credential instead of "Desktop app". Web application credentials require every redirect URI port to be pre-registered in GCP Console. Desktop app credentials accept any localhost port automatically (RFC 8252) and do not require this.
 
-**Fix**: Delete the credential and create a new one with type "Desktop app". See [Step 4](#step-4-create-oauth-credentials).
+**Fix**: Create a new credential with type "Desktop app" and replace your existing `client_secret.json`. See [Step 4](#step-4-create-oauth-credentials), and the [migration guide in INSTALLATION.md](../INSTALLATION.md#migrating-from-a-web-application-oauth-client) for step-by-step instructions.
+
+**How to confirm the type**: Open `~/.config/gsuite-mcp/client_secret.json` — the top-level key should be `"installed"` (Desktop app). If it is `"web"`, you have a Web application credential.
 
 ### "invalid_client"
 

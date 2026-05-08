@@ -87,6 +87,8 @@ Go to **APIs & Services → Library** and enable the required APIs:
 - Name: "gsuite-mcp"
 - Click "Create"
 
+> **Why Desktop app, not Web application?** Desktop app credentials implement RFC 8252 loopback redirect — Google accepts any available localhost port automatically. Web application credentials require every port to be pre-registered in GCP Console, and changes take minutes to hours to propagate. This matters in practice: the MCP server and the standalone `gsuite-mcp auth` command both need the OAuth callback port, and if there is a conflict, a Web client traps you in a `redirect_uri_mismatch` loop with no easy escape. Desktop app eliminates this entire failure class. If you accidentally created a Web application credential, see [Migrating from a Web application OAuth client](#migrating-from-a-web-application-oauth-client) below.
+
 ### Step 5: Download and install the credentials
 
 - Click the download icon next to your new credential
@@ -178,7 +180,7 @@ Claude should use gsuite-mcp to fetch your real data.
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `403: access_denied` "not completed verification" | Not listed as test user in Testing mode | Add your email as a test user, or set publishing status to "In production" |
-| `400: redirect_uri_mismatch` | Redirect URI not registered | Not applicable for Desktop app type |
+| `400: redirect_uri_mismatch` | Web application credential used instead of Desktop app | [Migrate to Desktop app type](#migrating-from-a-web-application-oauth-client) |
 | `403: SERVICE_DISABLED` | API not enabled in GCP project | Run `gsuite-mcp check` for enable links |
 | `invalid_grant` | Token expired or revoked | Run `gsuite-mcp auth` |
 | `401: invalid_client` | Wrong or corrupted client_secret.json | Re-download from GCP Console |
@@ -205,7 +207,7 @@ Or go to Google Cloud Console → APIs & Services → Library and enable the req
 Your token may have been created before you enabled all APIs. Delete your token and re-authenticate:
 
 ```bash
-rm ~/.config/gsuite-mcp/credentials/<your-email>.json
+rm ~/.config/gsuite-mcp/credentials/you@example.com.json
 gsuite-mcp auth
 ```
 
@@ -239,7 +241,7 @@ You may need to re-authenticate when:
 For a clean re-auth:
 
 ```bash
-rm ~/.config/gsuite-mcp/credentials/<your-email>.json
+rm ~/.config/gsuite-mcp/credentials/you@example.com.json
 gsuite-mcp auth
 ```
 
@@ -248,6 +250,42 @@ To check which accounts are authenticated:
 ```bash
 gsuite-mcp accounts
 ```
+
+### Migrating from a Web application OAuth client
+
+If you created a **Web application** credential instead of a **Desktop app** credential, you will hit `redirect_uri_mismatch` errors whenever the OAuth callback port changes — which happens whenever the MCP server is already running on port 38917 and you try to run `gsuite-mcp auth` manually.
+
+**Why this happens with Web credentials**: Google requires exact port matching for Web application redirect URIs. You must pre-register every port in GCP Console, and changes take minutes to hours to propagate through Google's cache. The MCP server and the standalone auth command share the same port, creating a race. Desktop app credentials avoid all of this — they accept any localhost port automatically per RFC 8252.
+
+**How to tell which type you have**: Open `~/.config/gsuite-mcp/client_secret.json`. The top-level key is either `"installed"` (Desktop app — correct) or `"web"` (Web application — needs migration).
+
+**Migration steps**:
+
+1. Go to [GCP Console → APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials)
+2. Click **Create Credentials → OAuth client ID**
+3. Choose **Desktop app** as the application type
+4. Name it `gsuite-mcp-desktop` (or any name you like)
+5. Click **Create**, then download the JSON file
+6. Back up your existing credential and replace it:
+
+```bash
+# Back up the old Web credential (optional)
+cp ~/.config/gsuite-mcp/client_secret.json ~/.config/gsuite-mcp/client_secret.web.bak
+
+# Install the new Desktop credential
+mv ~/Downloads/client_secret_*.json ~/.config/gsuite-mcp/client_secret.json
+```
+
+7. Re-authenticate (the old token is no longer valid with the new credential):
+
+```bash
+rm ~/.config/gsuite-mcp/credentials/you@example.com.json
+gsuite-mcp auth
+```
+
+The new Desktop credential will accept any free port — no port registration required, no propagation wait.
+
+> **Clean up**: After confirming the new credential works, you can delete the old Web application credential from GCP Console to avoid confusion.
 
 ### Still Stuck?
 
