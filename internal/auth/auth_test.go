@@ -562,7 +562,10 @@ func TestSaveTokenForEmail_CredentialFilePermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat failed: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != credentialFileMode {
-		t.Errorf("expected file mode %04o, got %04o", credentialFileMode, perm)
+	// Hardcode the expected mode rather than referencing credentialFileMode: if the
+	// constant were changed from 0o600 to a less restrictive value, comparing against
+	// the constant itself would make this test vacuously pass (both sides move together).
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("expected file mode 0600, got %04o", perm)
 	}
 }
