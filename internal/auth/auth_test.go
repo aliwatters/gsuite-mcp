@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/aliwatters/gsuite-mcp/internal/config"
+	"golang.org/x/oauth2"
 )
 
 func TestErrNoCredentials(t *testing.T) {
@@ -230,5 +235,158 @@ func TestHandleOAuthCallback_TimeoutShowsErrorPage(t *testing.T) {
 	resp := w.Result()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 for timeout, got %d", resp.StatusCode)
+	}
+}
+
+// === Refresh token preservation tests ===
+
+// newTestManager creates a Manager with a minimal oauth2.Config and the given config dir.
+func newTestManager(t *testing.T, configDir string) *Manager {
+	t.Helper()
+	config.SetConfigDir(configDir)
+	t.Cleanup(func() { config.SetConfigDir("") })
+	return &Manager{
+		oauthConfig: &oauth2.Config{
+			ClientID:     "test-client",
+			ClientSecret: "test-secret",
+			Endpoint: oauth2.Endpoint{
+				TokenURL: "https://oauth2.googleapis.com/token",
+			},
+			Scopes: []string{"openid"},
+		},
+	}
+}
+
+func TestSaveTokenForEmail_PreservesExistingRefreshToken(t *testing.T) {
+	// When a refresh response omits refresh_token (the normal Google behaviour),
+	// saveTokenForEmail must keep the original refresh token from disk.
+	dir := t.TempDir()
+	m := newTestManager(t, dir)
+
+	email := "user@example.com"
+
+	// First save: initial grant with refresh token.
+	initial := &oauth2.Token{
+		AccessToken:  "access1",
+		RefreshToken: "refresh-original",
+		Expiry:       time.Now().Add(time.Hour),
+	}
+	if err := m.saveTokenForEmail(email, initial); err != nil {
+		t.Fatalf("initial save failed: %v", err)
+	}
+
+	// Simulate a silent refresh: Google returns new access token but NO refresh token.
+	refreshed := &oauth2.Token{
+		AccessToken:  "access2",
+		RefreshToken: "", // empty — normal for refresh responses
+		Expiry:       time.Now().Add(time.Hour),
+	}
+	if err := m.saveTokenForEmail(email, refreshed); err != nil {
+		t.Fatalf("refresh save failed: %v", err)
+	}
+
+	// Read back and verify refresh token was preserved.
+	stored, err := loadTokenForEmail(email)
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if stored.RefreshToken != "refresh-original" {
+		t.Errorf("expected refresh_token %q to be preserved, got %q", "refresh-original", stored.RefreshToken)
+	}
+	if stored.Token != "access2" {
+		t.Errorf("expected access token to be updated to %q, got %q", "access2", stored.Token)
+	}
+}
+
+func TestSaveTokenForEmail_NewRefreshTokenOverridesOld(t *testing.T) {
+	// When a refresh response includes a new refresh token, it should replace the old one.
+	// (Rare but can happen with prompt=consent or forced re-auth.)
+	dir := t.TempDir()
+	m := newTestManager(t, dir)
+
+	email := "user@example.com"
+
+	initial := &oauth2.Token{
+		AccessToken:  "access1",
+		RefreshToken: "refresh-original",
+		Expiry:       time.Now().Add(time.Hour),
+	}
+	if err := m.saveTokenForEmail(email, initial); err != nil {
+		t.Fatalf("initial save failed: %v", err)
+	}
+
+	updated := &oauth2.Token{
+		AccessToken:  "access2",
+		RefreshToken: "refresh-new",
+		Expiry:       time.Now().Add(time.Hour),
+	}
+	if err := m.saveTokenForEmail(email, updated); err != nil {
+		t.Fatalf("updated save failed: %v", err)
+	}
+
+	stored, err := loadTokenForEmail(email)
+	if err != nil {
+		t.Fatalf("load failed: %v", err)
+	}
+	if stored.RefreshToken != "refresh-new" {
+		t.Errorf("expected new refresh token %q, got %q", "refresh-new", stored.RefreshToken)
+	}
+}
+
+func TestIsAuthExpiredError(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"invalid_grant", fmt.Errorf("oauth2: %q %q", "invalid_grant", "Token has been expired or revoked."), true},
+		{"invalid_grant bare", fmt.Errorf("oauth2: invalid_grant"), true},
+		{"token has been expired lower", fmt.Errorf("token has been expired or revoked"), true},
+		{"unrelated error", fmt.Errorf("connection refused"), false},
+		{"401 but not grant", fmt.Errorf("oauth2: 401 Unauthorized"), false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isAuthExpiredError(tc.err)
+			if got != tc.want {
+				t.Errorf("isAuthExpiredError(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestErrAuthExpired_IsDetectable(t *testing.T) {
+	// Verify ErrAuthExpired wraps correctly so callers can use errors.Is.
+	wrapped := fmt.Errorf("%w: token for user@example.com has expired: %w",
+		ErrAuthExpired, fmt.Errorf("oauth2: invalid_grant"))
+	if !errors.Is(wrapped, ErrAuthExpired) {
+		t.Error("expected errors.Is(err, ErrAuthExpired) to be true")
+	}
+}
+
+func TestSaveTokenForEmail_CredentialFilePermissions(t *testing.T) {
+	// Credential files must be 0600 — no group/world read.
+	dir := t.TempDir()
+	m := newTestManager(t, dir)
+
+	email := "perm@example.com"
+	token := &oauth2.Token{
+		AccessToken:  "access",
+		RefreshToken: "refresh",
+		Expiry:       time.Now().Add(time.Hour),
+	}
+	if err := m.saveTokenForEmail(email, token); err != nil {
+		t.Fatalf("save failed: %v", err)
+	}
+
+	path := filepath.Join(config.CredentialsDir(), email+".json")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat failed: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != credentialFileMode {
+		t.Errorf("expected file mode %04o, got %04o", credentialFileMode, perm)
 	}
 }

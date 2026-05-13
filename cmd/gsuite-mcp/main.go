@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -244,8 +246,25 @@ func runAuth() {
 	fmt.Printf("Successfully authenticated: %s\n", email)
 }
 
-// runAccounts lists authenticated accounts (discovered from credentials directory).
+// accountInfo holds per-account display information for the accounts command.
+type accountInfo struct {
+	Email  string `json:"email"`
+	Status string `json:"status"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// runAccounts lists authenticated accounts with token health status.
+// Flags:
+//
+//	--json   output machine-readable JSON
 func runAccounts() {
+	jsonMode := false
+	for _, arg := range os.Args[2:] {
+		if arg == "--json" {
+			jsonMode = true
+		}
+	}
+
 	emails, err := config.GetAuthenticatedEmails()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading credentials: %v\n", err)
@@ -253,16 +272,82 @@ func runAccounts() {
 	}
 
 	if len(emails) == 0 {
-		fmt.Printf("No authenticated accounts found.\n")
-		fmt.Printf("\nRun '%s auth' to authenticate a Google account.\n", serverName)
+		if jsonMode {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			enc.Encode([]accountInfo{}) //nolint:errcheck
+		} else {
+			fmt.Printf("No authenticated accounts found.\n")
+			fmt.Printf("\nRun '%s auth' to authenticate a Google account.\n", serverName)
+		}
+		return
+	}
+
+	mgr, err := auth.NewManager()
+	if err != nil {
+		// If we can't build the manager (missing client_secret.json), list accounts without health.
+		if jsonMode {
+			var infos []accountInfo
+			for _, e := range emails {
+				infos = append(infos, accountInfo{Email: e, Status: "unknown", Detail: "cannot read client_secret.json"})
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			enc.Encode(infos) //nolint:errcheck
+		} else {
+			fmt.Printf("Authenticated accounts:\n\n")
+			for _, e := range emails {
+				fmt.Printf("  %s  [status unknown — cannot read client_secret.json]\n", e)
+			}
+			fmt.Printf("\nRun '%s auth' to add another account.\n", serverName)
+		}
+		return
+	}
+
+	ctx := context.Background()
+	var infos []accountInfo
+
+	for _, email := range emails {
+		_, clientErr := mgr.GetClientForEmail(ctx, email)
+		info := accountInfo{Email: email}
+		switch {
+		case clientErr == nil:
+			info.Status = "valid"
+		case errors.Is(clientErr, auth.ErrAuthExpired):
+			info.Status = "expired"
+			info.Detail = fmt.Sprintf("re-auth required: run 'gsuite-mcp auth'")
+		default:
+			info.Status = "error"
+			info.Detail = clientErr.Error()
+		}
+		infos = append(infos, info)
+	}
+
+	if jsonMode {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		enc.Encode(infos) //nolint:errcheck
 		return
 	}
 
 	fmt.Printf("Authenticated accounts:\n\n")
-	for _, email := range emails {
-		fmt.Printf("  %s\n", email)
+	needsReauth := false
+	for _, info := range infos {
+		switch info.Status {
+		case "valid":
+			fmt.Printf("  ✓  %s  [valid]\n", info.Email)
+		case "expired":
+			fmt.Printf("  ✗  %s  [expired — re-auth required]\n", info.Email)
+			needsReauth = true
+		default:
+			fmt.Printf("  ?  %s  [error: %s]\n", info.Email, info.Detail)
+		}
 	}
+
 	fmt.Printf("\nRun '%s auth' to add another account.\n", serverName)
+	if needsReauth {
+		fmt.Printf("Run '%s auth' again for each expired account to re-authenticate.\n", serverName)
+	}
 }
 
 // registerCitationIfEnabled registers citation tools if the large_doc_indexing feature is enabled.
