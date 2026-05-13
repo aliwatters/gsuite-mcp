@@ -359,7 +359,17 @@ func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) err
 	// empty RefreshToken would permanently destroy the user's offline access.
 	refreshToken := oauth2Token.RefreshToken
 	if refreshToken == "" {
-		if existing, err := loadTokenForEmail(email); err == nil && existing.RefreshToken != "" {
+		existing, loadErr := loadTokenForEmail(email)
+		if loadErr != nil {
+			// Loading the existing credential failed (corrupt JSON, permission issue, etc.).
+			// We MUST NOT silently overwrite the file with an empty refresh_token — that is
+			// exactly the failure mode we were trying to fix. Log the error and bail out so
+			// the caller knows re-authentication is required rather than silently breaking
+			// offline access.
+			log.Printf("[oauth] save: load existing creds for %s failed: %v — refusing to overwrite with empty refresh_token", email, loadErr)
+			return fmt.Errorf("loading existing credentials for %s before save: %w", email, loadErr)
+		}
+		if existing.RefreshToken != "" {
 			refreshToken = existing.RefreshToken
 			log.Printf("[oauth] refresh token preserved for %s (response did not include a new one)", email)
 		}

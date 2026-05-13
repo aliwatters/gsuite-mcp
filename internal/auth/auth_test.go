@@ -366,6 +366,49 @@ func TestErrAuthExpired_IsDetectable(t *testing.T) {
 	}
 }
 
+func TestSaveTokenForEmail_CorruptExistingFileReturnsError(t *testing.T) {
+	// When the existing credential file is corrupt (malformed JSON) and the caller
+	// supplies an empty refresh_token, saveTokenForEmail must return an error and
+	// leave the original file unchanged. Silently overwriting would zero the
+	// refresh_token — the exact failure mode fixed in #149/#150.
+	dir := t.TempDir()
+	m := newTestManager(t, dir)
+
+	email := "corrupt@example.com"
+
+	// Write a credential file with malformed JSON directly.
+	credDir := config.CredentialsDir()
+	if err := os.MkdirAll(credDir, 0700); err != nil {
+		t.Fatalf("creating credentials dir: %v", err)
+	}
+	credPath := filepath.Join(credDir, email+".json")
+	originalContent := []byte("{ this is NOT valid json }")
+	if err := os.WriteFile(credPath, originalContent, 0600); err != nil {
+		t.Fatalf("writing corrupt credential file: %v", err)
+	}
+
+	// Attempt to save a token with an empty refresh_token.
+	token := &oauth2.Token{
+		AccessToken:  "new-access",
+		RefreshToken: "", // empty — triggers load of existing
+		Expiry:       time.Now().Add(time.Hour),
+	}
+
+	err := m.saveTokenForEmail(email, token)
+	if err == nil {
+		t.Fatal("expected saveTokenForEmail to return an error for corrupt credential file, got nil")
+	}
+
+	// Original file must be unchanged.
+	content, readErr := os.ReadFile(credPath)
+	if readErr != nil {
+		t.Fatalf("reading credential file after failed save: %v", readErr)
+	}
+	if string(content) != string(originalContent) {
+		t.Errorf("credential file was modified despite load error: got %q, want %q", string(content), string(originalContent))
+	}
+}
+
 func TestSaveTokenForEmail_CredentialFilePermissions(t *testing.T) {
 	// Credential files must be 0600 — no group/world read.
 	dir := t.TempDir()
