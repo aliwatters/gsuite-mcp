@@ -193,11 +193,32 @@ type Token struct {
 	Expiry       time.Time `json:"expiry"`
 }
 
+// cachedTokenSource wraps an oauth2.TokenSource with a per-email mutex so that
+// concurrent callers for the same email serialise through a single refresh rather
+// than issuing redundant token-refresh requests to Google.
+type cachedTokenSource struct {
+	mu     sync.Mutex
+	source oauth2.TokenSource
+}
+
+// Token acquires the per-email lock, delegates to the underlying source, and
+// returns the (potentially refreshed) token. Only one goroutine per email can
+// be in a refresh at a time.
+func (c *cachedTokenSource) Token() (*oauth2.Token, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.source.Token()
+}
+
 // Manager handles OAuth2 authentication and token management.
 type Manager struct {
 	oauthConfig *oauth2.Config
 	// authMu prevents concurrent authentication attempts
 	authMu sync.Mutex
+	// sources caches one cachedTokenSource per email so that concurrent callers
+	// for the same account share a single underlying TokenSource and its refresh
+	// state instead of each constructing a new one.
+	sources sync.Map // key: email (string) → value: *cachedTokenSource
 	// AuthServerURL is set when the HTTP auth server is running (e.g. "http://localhost:38917/auth").
 	AuthServerURL string
 }
@@ -359,7 +380,17 @@ func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) err
 	// empty RefreshToken would permanently destroy the user's offline access.
 	refreshToken := oauth2Token.RefreshToken
 	if refreshToken == "" {
-		if existing, err := loadTokenForEmail(email); err == nil && existing.RefreshToken != "" {
+		existing, loadErr := loadTokenForEmail(email)
+		if loadErr != nil {
+			// Loading the existing credential failed (corrupt JSON, permission issue, etc.).
+			// We MUST NOT silently overwrite the file with an empty refresh_token — that is
+			// exactly the failure mode we were trying to fix. Log the error and bail out so
+			// the caller knows re-authentication is required rather than silently breaking
+			// offline access.
+			log.Printf("[oauth] save: load existing creds for %s failed: %v — refusing to overwrite with empty refresh_token", email, loadErr)
+			return fmt.Errorf("loading existing credentials for %s before save: %w", email, loadErr)
+		}
+		if existing.RefreshToken != "" {
 			refreshToken = existing.RefreshToken
 			log.Printf("[oauth] refresh token preserved for %s (response did not include a new one)", email)
 		}
@@ -392,6 +423,10 @@ func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) err
 // It logs every refresh attempt and preserves the refresh token across silent refreshes.
 // When the token is within tokenPreRefreshWindow of expiry (or already expired), a
 // proactive refresh is forced so callers never receive a stale access token.
+//
+// A per-email TokenSource is cached in m.sources. Concurrent callers for the same
+// email serialise through a single underlying refresh (via cachedTokenSource.mu) so
+// only one token-rotation request reaches Google at a time per account.
 func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Client, error) {
 	token, err := loadTokenForEmail(email)
 	if err != nil {
@@ -415,9 +450,12 @@ func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Cl
 		TokenType:    "Bearer",
 	}
 
-	tokenSource := m.oauthConfig.TokenSource(ctx, oauth2Token)
-
+	// Force-refresh by backdating the expiry when within the pre-refresh window.
+	// oauth2.TokenSource only refreshes tokens with ≤10s of life (defaultExpiryDelta).
+	// Backdating makes the library treat the token as already expired and issue a
+	// refresh, realising the intended 30-min proactive window.
 	if needsRefresh {
+		oauth2Token.Expiry = time.Now().Add(-time.Second)
 		if expiresIn <= 0 {
 			log.Printf("[oauth] refresh: account=%s token_age=%s expires_in=expired — forcing refresh", email, tokenAge.Round(time.Second))
 		} else {
@@ -425,7 +463,16 @@ func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Cl
 		}
 	}
 
-	newToken, err := tokenSource.Token()
+	// Retrieve (or create) the per-email cached token source.
+	// LoadOrStore is used to avoid a TOCTOU race: two goroutines that both miss
+	// the cache simultaneously will both attempt to store; only one wins and the
+	// loser discards its newly-constructed source.
+	rawSrc := m.oauthConfig.TokenSource(ctx, oauth2Token)
+	newCached := &cachedTokenSource{source: rawSrc}
+	actual, _ := m.sources.LoadOrStore(email, newCached)
+	cached := actual.(*cachedTokenSource)
+
+	newToken, err := cached.Token()
 	if err != nil {
 		// Classify invalid_grant / token expired errors so callers can surface
 		// a clean re-auth instruction instead of a raw oauth2 error string.
@@ -435,6 +482,8 @@ func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Cl
 				reAuthCmd = m.AuthServerURL + "?account=" + url.QueryEscape(email)
 			}
 			log.Printf("[oauth] refresh: account=%s result=failure(invalid_grant) — re-auth required", email)
+			// Evict the stale cached source so the next auth attempt starts fresh.
+			m.sources.Delete(email)
 			return nil, fmt.Errorf("%w: token for %s has expired or been revoked; re-authenticate with: %s: %w",
 				ErrAuthExpired, email, reAuthCmd, err)
 		}
@@ -442,7 +491,7 @@ func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Cl
 		return nil, fmt.Errorf("refreshing token for %s: %w", email, err)
 	}
 
-	if newToken.AccessToken != oauth2Token.AccessToken {
+	if newToken.AccessToken != token.Token {
 		newExpiresIn := newToken.Expiry.Sub(now)
 		log.Printf("[oauth] refresh: account=%s result=success new_expires_in=%s", email, newExpiresIn.Round(time.Second))
 		if err := m.saveTokenForEmail(email, newToken); err != nil {
@@ -450,7 +499,7 @@ func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Cl
 		}
 	}
 
-	return oauth2.NewClient(ctx, tokenSource), nil
+	return oauth2.NewClient(ctx, cached), nil
 }
 
 // isAuthExpiredError reports whether err represents an expired or revoked OAuth token.

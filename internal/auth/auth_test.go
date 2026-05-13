@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -366,6 +368,180 @@ func TestErrAuthExpired_IsDetectable(t *testing.T) {
 	}
 }
 
+func TestGetClientForEmail_PreRefreshWindowForcesRefresh(t *testing.T) {
+	// A token that expires 20 minutes from now is within the 30-min tokenPreRefreshWindow.
+	// GetClientForEmail must proactively refresh it — the returned client should carry
+	// the new access token, and the mock token endpoint must have been called exactly once.
+
+	var refreshCount int32
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&refreshCount, 1)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"access_token":"refreshed-access","token_type":"Bearer","expires_in":3600}`)
+	}))
+	defer tokenServer.Close()
+
+	dir := t.TempDir()
+	config.SetConfigDir(dir)
+	t.Cleanup(func() { config.SetConfigDir("") })
+
+	m := &Manager{
+		oauthConfig: &oauth2.Config{
+			ClientID:     "test-client",
+			ClientSecret: "test-secret",
+			Endpoint: oauth2.Endpoint{
+				TokenURL:  tokenServer.URL,
+				AuthStyle: oauth2.AuthStyleInParams,
+			},
+			Scopes: []string{"openid"},
+		},
+	}
+
+	email := "prerefresh@example.com"
+
+	// Write a token that expires in 20 minutes — within the 30-min window.
+	nearExpiry := &oauth2.Token{
+		AccessToken:  "soon-expiring-access",
+		RefreshToken: "refresh-token",
+		Expiry:       time.Now().Add(20 * time.Minute),
+	}
+	if err := m.saveTokenForEmail(email, nearExpiry); err != nil {
+		t.Fatalf("initial save: %v", err)
+	}
+
+	client, err := m.GetClientForEmail(t.Context(), email)
+	if err != nil {
+		t.Fatalf("GetClientForEmail error: %v", err)
+	}
+	if client == nil {
+		t.Fatal("expected non-nil client")
+	}
+
+	// Must have triggered exactly one proactive refresh.
+	got := atomic.LoadInt32(&refreshCount)
+	if got != 1 {
+		t.Errorf("expected 1 proactive refresh for token expiring in 20min (within %s window), got %d", tokenPreRefreshWindow, got)
+	}
+}
+
+func TestGetClientForEmail_ConcurrentCallsOnlyRefreshOnce(t *testing.T) {
+	// N goroutines calling GetClientForEmail for the same email with an expired token
+	// should result in exactly 1 refresh request reaching the token endpoint.
+	// The per-email cachedTokenSource mutex serialises concurrent refresh calls.
+
+	const goroutines = 10
+
+	// refreshCount tracks how many times the mock token endpoint is called.
+	var refreshCount int32
+	// Serve a token endpoint that counts invocations.
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&refreshCount, 1)
+		w.Header().Set("Content-Type", "application/json")
+		// Return a fresh token valid for 1 hour.
+		fmt.Fprintf(w, `{"access_token":"fresh-access","token_type":"Bearer","expires_in":3600}`)
+	}))
+	defer tokenServer.Close()
+
+	dir := t.TempDir()
+	config.SetConfigDir(dir)
+	t.Cleanup(func() { config.SetConfigDir("") })
+
+	m := &Manager{
+		oauthConfig: &oauth2.Config{
+			ClientID:     "test-client",
+			ClientSecret: "test-secret",
+			Endpoint: oauth2.Endpoint{
+				TokenURL:  tokenServer.URL,
+				AuthStyle: oauth2.AuthStyleInParams,
+			},
+			Scopes: []string{"openid"},
+		},
+	}
+
+	email := "concurrent@example.com"
+
+	// Write a credential with an expired token so GetClientForEmail will refresh.
+	expired := &oauth2.Token{
+		AccessToken:  "old-access",
+		RefreshToken: "refresh-token",
+		Expiry:       time.Now().Add(-time.Hour), // already expired
+	}
+	if err := m.saveTokenForEmail(email, expired); err != nil {
+		t.Fatalf("initial save failed: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	errs := make([]error, goroutines)
+
+	for i := range goroutines {
+		go func(idx int) {
+			defer wg.Done()
+			ctx := t.Context()
+			_, err := m.GetClientForEmail(ctx, email)
+			errs[idx] = err
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("goroutine %d: GetClientForEmail error: %v", i, err)
+		}
+	}
+
+	// The per-email mutex means only the first goroutine issues a refresh; the rest
+	// receive the already-refreshed token from the cached source. The count MUST be
+	// exactly 1 — if it is > 1 the cache is not serialising correctly.
+	got := atomic.LoadInt32(&refreshCount)
+	if got != 1 {
+		t.Errorf("expected exactly 1 refresh request to token endpoint, got %d", got)
+	}
+}
+
+func TestSaveTokenForEmail_CorruptExistingFileReturnsError(t *testing.T) {
+	// When the existing credential file is corrupt (malformed JSON) and the caller
+	// supplies an empty refresh_token, saveTokenForEmail must return an error and
+	// leave the original file unchanged. Silently overwriting would zero the
+	// refresh_token — the exact failure mode fixed in #149/#150.
+	dir := t.TempDir()
+	m := newTestManager(t, dir)
+
+	email := "corrupt@example.com"
+
+	// Write a credential file with malformed JSON directly.
+	credDir := config.CredentialsDir()
+	if err := os.MkdirAll(credDir, 0700); err != nil {
+		t.Fatalf("creating credentials dir: %v", err)
+	}
+	credPath := filepath.Join(credDir, email+".json")
+	originalContent := []byte("{ this is NOT valid json }")
+	if err := os.WriteFile(credPath, originalContent, 0600); err != nil {
+		t.Fatalf("writing corrupt credential file: %v", err)
+	}
+
+	// Attempt to save a token with an empty refresh_token.
+	token := &oauth2.Token{
+		AccessToken:  "new-access",
+		RefreshToken: "", // empty — triggers load of existing
+		Expiry:       time.Now().Add(time.Hour),
+	}
+
+	err := m.saveTokenForEmail(email, token)
+	if err == nil {
+		t.Fatal("expected saveTokenForEmail to return an error for corrupt credential file, got nil")
+	}
+
+	// Original file must be unchanged.
+	content, readErr := os.ReadFile(credPath)
+	if readErr != nil {
+		t.Fatalf("reading credential file after failed save: %v", readErr)
+	}
+	if string(content) != string(originalContent) {
+		t.Errorf("credential file was modified despite load error: got %q, want %q", string(content), string(originalContent))
+	}
+}
+
 func TestSaveTokenForEmail_CredentialFilePermissions(t *testing.T) {
 	// Credential files must be 0600 — no group/world read.
 	dir := t.TempDir()
@@ -386,7 +562,10 @@ func TestSaveTokenForEmail_CredentialFilePermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat failed: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != credentialFileMode {
-		t.Errorf("expected file mode %04o, got %04o", credentialFileMode, perm)
+	// Hardcode the expected mode rather than referencing credentialFileMode: if the
+	// constant were changed from 0o600 to a less restrictive value, comparing against
+	// the constant itself would make this test vacuously pass (both sides move together).
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("expected file mode 0600, got %04o", perm)
 	}
 }
