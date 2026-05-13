@@ -368,6 +368,62 @@ func TestErrAuthExpired_IsDetectable(t *testing.T) {
 	}
 }
 
+func TestGetClientForEmail_PreRefreshWindowForcesRefresh(t *testing.T) {
+	// A token that expires 20 minutes from now is within the 30-min tokenPreRefreshWindow.
+	// GetClientForEmail must proactively refresh it — the returned client should carry
+	// the new access token, and the mock token endpoint must have been called exactly once.
+
+	var refreshCount int32
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&refreshCount, 1)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"access_token":"refreshed-access","token_type":"Bearer","expires_in":3600}`)
+	}))
+	defer tokenServer.Close()
+
+	dir := t.TempDir()
+	config.SetConfigDir(dir)
+	t.Cleanup(func() { config.SetConfigDir("") })
+
+	m := &Manager{
+		oauthConfig: &oauth2.Config{
+			ClientID:     "test-client",
+			ClientSecret: "test-secret",
+			Endpoint: oauth2.Endpoint{
+				TokenURL:  tokenServer.URL,
+				AuthStyle: oauth2.AuthStyleInParams,
+			},
+			Scopes: []string{"openid"},
+		},
+	}
+
+	email := "prerefresh@example.com"
+
+	// Write a token that expires in 20 minutes — within the 30-min window.
+	nearExpiry := &oauth2.Token{
+		AccessToken:  "soon-expiring-access",
+		RefreshToken: "refresh-token",
+		Expiry:       time.Now().Add(20 * time.Minute),
+	}
+	if err := m.saveTokenForEmail(email, nearExpiry); err != nil {
+		t.Fatalf("initial save: %v", err)
+	}
+
+	client, err := m.GetClientForEmail(t.Context(), email)
+	if err != nil {
+		t.Fatalf("GetClientForEmail error: %v", err)
+	}
+	if client == nil {
+		t.Fatal("expected non-nil client")
+	}
+
+	// Must have triggered exactly one proactive refresh.
+	got := atomic.LoadInt32(&refreshCount)
+	if got != 1 {
+		t.Errorf("expected 1 proactive refresh for token expiring in 20min (within %s window), got %d", tokenPreRefreshWindow, got)
+	}
+}
+
 func TestGetClientForEmail_ConcurrentCallsOnlyRefreshOnce(t *testing.T) {
 	// N goroutines calling GetClientForEmail for the same email with an expired token
 	// should result in exactly 1 refresh request reaching the token endpoint.
