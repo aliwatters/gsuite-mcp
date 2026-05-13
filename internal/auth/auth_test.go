@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -363,6 +365,81 @@ func TestErrAuthExpired_IsDetectable(t *testing.T) {
 		ErrAuthExpired, fmt.Errorf("oauth2: invalid_grant"))
 	if !errors.Is(wrapped, ErrAuthExpired) {
 		t.Error("expected errors.Is(err, ErrAuthExpired) to be true")
+	}
+}
+
+func TestGetClientForEmail_ConcurrentCallsOnlyRefreshOnce(t *testing.T) {
+	// N goroutines calling GetClientForEmail for the same email with an expired token
+	// should result in exactly 1 refresh request reaching the token endpoint.
+	// The per-email cachedTokenSource mutex serialises concurrent refresh calls.
+
+	const goroutines = 10
+
+	// refreshCount tracks how many times the mock token endpoint is called.
+	var refreshCount int32
+	// Serve a token endpoint that counts invocations.
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&refreshCount, 1)
+		w.Header().Set("Content-Type", "application/json")
+		// Return a fresh token valid for 1 hour.
+		fmt.Fprintf(w, `{"access_token":"fresh-access","token_type":"Bearer","expires_in":3600}`)
+	}))
+	defer tokenServer.Close()
+
+	dir := t.TempDir()
+	config.SetConfigDir(dir)
+	t.Cleanup(func() { config.SetConfigDir("") })
+
+	m := &Manager{
+		oauthConfig: &oauth2.Config{
+			ClientID:     "test-client",
+			ClientSecret: "test-secret",
+			Endpoint: oauth2.Endpoint{
+				TokenURL:  tokenServer.URL,
+				AuthStyle: oauth2.AuthStyleInParams,
+			},
+			Scopes: []string{"openid"},
+		},
+	}
+
+	email := "concurrent@example.com"
+
+	// Write a credential with an expired token so GetClientForEmail will refresh.
+	expired := &oauth2.Token{
+		AccessToken:  "old-access",
+		RefreshToken: "refresh-token",
+		Expiry:       time.Now().Add(-time.Hour), // already expired
+	}
+	if err := m.saveTokenForEmail(email, expired); err != nil {
+		t.Fatalf("initial save failed: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	errs := make([]error, goroutines)
+
+	for i := range goroutines {
+		go func(idx int) {
+			defer wg.Done()
+			ctx := t.Context()
+			_, err := m.GetClientForEmail(ctx, email)
+			errs[idx] = err
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("goroutine %d: GetClientForEmail error: %v", i, err)
+		}
+	}
+
+	// The per-email mutex means only the first goroutine issues a refresh; the rest
+	// receive the already-refreshed token from the cached source. The count MUST be
+	// exactly 1 — if it is > 1 the cache is not serialising correctly.
+	got := atomic.LoadInt32(&refreshCount)
+	if got != 1 {
+		t.Errorf("expected exactly 1 refresh request to token endpoint, got %d", got)
 	}
 }
 
