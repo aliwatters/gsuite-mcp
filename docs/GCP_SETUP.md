@@ -66,7 +66,9 @@ Google has migrated the OAuth consent screen to a new "Google Auth Platform" int
 | Google Workspace (company email) | **Internal** | Only users in your org can authenticate. No verification needed. |
 | Personal Gmail (@gmail.com) | **External** | Any Google account can authenticate. Requires adding test users in Testing mode. |
 
-> **Pitfall**: If you select "External" and leave the app in "Testing" mode, you MUST add yourself as a test user (see Step 2e). Otherwise you will get `403: access_denied` errors. Tokens in Testing mode also expire every 7 days.
+> **Pitfall**: If you select "External" and leave the app in "Testing" mode, you MUST add yourself as a test user (see Step 2e). Otherwise you will get `403: access_denied` errors.
+>
+> **Token lifetime — Testing mode vs Production**: Google's documentation states 7 days for Testing-mode refresh tokens, but in practice tokens may stop working sooner if a code bug caused the refresh token to be silently dropped from the on-disk credential file after the first access-token refresh (fixed in v0.2.3). If you experienced ~24h re-auth cycles rather than 7-day ones, upgrading to v0.2.3 should resolve it without any GCP changes. Publishing the app (Step 2f) removes the 7-day limit entirely.
 
 <!-- screenshot: user-type-selection -->
 
@@ -96,15 +98,17 @@ If you selected "External" user type and your app is in "Testing" mode:
 
 > **Pitfall**: You must add the exact email you will authenticate with. If you skip this step, you will see `403: access_denied` with a message about "not completed verification".
 
-### 2f: Publishing Status (Optional)
+### 2f: Publishing Status (Optional but Recommended)
 
-To avoid 7-day token expiration in Testing mode, you can publish the app:
+To remove the 7-day refresh-token lifetime that applies in Testing mode, publish the app:
 
 1. Go to [Google Auth Platform Overview](https://console.cloud.google.com/auth/overview)
 2. Click **Publish App** (or look for "Publishing status")
 3. Confirm
 
-This does NOT require Google verification for personal use with sensitive scopes. Your app will show an "unverified app" warning during first auth, which you can click through.
+This does NOT require Google verification for personal use with sensitive scopes. Your app will show an "unverified app" warning during first auth, which you can click through. Once published, refresh tokens last indefinitely (until revoked, 6-month inactivity, or a password change).
+
+> **After upgrading to v0.2.3**: Even if you stay in Testing mode, the 7-day limit is now correctly enforced (rather than the ~24h effectively observed due to the refresh-token-zeroing bug). Publish the app if 7-day re-auth cycles are still too frequent.
 
 <!-- screenshot: publish-app-button -->
 

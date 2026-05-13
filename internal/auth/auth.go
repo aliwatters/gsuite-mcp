@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -46,6 +47,11 @@ var ErrNoCredentials = errors.New("no credentials")
 // Google Workspace admin has blocked unverified apps for the domain.
 var ErrUnverifiedApp = errors.New("unverified app blocked by Google Workspace admin")
 
+// ErrAuthExpired indicates the OAuth token has expired or been revoked and the user
+// must re-authenticate. MCP clients can detect this sentinel and surface a clean
+// re-auth instruction rather than the raw oauth2 error string.
+var ErrAuthExpired = errors.New("auth_expired")
+
 const (
 	// oauthStateTokenSize is the number of random bytes used for CSRF state tokens.
 	oauthStateTokenSize = 16
@@ -61,6 +67,10 @@ const (
 
 	// credentialFileMode is the file permission for saved credential files.
 	credentialFileMode = 0600
+
+	// tokenPreRefreshWindow is how far before token expiry the token is proactively refreshed.
+	// Refreshing early avoids token-expired errors mid-task.
+	tokenPreRefreshWindow = 30 * time.Minute
 )
 
 // googleUserInfoURL is the Google OAuth2 userinfo endpoint.
@@ -334,14 +344,30 @@ func (m *Manager) AuthenticateDynamic(ctx context.Context) (string, error) {
 }
 
 // saveTokenForEmail saves an oauth2.Token using email as the identifier.
+// Google's token refresh response omits refresh_token (it is only returned on the
+// initial grant). If oauth2Token.RefreshToken is empty we preserve the existing
+// on-disk value so the token file never loses its refresh token.
 func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) error {
 	if err := config.EnsureConfigDir(); err != nil {
 		return fmt.Errorf("ensuring config dir: %w", err)
 	}
 
+	// Preserve the existing refresh token when the caller does not supply one.
+	// This happens on every silent access-token refresh: Google returns a new
+	// access_token but does NOT include a new refresh_token, leaving
+	// oauth2Token.RefreshToken empty. Overwriting the credential file with an
+	// empty RefreshToken would permanently destroy the user's offline access.
+	refreshToken := oauth2Token.RefreshToken
+	if refreshToken == "" {
+		if existing, err := loadTokenForEmail(email); err == nil && existing.RefreshToken != "" {
+			refreshToken = existing.RefreshToken
+			log.Printf("[oauth] refresh token preserved for %s (response did not include a new one)", email)
+		}
+	}
+
 	token := &Token{
 		Token:        oauth2Token.AccessToken,
-		RefreshToken: oauth2Token.RefreshToken,
+		RefreshToken: refreshToken,
 		TokenURI:     m.oauthConfig.Endpoint.TokenURL,
 		ClientID:     m.oauthConfig.ClientID,
 		ClientSecret: m.oauthConfig.ClientSecret,
@@ -363,11 +389,24 @@ func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) err
 }
 
 // GetClientForEmail returns an authenticated HTTP client for the given email.
+// It logs every refresh attempt and preserves the refresh token across silent refreshes.
+// When the token is within tokenPreRefreshWindow of expiry (or already expired), a
+// proactive refresh is forced so callers never receive a stale access token.
 func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Client, error) {
 	token, err := loadTokenForEmail(email)
 	if err != nil {
 		return nil, fmt.Errorf("loading token for %s: %w", email, err)
 	}
+
+	now := time.Now()
+	tokenAge := now.Sub(token.Expiry.Add(-time.Hour)) // access tokens are 1h; age since issued
+	expiresIn := token.Expiry.Sub(now)
+
+	// Decide whether a refresh is needed before returning a client.
+	// We treat two conditions as requiring a proactive refresh:
+	//   1. Token is already expired.
+	//   2. Token expires within the pre-refresh window (default 30 min).
+	needsRefresh := !token.Expiry.IsZero() && expiresIn <= tokenPreRefreshWindow
 
 	oauth2Token := &oauth2.Token{
 		AccessToken:  token.Token,
@@ -378,18 +417,52 @@ func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Cl
 
 	tokenSource := m.oauthConfig.TokenSource(ctx, oauth2Token)
 
+	if needsRefresh {
+		if expiresIn <= 0 {
+			log.Printf("[oauth] refresh: account=%s token_age=%s expires_in=expired — forcing refresh", email, tokenAge.Round(time.Second))
+		} else {
+			log.Printf("[oauth] refresh: account=%s token_age=%s expires_in=%s — pre-refresh (within %s window)", email, tokenAge.Round(time.Second), expiresIn.Round(time.Second), tokenPreRefreshWindow)
+		}
+	}
+
 	newToken, err := tokenSource.Token()
 	if err != nil {
+		// Classify invalid_grant / token expired errors so callers can surface
+		// a clean re-auth instruction instead of a raw oauth2 error string.
+		if isAuthExpiredError(err) {
+			reAuthCmd := "gsuite-mcp auth"
+			if m.AuthServerURL != "" {
+				reAuthCmd = m.AuthServerURL + "?account=" + url.QueryEscape(email)
+			}
+			log.Printf("[oauth] refresh: account=%s result=failure(invalid_grant) — re-auth required", email)
+			return nil, fmt.Errorf("%w: token for %s has expired or been revoked; re-authenticate with: %s: %w",
+				ErrAuthExpired, email, reAuthCmd, err)
+		}
+		log.Printf("[oauth] refresh: account=%s result=failure(%v)", email, err)
 		return nil, fmt.Errorf("refreshing token for %s: %w", email, err)
 	}
 
 	if newToken.AccessToken != oauth2Token.AccessToken {
+		newExpiresIn := newToken.Expiry.Sub(now)
+		log.Printf("[oauth] refresh: account=%s result=success new_expires_in=%s", email, newExpiresIn.Round(time.Second))
 		if err := m.saveTokenForEmail(email, newToken); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to save refreshed token for %s: %v\n", email, err)
+			log.Printf("[oauth] warning: failed to save refreshed token for %s: %v", email, err)
 		}
 	}
 
 	return oauth2.NewClient(ctx, tokenSource), nil
+}
+
+// isAuthExpiredError reports whether err represents an expired or revoked OAuth token.
+// Google returns "invalid_grant" when the refresh token has expired or been revoked.
+func isAuthExpiredError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "invalid_grant") ||
+		strings.Contains(s, "Token has been expired or revoked") ||
+		strings.Contains(s, "token has been expired or revoked")
 }
 
 // loadTokenForEmail loads the stored token for an email address.
@@ -415,12 +488,19 @@ func loadTokenForEmail(email string) (*Token, error) {
 // If no email is specified, uses the first available authenticated account.
 // If no credentials exist and we're in interactive mode, triggers OAuth flow.
 // If no credentials exist and we're in MCP server mode, returns an error with instructions.
+// When the refresh token has expired (ErrAuthExpired), a structured error is returned
+// with a clear re-auth instruction so MCP clients can surface it directly.
 func (m *Manager) GetClientOrAuthenticate(ctx context.Context, email string, interactive bool) (*http.Client, error) {
 	// If email specified, try to get client for that email
 	if email != "" {
 		client, err := m.GetClientForEmail(ctx, email)
 		if err == nil {
 			return client, nil
+		}
+		// ErrAuthExpired is already a fully-formed user-facing error from GetClientForEmail;
+		// propagate it unwrapped so callers can detect it with errors.Is.
+		if errors.Is(err, ErrAuthExpired) {
+			return nil, err
 		}
 		if !errors.Is(err, ErrNoCredentials) {
 			return nil, fmt.Errorf("getting client for %s: %w", email, err)
