@@ -97,6 +97,14 @@ func FormatMessageWithOptions(msg *gmail.Message, opts FormatMessageOptions) map
 		result["internal_date"] = msg.InternalDate
 	}
 
+	// Surface attachment metadata so callers can pair gmail_get* with
+	// gmail_get_attachment. The Gmail API exposes attachment_id only via
+	// payload.parts[].body — historically dropped by this wrapper, which left
+	// gmail_get_attachment unreachable in practice (#156).
+	if attachments := ExtractAttachments(msg.Payload); len(attachments) > 0 {
+		result["attachments"] = attachments
+	}
+
 	return result
 }
 
@@ -116,6 +124,45 @@ func ExtractBodyPreferHTML(payload *gmail.MessagePart) string {
 		return html
 	}
 	return text
+}
+
+// ExtractAttachments walks the payload tree and returns one entry per part
+// that carries a Body.AttachmentId, with the four fields a caller needs to
+// invoke gmail_get_attachment: attachment_id, filename, mime_type, size.
+// part_id is included for traceability (Gmail uses dotted paths like "0.1").
+//
+// Returns an empty slice if there are no attachments — callers should treat
+// nil and empty identically.
+func ExtractAttachments(payload *gmail.MessagePart) []map[string]any {
+	if payload == nil {
+		return nil
+	}
+	var out []map[string]any
+	walkParts(payload, &out)
+	return out
+}
+
+// walkParts is the recursion helper for ExtractAttachments. It appends one
+// entry per attachment-bearing part encountered anywhere in the part tree.
+func walkParts(part *gmail.MessagePart, out *[]map[string]any) {
+	if part == nil {
+		return
+	}
+	if part.Body != nil && part.Body.AttachmentId != "" {
+		entry := map[string]any{
+			"attachment_id": part.Body.AttachmentId,
+			"filename":      part.Filename,
+			"mime_type":     part.MimeType,
+			"size":          part.Body.Size,
+		}
+		if part.PartId != "" {
+			entry["part_id"] = part.PartId
+		}
+		*out = append(*out, entry)
+	}
+	for _, p := range part.Parts {
+		walkParts(p, out)
+	}
 }
 
 // ExtractBodyParts extracts both text/plain and text/html bodies from a message.

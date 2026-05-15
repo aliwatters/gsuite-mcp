@@ -862,3 +862,185 @@ func TestGmailGetMessages_DefaultBodyFormatIsText(t *testing.T) {
 		t.Errorf("default body_format for get_messages should be text; got body=%q", body)
 	}
 }
+
+// === attachment exposure tests (#156) ===
+
+// newTestMessageWithAttachment builds a multipart/mixed message whose first
+// child is a text/plain body and second child is a PDF attachment. This is
+// the shape Gmail returns for a normal "email with one PDF" — the attachment
+// has Filename, MimeType, and Body.AttachmentId populated.
+func newTestMessageWithAttachment(id string) *gmail.Message {
+	return &gmail.Message{
+		Id:       id,
+		ThreadId: "thread1",
+		Payload: &gmail.MessagePart{
+			MimeType: "multipart/mixed",
+			Parts: []*gmail.MessagePart{
+				{
+					PartId:   "0",
+					MimeType: "text/plain",
+					Body:     &gmail.MessagePartBody{Data: encodeBase64Standard("body text")},
+				},
+				{
+					PartId:   "1",
+					MimeType: "application/pdf",
+					Filename: "spec.pdf",
+					Body:     &gmail.MessagePartBody{AttachmentId: "ATT-PDF-1", Size: 123456},
+				},
+			},
+		},
+	}
+}
+
+// newTestMessageWithNestedAttachment models a multipart/mixed → multipart/alternative
+// (text+html) + a sibling image attachment. Verifies recursion reaches all
+// branches and the alternative sub-tree doesn't shadow the sibling attachment.
+func newTestMessageWithNestedAttachment(id string) *gmail.Message {
+	return &gmail.Message{
+		Id:       id,
+		ThreadId: "thread1",
+		Payload: &gmail.MessagePart{
+			MimeType: "multipart/mixed",
+			Parts: []*gmail.MessagePart{
+				{
+					PartId:   "0",
+					MimeType: "multipart/alternative",
+					Parts: []*gmail.MessagePart{
+						{
+							PartId:   "0.0",
+							MimeType: "text/plain",
+							Body:     &gmail.MessagePartBody{Data: encodeBase64Standard("inline text")},
+						},
+						{
+							PartId:   "0.1",
+							MimeType: "text/html",
+							Body:     &gmail.MessagePartBody{Data: encodeBase64Standard("<p>inline html</p>")},
+						},
+					},
+				},
+				{
+					PartId:   "1",
+					MimeType: "image/png",
+					Filename: "screenshot.png",
+					Body:     &gmail.MessagePartBody{AttachmentId: "ATT-IMG-1", Size: 9876},
+				},
+			},
+		},
+	}
+}
+
+// TestFormatMessage_AttachmentsExposed is the canonical regression for #156:
+// a message with one PDF attachment must surface an `attachments` array on the
+// response containing attachment_id, filename, mime_type, and size — the four
+// fields a caller needs to round-trip through gmail_get_attachment.
+func TestFormatMessage_AttachmentsExposed(t *testing.T) {
+	msg := newTestMessageWithAttachment("msg-att-1")
+
+	result := FormatMessage(msg)
+
+	atts, ok := result["attachments"].([]map[string]any)
+	if !ok {
+		t.Fatalf("expected []map[string]any attachments field, got %T", result["attachments"])
+	}
+	if len(atts) != 1 {
+		t.Fatalf("expected 1 attachment, got %d", len(atts))
+	}
+
+	att := atts[0]
+	if got := att["attachment_id"]; got != "ATT-PDF-1" {
+		t.Errorf("attachment_id: got %v, want ATT-PDF-1", got)
+	}
+	if got := att["filename"]; got != "spec.pdf" {
+		t.Errorf("filename: got %v, want spec.pdf", got)
+	}
+	if got := att["mime_type"]; got != "application/pdf" {
+		t.Errorf("mime_type: got %v, want application/pdf", got)
+	}
+	if got, ok := att["size"].(int64); !ok || got != 123456 {
+		t.Errorf("size: got %v (%T), want int64(123456)", att["size"], att["size"])
+	}
+	if got := att["part_id"]; got != "1" {
+		t.Errorf("part_id: got %v, want 1", got)
+	}
+}
+
+// TestFormatMessage_NestedAttachments verifies the walker reaches attachments
+// that are siblings of nested multipart sub-trees (the common
+// multipart/mixed → multipart/alternative shape Gmail uses for HTML emails
+// with attachments).
+func TestFormatMessage_NestedAttachments(t *testing.T) {
+	msg := newTestMessageWithNestedAttachment("msg-att-2")
+
+	result := FormatMessage(msg)
+
+	atts, ok := result["attachments"].([]map[string]any)
+	if !ok {
+		t.Fatalf("expected attachments field, got %T", result["attachments"])
+	}
+	if len(atts) != 1 {
+		t.Fatalf("expected 1 attachment after nested walk, got %d", len(atts))
+	}
+	if got := atts[0]["attachment_id"]; got != "ATT-IMG-1" {
+		t.Errorf("attachment_id: got %v, want ATT-IMG-1", got)
+	}
+	if got := atts[0]["part_id"]; got != "1" {
+		t.Errorf("part_id: got %v, want 1 (top-level sibling, not 0.x)", got)
+	}
+}
+
+// TestFormatMessage_NoAttachmentsOmitsKey verifies that a message with no
+// attachments does NOT include the `attachments` key at all (rather than an
+// empty slice). Callers can rely on key absence as the no-attachments signal.
+func TestFormatMessage_NoAttachmentsOmitsKey(t *testing.T) {
+	msg := newTestHTMLMessage("msg-no-att", "no attachments here")
+
+	result := FormatMessage(msg)
+
+	if _, has := result["attachments"]; has {
+		t.Errorf("attachments key should be absent when there are no attachments, got %v", result["attachments"])
+	}
+}
+
+// TestExtractAttachments_NilPayload guards against a nil payload (Gmail can
+// return responses with no payload for format=minimal). Must not panic.
+func TestExtractAttachments_NilPayload(t *testing.T) {
+	if got := ExtractAttachments(nil); got != nil {
+		t.Errorf("expected nil for nil payload, got %v", got)
+	}
+}
+
+// TestExtractAttachments_MultipleAttachments verifies the walker accumulates
+// across all attachment-bearing parts when several siblings carry attachments.
+func TestExtractAttachments_MultipleAttachments(t *testing.T) {
+	payload := &gmail.MessagePart{
+		MimeType: "multipart/mixed",
+		Parts: []*gmail.MessagePart{
+			{
+				PartId:   "0",
+				MimeType: "text/plain",
+				Body:     &gmail.MessagePartBody{Data: encodeBase64Standard("body")},
+			},
+			{
+				PartId:   "1",
+				MimeType: "application/pdf",
+				Filename: "first.pdf",
+				Body:     &gmail.MessagePartBody{AttachmentId: "A1", Size: 100},
+			},
+			{
+				PartId:   "2",
+				MimeType: "image/jpeg",
+				Filename: "second.jpg",
+				Body:     &gmail.MessagePartBody{AttachmentId: "A2", Size: 200},
+			},
+		},
+	}
+
+	atts := ExtractAttachments(payload)
+	if len(atts) != 2 {
+		t.Fatalf("expected 2 attachments, got %d", len(atts))
+	}
+	ids := []string{atts[0]["attachment_id"].(string), atts[1]["attachment_id"].(string)}
+	if ids[0] != "A1" || ids[1] != "A2" {
+		t.Errorf("expected ids [A1, A2] in walk order, got %v", ids)
+	}
+}
