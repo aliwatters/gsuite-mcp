@@ -87,6 +87,20 @@ func main() {
 		}()
 	}
 
+	// Write the pidfile so `gsuite-mcp auth` can reliably identify us as the
+	// holder of oauth_port and take over instead of failing with EADDRINUSE
+	// (#158). Best-effort: a missing pidfile triggers a process-name fallback,
+	// so a write failure shouldn't crash the daemon.
+	if err := auth.WritePidFile(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not write pidfile: %v\n", err)
+	} else {
+		defer func() {
+			if err := auth.RemovePidFile(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: could not remove pidfile on shutdown: %v\n", err)
+			}
+		}()
+	}
+
 	s := server.NewMCPServer(serverName, serverVersion)
 
 	// Register all service tools
