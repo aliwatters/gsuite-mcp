@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -26,11 +27,16 @@ var (
 	processExists  = processExistsReal
 )
 
-// daemonCommandHint is the substring matched against a process command name to
-// decide whether a holder is "our" daemon. We compare lowercased substrings to
-// survive Linux's 15-char /proc/N/comm truncation ("gsuite-mcp" → "gsuite-mc")
-// and macOS' tendency to report the absolute path.
-const daemonCommandHint = "gsuite-mc"
+// daemonExecName is the EXACT basename matched against a holder's command
+// when classifying via process-name fallback. Substring matching was rejected
+// here because a foreign binary whose name happens to contain "gsuite-mcp"
+// (e.g. "gsuite-mcp-helper", "my-gsuite-mcp-wrapper") would otherwise be
+// flagged as ours and signalled — a real risk per Copilot review of
+// gsuite-mcp#159. The kernel TASK_COMM_LEN cap is 15 chars, comfortably
+// above the 10-char "gsuite-mcp", so ps -o comm= does not truncate. Path
+// prefixes that macOS' ps returns are stripped via filepath.Base before
+// comparison.
+const daemonExecName = "gsuite-mcp"
 
 // takeoverWaitForExit is how long to wait between SIGTERM and SIGKILL.
 const takeoverWaitForExit = 2 * time.Second
@@ -100,14 +106,14 @@ func processExistsReal(pid int) bool {
 // daemon we (or a prior session) started. Uses two signals:
 //
 //  1. PRIMARY: the pidfile at PidFilePath(). If readable AND its recorded PID
-//     matches the candidate AND that PID is alive, it's ours. This is the
-//     reliable post-reboot path (process names alone can collide).
+//     matches the candidate, it's ours. This is the reliable post-reboot
+//     path (process names alone can collide with foreign binaries).
 //
-//  2. FALLBACK: the candidate's command name (via `ps -o comm=`) contains
-//     "gsuite-mc" (lowercased). This covers the case where the pidfile is
-//     missing (older daemon predating this fix, or a manual cleanup), and is
-//     intentionally permissive given Linux's 15-char comm truncation makes
-//     the full "gsuite-mcp" name unmatchable in that environment.
+//  2. FALLBACK: an EXACT match on the candidate's command basename (via
+//     `ps -o comm=`, then `filepath.Base`, lowercased). Substring matching
+//     was rejected here as too permissive — see daemonExecName for the
+//     reasoning. The fallback only fires when the pidfile is missing or
+//     stale (e.g. older daemon predating this fix, or manual cleanup).
 //
 // The function never kills anything — it only classifies. The caller decides
 // whether to act on the classification (see TakeOverPort).
@@ -122,7 +128,8 @@ func IsOurDaemon(pid int) bool {
 	if err != nil || cmdName == "" {
 		return false
 	}
-	return strings.Contains(strings.ToLower(cmdName), daemonCommandHint)
+	base := strings.ToLower(filepath.Base(strings.TrimSpace(cmdName)))
+	return base == daemonExecName
 }
 
 // TakeOverPort is called when a bind to `port` fails with EADDRINUSE. It

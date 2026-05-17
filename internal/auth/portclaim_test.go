@@ -125,10 +125,52 @@ func TestIsOurDaemon_FallbackToCommandName(t *testing.T) {
 	withTempConfigDir(t) // pidfile absent
 	origCmd := commandForPID
 	defer func() { commandForPID = origCmd }()
-	commandForPID = func(pid int) (string, error) { return "gsuite-mc", nil } // Linux 15-char truncation
+	commandForPID = func(pid int) (string, error) { return "gsuite-mcp", nil }
 
 	if !IsOurDaemon(99999) {
-		t.Error("IsOurDaemon: should match the Linux-truncated gsuite-mc name")
+		t.Error("IsOurDaemon: should match exact 'gsuite-mcp' command name")
+	}
+}
+
+func TestIsOurDaemon_FallbackStripsPathPrefix(t *testing.T) {
+	// macOS' ps -o comm= typically returns the absolute path. We must take
+	// the basename before comparison or the exact match never fires.
+	withTempConfigDir(t)
+	origCmd := commandForPID
+	defer func() { commandForPID = origCmd }()
+	commandForPID = func(pid int) (string, error) {
+		return "/Users/ali/.local/bin/gsuite-mcp", nil
+	}
+
+	if !IsOurDaemon(99999) {
+		t.Error("IsOurDaemon: should strip path prefix and match the basename")
+	}
+}
+
+// TestIsOurDaemon_RejectsLookAlikeNames is the regression for Copilot's
+// review on PR #159: substring matching against "gsuite-mc" treats foreign
+// binaries whose name contains that as ours, which could lead to signalling
+// an unfamiliar process. Exact-basename matching MUST reject every variant
+// here.
+func TestIsOurDaemon_RejectsLookAlikeNames(t *testing.T) {
+	withTempConfigDir(t) // pidfile absent — pure name-fallback path
+	origCmd := commandForPID
+	defer func() { commandForPID = origCmd }()
+
+	lookAlikes := []string{
+		"gsuite-mc",              // 9-char lsof truncation — NOT our ps output but defensive
+		"gsuite-mcp-helper",      // sibling tool, never ours
+		"my-gsuite-mcp",          // wrapper, never ours
+		"gsuite-mcp-controller",  // controller, never ours
+		"not-gsuite-mcp",         // adversarial prefix
+		"gsuite-mcpdbg",          // adversarial suffix without separator
+		"/path/to/gsuite-mcp-x",  // path-stripped basename still mismatches
+	}
+	for _, name := range lookAlikes {
+		commandForPID = func(pid int) (string, error) { return name, nil }
+		if IsOurDaemon(99999) {
+			t.Errorf("IsOurDaemon: foreign command %q must NOT be classified as ours", name)
+		}
 	}
 }
 
@@ -146,16 +188,17 @@ func TestIsOurDaemon_RejectsForeignCommand(t *testing.T) {
 func TestIsOurDaemon_PidFileStaleFallsBackToName(t *testing.T) {
 	withTempConfigDir(t)
 	// Pidfile says 11111 is ours, but we ask about 22222. Fallback should
-	// kick in and use the command name.
+	// kick in and use the command name (exact-basename match,
+	// case-insensitive).
 	if err := os.WriteFile(PidFilePath(), []byte("11111\n"), 0o644); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
 	origCmd := commandForPID
 	defer func() { commandForPID = origCmd }()
-	commandForPID = func(pid int) (string, error) { return "GSUITE-MCP", nil } // case-insensitive match
+	commandForPID = func(pid int) (string, error) { return "GSUITE-MCP", nil } // exact match, case-insensitive
 
 	if !IsOurDaemon(22222) {
-		t.Error("IsOurDaemon: should fall back to command-name match when pidfile points elsewhere")
+		t.Error("IsOurDaemon: should fall back to exact-basename match when pidfile points elsewhere")
 	}
 }
 
