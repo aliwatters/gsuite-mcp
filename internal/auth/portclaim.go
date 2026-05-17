@@ -3,9 +3,7 @@ package auth
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -18,13 +16,15 @@ type PortHolder struct {
 }
 
 // Process-discovery and signalling are wired through package-level function
-// variables so unit tests can override them. Production wiring uses lsof / ps
-// (both present on macOS and Linux out of the box).
+// variables so unit tests can override them. The default values are assigned
+// from the platform-specific init() in portclaim_unix.go or
+// portclaim_windows.go — `syscall.Kill` exists only on Unix, and `lsof`/`ps`
+// are not present on Windows, so production wiring lives there.
 var (
-	findPortHolder = findPortHolderViaLsof
-	commandForPID  = commandForPIDViaPS
-	signalProcess  = signalProcessReal
-	processExists  = processExistsReal
+	findPortHolder func(port int) (*PortHolder, error)
+	commandForPID  func(pid int) (string, error)
+	signalProcess  func(pid int, sig syscall.Signal) error
+	processExists  func(pid int) bool
 )
 
 // daemonExecName is the EXACT basename matched against a holder's command
@@ -44,63 +44,6 @@ const takeoverWaitForExit = 2 * time.Second
 // takeoverPollInterval is the polling interval used while waiting for a
 // signalled daemon to release the port.
 const takeoverPollInterval = 50 * time.Millisecond
-
-// findPortHolderViaLsof returns the PID + command of the first process
-// LISTENing on the given TCP port (loopback or otherwise). Returns (nil, nil)
-// when no process holds the port — that's a normal pre-bind state, not an
-// error. Returns an error only when lsof itself errors in an unexpected way
-// (missing binary, malformed output).
-func findPortHolderViaLsof(port int) (*PortHolder, error) {
-	// `lsof -ti tcp:PORT -sTCP:LISTEN` prints just PIDs, one per line, exit
-	// code 1 when nothing matches (treated as "no holder").
-	cmd := exec.Command("lsof", "-ti", fmt.Sprintf("tcp:%d", port), "-sTCP:LISTEN") //nolint:gosec // fixed args, integer port — no shell interpolation
-	out, err := cmd.Output()
-	if err != nil {
-		// Exit code 1 with empty stdout = "no holder" — normal.
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 && len(out) == 0 {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("lsof failed: %w", err)
-	}
-	first := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)[0]
-	if first == "" {
-		return nil, nil
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(first))
-	if err != nil {
-		return nil, fmt.Errorf("lsof returned non-numeric pid %q: %w", first, err)
-	}
-	command, _ := commandForPID(pid) // best-effort; empty string is fine
-	return &PortHolder{PID: pid, Command: command}, nil
-}
-
-// commandForPIDViaPS returns the short command name for a PID via
-// `ps -o comm= -p PID`. Empty string + nil error when the PID does not exist
-// (caller treats empty as "unknown"); non-nil error only on unexpected ps
-// failures.
-func commandForPIDViaPS(pid int) (string, error) {
-	cmd := exec.Command("ps", "-o", "comm=", "-p", strconv.Itoa(pid)) //nolint:gosec // fixed flags, integer pid
-	out, err := cmd.Output()
-	if err != nil {
-		// ps returns non-zero when the PID doesn't exist; treat as "unknown".
-		if _, ok := err.(*exec.ExitError); ok {
-			return "", nil
-		}
-		return "", fmt.Errorf("ps failed: %w", err)
-	}
-	return strings.TrimSpace(string(out)), nil
-}
-
-// signalProcessReal sends sig to pid. Wraps syscall.Kill so tests can mock it.
-func signalProcessReal(pid int, sig syscall.Signal) error {
-	return syscall.Kill(pid, sig)
-}
-
-// processExistsReal returns true if a process with the given PID is currently
-// alive. Implemented via `kill -0`, which is portable across macOS and Linux.
-func processExistsReal(pid int) bool {
-	return syscall.Kill(pid, syscall.Signal(0)) == nil
-}
 
 // IsOurDaemon reports whether the process with the given PID is a gsuite-mcp
 // daemon we (or a prior session) started. Uses two signals:
