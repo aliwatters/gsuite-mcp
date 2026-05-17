@@ -318,6 +318,29 @@ func ResolveOAuthPort() (port int, envOverride bool, err error) {
 	return p, false, err
 }
 
+// bindOAuthPort tries to bind localhost:port for the OAuth callback. If the
+// port is already in use, attempts a one-shot takeover from a stale
+// gsuite-mcp daemon (#158) before reporting failure. The error returned to
+// the user names the foreign-process holder if takeover refuses to proceed.
+func bindOAuthPort(port int) (net.Listener, error) {
+	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	if err == nil {
+		return listener, nil
+	}
+	// Try to identify-and-replace a stale gsuite-mcp daemon holding the port.
+	if takeoverErr := TakeOverPort(port); takeoverErr != nil {
+		return nil, fmt.Errorf("port %d is in use — %w. To override, set oauth_port in %s or GSUITE_MCP_OAUTH_PORT env var",
+			port, takeoverErr, config.ConfigPath())
+	}
+	// Retry once; if it still fails, something raced us to rebind.
+	listener, retryErr := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
+	if retryErr != nil {
+		return nil, fmt.Errorf("port %d freed by takeover but rebind failed (race?): %w (original bind error: %v)",
+			port, retryErr, err)
+	}
+	return listener, nil
+}
+
 // AuthenticateDynamic performs OAuth2 flow without requiring a pre-configured account.
 // It opens the browser, lets the user choose any Google account, and saves the credential
 // using the authenticated email as the identifier. Returns the authenticated email.
@@ -327,10 +350,9 @@ func (m *Manager) AuthenticateDynamic(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", oauthPort))
+	listener, err := bindOAuthPort(oauthPort)
 	if err != nil {
-		return "", fmt.Errorf("port %d is in use — set a different port in %s (oauth_port) or via GSUITE_MCP_OAUTH_PORT env var: %w",
-			oauthPort, config.ConfigPath(), err)
+		return "", err
 	}
 	defer listener.Close()
 
