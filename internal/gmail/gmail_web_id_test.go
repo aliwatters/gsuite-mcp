@@ -45,8 +45,8 @@ func TestParseGmailWebID_APIID(t *testing.T) {
 // TestParseGmailWebID_ThreadF verifies legacy thread-f:<decimal> decoding.
 func TestParseGmailWebID_ThreadF(t *testing.T) {
 	cases := []struct {
-		input    string
-		wantHex  string
+		input   string
+		wantHex string
 	}{
 		// thread-f:1821570065795440641 -> hex: 19478452e138e001
 		{"thread-f:1821570065795440641", "19478452e138e001"},
@@ -110,7 +110,9 @@ func TestParseGmailWebID_MsgF(t *testing.T) {
 // TestParseGmailWebID_FMfcg verifies the current base64url FMfcg form.
 //
 // The example ID "FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj" decodes to 24 bytes:
-//   14c7dc8334202ebc 552634d52b0bc546 06dd2cf16cc577e3
+//
+//	14c7dc8334202ebc 552634d52b0bc546 06dd2cf16cc577e3
+//
 // bytes 8-15 = thread ID = 552634d52b0bc546
 // bytes 16-23 = message ID = 6dd2cf16cc577e3
 func TestParseGmailWebID_FMfcg_24bytes(t *testing.T) {

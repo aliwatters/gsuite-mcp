@@ -158,13 +158,13 @@ func TestIsOurDaemon_RejectsLookAlikeNames(t *testing.T) {
 	defer func() { commandForPID = origCmd }()
 
 	lookAlikes := []string{
-		"gsuite-mc",              // 9-char lsof truncation — NOT our ps output but defensive
-		"gsuite-mcp-helper",      // sibling tool, never ours
-		"my-gsuite-mcp",          // wrapper, never ours
-		"gsuite-mcp-controller",  // controller, never ours
-		"not-gsuite-mcp",         // adversarial prefix
-		"gsuite-mcpdbg",          // adversarial suffix without separator
-		"/path/to/gsuite-mcp-x",  // path-stripped basename still mismatches
+		"gsuite-mc",             // 9-char lsof truncation — NOT our ps output but defensive
+		"gsuite-mcp-helper",     // sibling tool, never ours
+		"my-gsuite-mcp",         // wrapper, never ours
+		"gsuite-mcp-controller", // controller, never ours
+		"not-gsuite-mcp",        // adversarial prefix
+		"gsuite-mcpdbg",         // adversarial suffix without separator
+		"/path/to/gsuite-mcp-x", // path-stripped basename still mismatches
 	}
 	for _, name := range lookAlikes {
 		commandForPID = func(pid int) (string, error) { return name, nil }
