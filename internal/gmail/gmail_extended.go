@@ -82,3 +82,6 @@ var (
 	HandleGmailCreateDelegate = common.WrapHandler[GmailService](TestableGmailCreateDelegate)
 	HandleGmailDeleteDelegate = common.WrapHandler[GmailService](TestableGmailDeleteDelegate)
 )
+
+// Web ID Resolution
+var HandleGmailResolveWebID = common.WrapHandler[GmailService](TestableGmailResolveWebID)
