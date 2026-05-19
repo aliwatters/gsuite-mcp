@@ -396,6 +396,22 @@ func registerExtendedTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleGmailGetVacation)
 
+	// gmail_resolve_web_id - Resolve Gmail web-UI ID to API IDs
+	s.AddTool(mcp.NewTool("gmail_resolve_web_id",
+		mcp.WithDescription("Resolve a Gmail web-UI message/thread ID (from a browser URL) to Gmail API IDs. "+
+			"Accepts a full Gmail URL (https://mail.google.com/mail/u/0/#inbox/FMfcg…) or a bare ID in any form: "+
+			"FMfcg… (current), thread-f:<decimal> (legacy), msg-f:<decimal> (legacy), or an already-API hex ID. "+
+			"Returns message_id and/or thread_id for use with gmail_get_message / gmail_get_thread."),
+		mcp.WithString("id", mcp.Required(), mcp.Description(
+			"Gmail web-UI ID or full Gmail URL. Examples: "+
+				"\"FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj\", "+
+				"\"https://mail.google.com/mail/u/0/#inbox/FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj\", "+
+				"\"thread-f:1821570065795440641\", "+
+				"\"msg-f:1821570065795440641\"",
+		)),
+		common.WithAccountParam(),
+	), HandleGmailResolveWebID)
+
 	// gmail_set_vacation - Set vacation settings
 	s.AddTool(mcp.NewTool("gmail_set_vacation",
 		mcp.WithDescription("Set vacation auto-reply settings"),
