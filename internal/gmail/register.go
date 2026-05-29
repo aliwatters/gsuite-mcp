@@ -401,7 +401,8 @@ func registerExtendedTools(s *server.MCPServer) {
 		mcp.WithDescription("Resolve a Gmail web-UI message/thread ID (from a browser URL) to Gmail API IDs. "+
 			"Accepts a full Gmail URL (https://mail.google.com/mail/u/0/#inbox/FMfcg…) or a bare ID in any form: "+
 			"FMfcg… (current), thread-f:<decimal> (legacy), msg-f:<decimal> (legacy), or an already-API hex ID. "+
-			"Returns message_id and/or thread_id for use with gmail_get_message / gmail_get_thread."),
+			"FMfcg candidates are validated against the selected account before returning message_id and thread_id; "+
+			"if validation fails, use gmail_search with subject, sender, or date terms."),
 		mcp.WithString("id", mcp.Required(), mcp.Description(
 			"Gmail web-UI ID or full Gmail URL. Examples: "+
 				"\"FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj\", "+

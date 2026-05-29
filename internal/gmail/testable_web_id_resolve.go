@@ -20,7 +20,7 @@ import (
 //
 // On success it returns message_id, thread_id, id_kind, and source_id.
 // On failure it returns a clear error — never a silent wrong-ID fallback.
-func TestableGmailResolveWebID(_ context.Context, request mcp.CallToolRequest, _ *GmailHandlerDeps) (*mcp.CallToolResult, error) {
+func TestableGmailResolveWebID(ctx context.Context, request mcp.CallToolRequest, deps *GmailHandlerDeps) (*mcp.CallToolResult, error) {
 	input, errResult := common.RequireStringArg(request.GetArguments(), "id")
 	if errResult != nil {
 		return errResult, nil
@@ -29,6 +29,16 @@ func TestableGmailResolveWebID(_ context.Context, request mcp.CallToolRequest, _
 	resolved, err := ParseGmailWebID(strings.TrimSpace(input))
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("cannot resolve Gmail web ID: %v", err)), nil
+	}
+
+	if resolved.Kind == WebIDKindFMfcg {
+		svc, errResult, ok := ResolveGmailServiceOrError(ctx, request, deps)
+		if !ok {
+			return errResult, nil
+		}
+		if err := validateFMfcgResolution(ctx, svc, resolved); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 	}
 
 	result := map[string]any{
@@ -56,4 +66,20 @@ func TestableGmailResolveWebID(_ context.Context, request mcp.CallToolRequest, _
 	}
 
 	return common.MarshalToolResult(result)
+}
+
+func validateFMfcgResolution(ctx context.Context, svc GmailService, resolved *ResolvedWebID) error {
+	if resolved.MessageID != "" {
+		if _, err := svc.GetMessage(ctx, resolved.MessageID, "metadata"); err != nil {
+			return fmt.Errorf("cannot resolve Gmail FMfcg web ID for this account: decoded message_id %q is not fetchable (%w); use gmail_search with subject, sender, or date terms to find the message", resolved.MessageID, err)
+		}
+	}
+
+	if resolved.ThreadID != "" {
+		if _, err := svc.GetThread(ctx, resolved.ThreadID, "metadata"); err != nil {
+			return fmt.Errorf("cannot resolve Gmail FMfcg web ID for this account: decoded thread_id %q is not fetchable (%w); use gmail_search with subject, sender, or date terms to find the message", resolved.ThreadID, err)
+		}
+	}
+
+	return nil
 }

@@ -117,12 +117,14 @@ Google Chat management: list/get/create spaces, list/get/send messages, thread r
 #### Gmail URL / Web-ID Resolution
 | Tool | Description |
 |------|-------------|
-| `gmail_resolve_web_id` | Resolve a Gmail web-UI ID (from a browser URL) to API message/thread IDs. Accepts a full Gmail URL (`https://mail.google.com/mail/u/0/#inbox/FMfcg…`) or bare ID in any form: `FMfcg…` (current), `thread-f:<decimal>` (legacy), `msg-f:<decimal>` (legacy), or an already-API hex ID. Returns `message_id` and/or `thread_id` for use with `gmail_get_message` / `gmail_get_thread`. |
+| `gmail_resolve_web_id` | Resolve a Gmail web-UI ID (from a browser URL) to API message/thread IDs. Accepts a full Gmail URL (`https://mail.google.com/mail/u/0/#inbox/FMfcg…`) or bare ID in any form: `FMfcg…` (current), `thread-f:<decimal>` (legacy), `msg-f:<decimal>` (legacy), or an already-API hex ID. `FMfcg…` candidates are validated against the selected account before IDs are returned; if validation fails, use `gmail_search` with subject, sender, or date terms. |
 
 **Example:**
 ```
 gmail_resolve_web_id(id="https://mail.google.com/mail/u/0/#inbox/FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj")
 # → { thread_id: "552634d52b0bc546", message_id: "6dd2cf16cc577e3", id_kind: "FMfcg" }
+# If those decoded IDs are not fetchable for the selected account, the tool returns
+# an explicit error recommending gmail_search instead of returning unusable IDs.
 
 gmail_resolve_web_id(id="thread-f:1821570065795440641")
 # → { thread_id: "19478452e138e001", id_kind: "thread-f" }
