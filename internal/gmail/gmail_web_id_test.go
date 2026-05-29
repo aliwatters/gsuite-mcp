@@ -2,8 +2,11 @@ package gmail
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
+
+	"google.golang.org/api/gmail/v1"
 )
 
 // === ParseGmailWebID unit tests ===
@@ -280,11 +283,30 @@ func TestParseGmailWebID_ThreadFFromURL(t *testing.T) {
 
 // === TestableGmailResolveWebID handler tests ===
 
+const (
+	testFMfcgID        = "FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj"
+	testFMfcgThreadID  = "552634d52b0bc546"
+	testFMfcgMessageID = "6dd2cf16cc577e3"
+)
+
+func seedFMfcgMessage(fixtures *GmailTestFixtures) {
+	msg := &gmail.Message{
+		Id:       testFMfcgMessageID,
+		ThreadId: testFMfcgThreadID,
+	}
+	fixtures.MockService.Messages[testFMfcgMessageID] = msg
+	fixtures.MockService.Threads[testFMfcgThreadID] = &gmail.Thread{
+		Id:       testFMfcgThreadID,
+		Messages: []*gmail.Message{msg},
+	}
+}
+
 func TestGmailResolveWebID_FMfcgSuccess(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
+	seedFMfcgMessage(fixtures)
 
 	request := makeRequest(map[string]any{
-		"id": "FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj",
+		"id": testFMfcgID,
 	})
 
 	result, err := TestableGmailResolveWebID(context.Background(), request, fixtures.Deps)
@@ -299,17 +321,36 @@ func TestGmailResolveWebID_FMfcgSuccess(t *testing.T) {
 	if response["id_kind"] != "FMfcg" {
 		t.Errorf("id_kind: got %v, want FMfcg", response["id_kind"])
 	}
-	if response["thread_id"] == nil || response["thread_id"] == "" {
-		t.Error("expected thread_id in response")
+	if response["thread_id"] != testFMfcgThreadID {
+		t.Errorf("thread_id: got %v, want %s", response["thread_id"], testFMfcgThreadID)
 	}
-	if response["message_id"] == nil || response["message_id"] == "" {
-		t.Error("expected message_id in response")
+	if response["message_id"] != testFMfcgMessageID {
+		t.Errorf("message_id: got %v, want %s", response["message_id"], testFMfcgMessageID)
 	}
-	if response["source_id"] != "FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj" {
+	if response["source_id"] != testFMfcgID {
 		t.Errorf("source_id: got %v", response["source_id"])
 	}
 	if response["hint"] == nil {
 		t.Error("expected hint in response")
+	}
+}
+
+func TestGmailResolveWebID_FMfcgNotFetchable(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	request := makeRequest(map[string]any{
+		"id": testFMfcgID,
+	})
+
+	result, err := TestableGmailResolveWebID(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatalf("expected error for FMfcg ID that is not fetchable, got success: %v", result.Content)
+	}
+	if !strings.Contains(fmt.Sprint(result.Content), "gmail_search") {
+		t.Fatalf("expected error to recommend gmail_search fallback, got: %v", result.Content)
 	}
 }
 
@@ -396,9 +437,10 @@ func TestGmailResolveWebID_APIIDPassthrough(t *testing.T) {
 
 func TestGmailResolveWebID_FullURL(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
+	seedFMfcgMessage(fixtures)
 
 	request := makeRequest(map[string]any{
-		"id": "https://mail.google.com/mail/u/0/#inbox/FMfcgzQgLrxVJjTVKwvFRgbdLPFsxXfj",
+		"id": "https://mail.google.com/mail/u/0/#inbox/" + testFMfcgID,
 	})
 
 	result, err := TestableGmailResolveWebID(context.Background(), request, fixtures.Deps)
@@ -413,8 +455,8 @@ func TestGmailResolveWebID_FullURL(t *testing.T) {
 	if response["id_kind"] != "FMfcg" {
 		t.Errorf("id_kind: got %v, want FMfcg", response["id_kind"])
 	}
-	if response["thread_id"] == nil || response["thread_id"] == "" {
-		t.Error("expected thread_id in response")
+	if response["thread_id"] != testFMfcgThreadID {
+		t.Errorf("thread_id: got %v, want %s", response["thread_id"], testFMfcgThreadID)
 	}
 }
 
