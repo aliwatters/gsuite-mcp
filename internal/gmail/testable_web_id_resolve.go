@@ -71,13 +71,13 @@ func TestableGmailResolveWebID(ctx context.Context, request mcp.CallToolRequest,
 func validateFMfcgResolution(ctx context.Context, svc GmailService, resolved *ResolvedWebID) error {
 	if resolved.MessageID != "" {
 		if _, err := svc.GetMessage(ctx, resolved.MessageID, "metadata"); err != nil {
-			return fmt.Errorf("cannot resolve Gmail FMfcg web ID for this account: decoded message_id is not fetchable; use gmail_search with subject, sender, or date terms to find the message")
+			return fmt.Errorf("cannot resolve Gmail FMfcg web ID for this account: decoded message_id %q is not fetchable (%w); use gmail_search with subject, sender, or date terms to find the message", resolved.MessageID, err)
 		}
 	}
 
 	if resolved.ThreadID != "" {
 		if _, err := svc.GetThread(ctx, resolved.ThreadID, "metadata"); err != nil {
-			return fmt.Errorf("cannot resolve Gmail FMfcg web ID for this account: decoded thread_id is not fetchable; use gmail_search with subject, sender, or date terms to find the message")
+			return fmt.Errorf("cannot resolve Gmail FMfcg web ID for this account: decoded thread_id %q is not fetchable (%w); use gmail_search with subject, sender, or date terms to find the message", resolved.ThreadID, err)
 		}
 	}
 
