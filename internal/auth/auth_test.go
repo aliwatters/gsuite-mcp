@@ -368,6 +368,135 @@ func TestErrAuthExpired_IsDetectable(t *testing.T) {
 	}
 }
 
+func TestAuthExpiredError_CLIFallback(t *testing.T) {
+	// When no AuthServerURL is set, the remediation message must include the
+	// gsuite-mcp auth CLI command, the affected account, and a note that no
+	// MCP server restart is required. The raw oauth2 error must NOT appear in
+	// the user-facing string (it stays in the error chain for errors.Is only).
+	m := &Manager{}
+	cause := fmt.Errorf("oauth2: %q %q", "invalid_grant", "Token has been expired or revoked.")
+	email := "user@example.com"
+
+	err := m.authExpiredError(email, cause)
+
+	if !errors.Is(err, ErrAuthExpired) {
+		t.Error("expected errors.Is(err, ErrAuthExpired) to be true")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, email) {
+		t.Errorf("expected account email %q in error message, got: %s", email, msg)
+	}
+	if !strings.Contains(msg, "gsuite-mcp auth") {
+		t.Errorf("expected 'gsuite-mcp auth' in error message, got: %s", msg)
+	}
+	if !strings.Contains(msg, "no MCP server restart") {
+		t.Errorf("expected 'no MCP server restart' in error message, got: %s", msg)
+	}
+	// Original error must be preserved in the chain (not in Error() string, but via errors.Is).
+	if !errors.Is(err, cause) {
+		t.Error("expected original cause error to be preserved in the error chain")
+	}
+	// Raw oauth2 error text must NOT appear in the user-facing message.
+	if strings.Contains(msg, "oauth2:") {
+		t.Errorf("raw oauth2 error text should not appear in user-facing message, got: %s", msg)
+	}
+}
+
+func TestAuthExpiredError_AuthServerURL(t *testing.T) {
+	// When AuthServerURL is set, the remediation message must surface the browser
+	// URL with the account query param (?account=<email>) instead of the CLI command.
+	m := &Manager{AuthServerURL: "http://localhost:38917/auth"}
+	cause := fmt.Errorf("oauth2: invalid_grant")
+	email := "work@company.com"
+
+	err := m.authExpiredError(email, cause)
+
+	if !errors.Is(err, ErrAuthExpired) {
+		t.Error("expected errors.Is(err, ErrAuthExpired) to be true")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "http://localhost:38917/auth") {
+		t.Errorf("expected auth server URL in error message, got: %s", msg)
+	}
+	// The ?account= query parameter must be present so the user gets a one-click URL.
+	if !strings.Contains(msg, "?account=") {
+		t.Errorf("expected '?account=' query param in error message, got: %s", msg)
+	}
+	if !strings.Contains(msg, email) {
+		t.Errorf("expected account email %q in error message, got: %s", email, msg)
+	}
+	if !strings.Contains(msg, "no MCP server restart") {
+		t.Errorf("expected 'no MCP server restart' in error message, got: %s", msg)
+	}
+	// Original error must be preserved in the chain (not in Error() string, but via errors.Is).
+	if !errors.Is(err, cause) {
+		t.Error("expected original cause error to be preserved in the error chain")
+	}
+	// Raw oauth2 error text must NOT appear in the user-facing message.
+	if strings.Contains(msg, "oauth2:") {
+		t.Errorf("raw oauth2 error text should not appear in user-facing message, got: %s", msg)
+	}
+}
+
+func TestGetClientForEmail_InvalidGrantSurfacesRemediation(t *testing.T) {
+	// When the token endpoint returns invalid_grant, GetClientForEmail must return
+	// an error that wraps ErrAuthExpired and contains the remediation instruction.
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{"error":"invalid_grant","error_description":"Token has been expired or revoked."}`)
+	}))
+	defer tokenServer.Close()
+
+	dir := t.TempDir()
+	config.SetConfigDir(dir)
+	t.Cleanup(func() { config.SetConfigDir("") })
+
+	m := &Manager{
+		oauthConfig: &oauth2.Config{
+			ClientID:     "test-client",
+			ClientSecret: "test-secret",
+			Endpoint: oauth2.Endpoint{
+				TokenURL:  tokenServer.URL,
+				AuthStyle: oauth2.AuthStyleInParams,
+			},
+			Scopes: []string{"openid"},
+		},
+	}
+
+	email := "expired@example.com"
+	expired := &oauth2.Token{
+		AccessToken:  "old",
+		RefreshToken: "stale-refresh",
+		Expiry:       time.Now().Add(-time.Hour),
+	}
+	if err := m.saveTokenForEmail(email, expired); err != nil {
+		t.Fatalf("saving token: %v", err)
+	}
+
+	_, err := m.GetClientForEmail(t.Context(), email)
+	if err == nil {
+		t.Fatal("expected error from invalid_grant response, got nil")
+	}
+	if !errors.Is(err, ErrAuthExpired) {
+		t.Errorf("expected ErrAuthExpired in error chain, got: %v", err)
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, email) {
+		t.Errorf("expected account email in error message, got: %s", msg)
+	}
+	if !strings.Contains(msg, "gsuite-mcp auth") {
+		t.Errorf("expected 'gsuite-mcp auth' remediation in error message, got: %s", msg)
+	}
+	if !strings.Contains(msg, "no MCP server restart") {
+		t.Errorf("expected 'no MCP server restart' note in error message, got: %s", msg)
+	}
+	// Raw oauth2 error text must NOT appear in the user-facing message.
+	if strings.Contains(msg, "invalid_grant") {
+		t.Errorf("raw 'invalid_grant' text should not appear in user-facing message, got: %s", msg)
+	}
+}
+
 func TestGetClientForEmail_PreRefreshWindowForcesRefresh(t *testing.T) {
 	// A token that expires 20 minutes from now is within the 30-min tokenPreRefreshWindow.
 	// GetClientForEmail must proactively refresh it — the returned client should carry

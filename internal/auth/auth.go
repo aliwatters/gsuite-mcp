@@ -499,15 +499,10 @@ func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Cl
 		// Classify invalid_grant / token expired errors so callers can surface
 		// a clean re-auth instruction instead of a raw oauth2 error string.
 		if isAuthExpiredError(err) {
-			reAuthCmd := "gsuite-mcp auth"
-			if m.AuthServerURL != "" {
-				reAuthCmd = m.AuthServerURL + "?account=" + url.QueryEscape(email)
-			}
 			log.Printf("[oauth] refresh: account=%s result=failure(invalid_grant) — re-auth required", email)
 			// Evict the stale cached source so the next auth attempt starts fresh.
 			m.sources.Delete(email)
-			return nil, fmt.Errorf("%w: token for %s has expired or been revoked; re-authenticate with: %s: %w",
-				ErrAuthExpired, email, reAuthCmd, err)
+			return nil, m.authExpiredError(email, err)
 		}
 		log.Printf("[oauth] refresh: account=%s result=failure(%v)", email, err)
 		return nil, fmt.Errorf("refreshing token for %s: %w", email, err)
@@ -534,6 +529,41 @@ func isAuthExpiredError(err error) bool {
 	return strings.Contains(s, "invalid_grant") ||
 		strings.Contains(s, "Token has been expired or revoked") ||
 		strings.Contains(s, "token has been expired or revoked")
+}
+
+// authExpiredErr is a custom error type for expired/revoked OAuth tokens.
+// Its Error() returns the clean, actionable user-facing message without the raw oauth2
+// error text. Unwrap returns both ErrAuthExpired and the underlying cause so that
+// errors.Is(err, ErrAuthExpired) and errors.Is(err, cause) both work correctly.
+type authExpiredErr struct {
+	msg   string
+	cause error
+}
+
+func (e *authExpiredErr) Error() string { return e.msg }
+
+// Unwrap returns both sentinel errors so errors.Is covers both ErrAuthExpired and the cause.
+func (e *authExpiredErr) Unwrap() []error { return []error{ErrAuthExpired, e.cause} }
+
+// authExpiredError builds a structured, actionable error for an expired or revoked OAuth token.
+// The user-facing Error() string includes:
+//   - the affected account email
+//   - the exact re-auth command or browser URL needed
+//   - a note that no MCP server restart is required after re-authentication
+//
+// The original oauth2 cause is accessible via errors.Is/errors.As but is NOT included in
+// the user-facing string — callers (MCP clients) see only the actionable instruction.
+func (m *Manager) authExpiredError(email string, cause error) error {
+	var reAuthInstr string
+	if m.AuthServerURL != "" {
+		// The persistent HTTP auth server is running; surface the browser URL directly.
+		reAuthInstr = fmt.Sprintf("open %s?account=%s in your browser", m.AuthServerURL, url.QueryEscape(email))
+	} else {
+		reAuthInstr = fmt.Sprintf("run: gsuite-mcp auth  (then sign in as %s)", email)
+	}
+	msg := fmt.Sprintf("OAuth token for %s has expired or been revoked — to re-authenticate: %s (no MCP server restart needed)",
+		email, reAuthInstr)
+	return &authExpiredErr{msg: msg, cause: cause}
 }
 
 // loadTokenForEmail loads the stored token for an email address.
