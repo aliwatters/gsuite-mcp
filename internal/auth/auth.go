@@ -531,12 +531,28 @@ func isAuthExpiredError(err error) bool {
 		strings.Contains(s, "token has been expired or revoked")
 }
 
+// authExpiredErr is a custom error type for expired/revoked OAuth tokens.
+// Its Error() returns the clean, actionable user-facing message without the raw oauth2
+// error text. Unwrap returns both ErrAuthExpired and the underlying cause so that
+// errors.Is(err, ErrAuthExpired) and errors.Is(err, cause) both work correctly.
+type authExpiredErr struct {
+	msg   string
+	cause error
+}
+
+func (e *authExpiredErr) Error() string { return e.msg }
+
+// Unwrap returns both sentinel errors so errors.Is covers both ErrAuthExpired and the cause.
+func (e *authExpiredErr) Unwrap() []error { return []error{ErrAuthExpired, e.cause} }
+
 // authExpiredError builds a structured, actionable error for an expired or revoked OAuth token.
-// The returned error wraps ErrAuthExpired (detectable with errors.Is) and also wraps the
-// original oauth2 error (preserving the full chain via %w). The user-facing message includes:
+// The user-facing Error() string includes:
 //   - the affected account email
 //   - the exact re-auth command or browser URL needed
 //   - a note that no MCP server restart is required after re-authentication
+//
+// The original oauth2 cause is accessible via errors.Is/errors.As but is NOT included in
+// the user-facing string — callers (MCP clients) see only the actionable instruction.
 func (m *Manager) authExpiredError(email string, cause error) error {
 	var reAuthInstr string
 	if m.AuthServerURL != "" {
@@ -545,8 +561,9 @@ func (m *Manager) authExpiredError(email string, cause error) error {
 	} else {
 		reAuthInstr = fmt.Sprintf("run: gsuite-mcp auth  (then sign in as %s)", email)
 	}
-	return fmt.Errorf("%w: OAuth token for %s has expired or been revoked — to re-authenticate: %s (no MCP server restart needed): %w",
-		ErrAuthExpired, email, reAuthInstr, cause)
+	msg := fmt.Sprintf("OAuth token for %s has expired or been revoked — to re-authenticate: %s (no MCP server restart needed)",
+		email, reAuthInstr)
+	return &authExpiredErr{msg: msg, cause: cause}
 }
 
 // loadTokenForEmail loads the stored token for an email address.

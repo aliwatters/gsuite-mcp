@@ -371,7 +371,8 @@ func TestErrAuthExpired_IsDetectable(t *testing.T) {
 func TestAuthExpiredError_CLIFallback(t *testing.T) {
 	// When no AuthServerURL is set, the remediation message must include the
 	// gsuite-mcp auth CLI command, the affected account, and a note that no
-	// MCP server restart is required.
+	// MCP server restart is required. The raw oauth2 error must NOT appear in
+	// the user-facing string (it stays in the error chain for errors.Is only).
 	m := &Manager{}
 	cause := fmt.Errorf("oauth2: %q %q", "invalid_grant", "Token has been expired or revoked.")
 	email := "user@example.com"
@@ -391,15 +392,19 @@ func TestAuthExpiredError_CLIFallback(t *testing.T) {
 	if !strings.Contains(msg, "no MCP server restart") {
 		t.Errorf("expected 'no MCP server restart' in error message, got: %s", msg)
 	}
-	// Original error must be preserved in the chain.
+	// Original error must be preserved in the chain (not in Error() string, but via errors.Is).
 	if !errors.Is(err, cause) {
 		t.Error("expected original cause error to be preserved in the error chain")
+	}
+	// Raw oauth2 error text must NOT appear in the user-facing message.
+	if strings.Contains(msg, "oauth2:") {
+		t.Errorf("raw oauth2 error text should not appear in user-facing message, got: %s", msg)
 	}
 }
 
 func TestAuthExpiredError_AuthServerURL(t *testing.T) {
 	// When AuthServerURL is set, the remediation message must surface the browser
-	// URL (with the account query param) instead of the CLI command.
+	// URL with the account query param (?account=<email>) instead of the CLI command.
 	m := &Manager{AuthServerURL: "http://localhost:38917/auth"}
 	cause := fmt.Errorf("oauth2: invalid_grant")
 	email := "work@company.com"
@@ -413,15 +418,23 @@ func TestAuthExpiredError_AuthServerURL(t *testing.T) {
 	if !strings.Contains(msg, "http://localhost:38917/auth") {
 		t.Errorf("expected auth server URL in error message, got: %s", msg)
 	}
+	// The ?account= query parameter must be present so the user gets a one-click URL.
+	if !strings.Contains(msg, "?account=") {
+		t.Errorf("expected '?account=' query param in error message, got: %s", msg)
+	}
 	if !strings.Contains(msg, email) {
 		t.Errorf("expected account email %q in error message, got: %s", email, msg)
 	}
 	if !strings.Contains(msg, "no MCP server restart") {
 		t.Errorf("expected 'no MCP server restart' in error message, got: %s", msg)
 	}
-	// Original error must be preserved in the chain.
+	// Original error must be preserved in the chain (not in Error() string, but via errors.Is).
 	if !errors.Is(err, cause) {
 		t.Error("expected original cause error to be preserved in the error chain")
+	}
+	// Raw oauth2 error text must NOT appear in the user-facing message.
+	if strings.Contains(msg, "oauth2:") {
+		t.Errorf("raw oauth2 error text should not appear in user-facing message, got: %s", msg)
 	}
 }
 
@@ -477,6 +490,10 @@ func TestGetClientForEmail_InvalidGrantSurfacesRemediation(t *testing.T) {
 	}
 	if !strings.Contains(msg, "no MCP server restart") {
 		t.Errorf("expected 'no MCP server restart' note in error message, got: %s", msg)
+	}
+	// Raw oauth2 error text must NOT appear in the user-facing message.
+	if strings.Contains(msg, "invalid_grant") {
+		t.Errorf("raw 'invalid_grant' text should not appear in user-facing message, got: %s", msg)
 	}
 }
 
