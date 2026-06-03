@@ -499,15 +499,10 @@ func (m *Manager) GetClientForEmail(ctx context.Context, email string) (*http.Cl
 		// Classify invalid_grant / token expired errors so callers can surface
 		// a clean re-auth instruction instead of a raw oauth2 error string.
 		if isAuthExpiredError(err) {
-			reAuthCmd := "gsuite-mcp auth"
-			if m.AuthServerURL != "" {
-				reAuthCmd = m.AuthServerURL + "?account=" + url.QueryEscape(email)
-			}
 			log.Printf("[oauth] refresh: account=%s result=failure(invalid_grant) — re-auth required", email)
 			// Evict the stale cached source so the next auth attempt starts fresh.
 			m.sources.Delete(email)
-			return nil, fmt.Errorf("%w: token for %s has expired or been revoked; re-authenticate with: %s: %w",
-				ErrAuthExpired, email, reAuthCmd, err)
+			return nil, m.authExpiredError(email, err)
 		}
 		log.Printf("[oauth] refresh: account=%s result=failure(%v)", email, err)
 		return nil, fmt.Errorf("refreshing token for %s: %w", email, err)
@@ -534,6 +529,24 @@ func isAuthExpiredError(err error) bool {
 	return strings.Contains(s, "invalid_grant") ||
 		strings.Contains(s, "Token has been expired or revoked") ||
 		strings.Contains(s, "token has been expired or revoked")
+}
+
+// authExpiredError builds a structured, actionable error for an expired or revoked OAuth token.
+// The returned error wraps ErrAuthExpired (detectable with errors.Is) and also wraps the
+// original oauth2 error (preserving the full chain via %w). The user-facing message includes:
+//   - the affected account email
+//   - the exact re-auth command or browser URL needed
+//   - a note that no MCP server restart is required after re-authentication
+func (m *Manager) authExpiredError(email string, cause error) error {
+	var reAuthInstr string
+	if m.AuthServerURL != "" {
+		// The persistent HTTP auth server is running; surface the browser URL directly.
+		reAuthInstr = fmt.Sprintf("open %s?account=%s in your browser", m.AuthServerURL, url.QueryEscape(email))
+	} else {
+		reAuthInstr = fmt.Sprintf("run: gsuite-mcp auth  (then sign in as %s)", email)
+	}
+	return fmt.Errorf("%w: OAuth token for %s has expired or been revoked — to re-authenticate: %s (no MCP server restart needed): %w",
+		ErrAuthExpired, email, reAuthInstr, cause)
 }
 
 // loadTokenForEmail loads the stored token for an email address.
