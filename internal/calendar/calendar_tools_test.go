@@ -159,6 +159,9 @@ func TestCalendarGetEvent(t *testing.T) {
 			args: map[string]any{
 				"event_id": "event001",
 			},
+			setupMock: func(m *MockCalendarService) {
+				m.Events["primary"]["event001"].ColorId = "4"
+			},
 			validate: func(t *testing.T, result string) {
 				var data map[string]any
 				if err := json.Unmarshal([]byte(result), &data); err != nil {
@@ -169,6 +172,9 @@ func TestCalendarGetEvent(t *testing.T) {
 				}
 				if data["summary"] != "Team Meeting" {
 					t.Errorf("expected summary 'Team Meeting', got %v", data["summary"])
+				}
+				if data["color_id"] != "4" {
+					t.Errorf("expected color_id '4', got %v", data["color_id"])
 				}
 			},
 		},
@@ -437,6 +443,9 @@ func TestCalendarCreateEventWithColorID(t *testing.T) {
 	if event.ColorId != "9" {
 		t.Errorf("expected color ID '9', got %q", event.ColorId)
 	}
+	if data["color_id"] != "9" {
+		t.Errorf("expected response color_id '9', got %v", data["color_id"])
+	}
 }
 
 // ============================================================================
@@ -572,6 +581,13 @@ func TestCalendarUpdateEventColorID(t *testing.T) {
 		}
 		if got := fixtures.MockService.Events["primary"]["event001"].ColorId; got != "9" {
 			t.Errorf("expected color ID '9', got %q", got)
+		}
+		var data map[string]any
+		if err := json.Unmarshal([]byte(getCalendarTextContent(result)), &data); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		if data["color_id"] != "9" {
+			t.Errorf("expected response color_id '9', got %v", data["color_id"])
 		}
 	})
 
@@ -932,6 +948,19 @@ func TestFormatEvent(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "format event with color ID",
+			event: func() *calendar.Event {
+				e := createTestEvent("test4", "Colored Meeting", "", "2024-02-01T10:00:00-08:00", "2024-02-01T11:00:00-08:00", false)
+				e.ColorId = "9"
+				return e
+			},
+			validate: func(t *testing.T, result map[string]any) {
+				if result["color_id"] != "9" {
+					t.Errorf("expected color_id '9', got %v", result["color_id"])
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -981,6 +1010,19 @@ func TestFormatEventFull(t *testing.T) {
 				}
 				if len(attendees) != 2 {
 					t.Errorf("expected 2 attendees, got %d", len(attendees))
+				}
+			},
+		},
+		{
+			name: "full format includes color ID",
+			event: func() *calendar.Event {
+				e := createTestEvent("test3", "Colored Meeting", "Test Description", "2024-02-01T10:00:00-08:00", "2024-02-01T11:00:00-08:00", false)
+				e.ColorId = "7"
+				return e
+			},
+			validate: func(t *testing.T, result map[string]any) {
+				if result["color_id"] != "7" {
+					t.Errorf("expected color_id '7', got %v", result["color_id"])
 				}
 			},
 		},
