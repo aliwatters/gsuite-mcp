@@ -406,6 +406,39 @@ func TestCalendarCreateEvent(t *testing.T) {
 	}
 }
 
+func TestCalendarCreateEventWithColorID(t *testing.T) {
+	fixtures := NewCalendarTestFixtures()
+
+	request := CreateMCPRequest(map[string]any{
+		"summary":    "Colored Meeting",
+		"start_time": "2024-03-01T10:00:00-08:00",
+		"color_id":   "9",
+	})
+	result, err := TestableCalendarCreateEvent(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected error result: %s", getCalendarTextContent(result))
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal([]byte(getCalendarTextContent(result)), &data); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	eventID, ok := data["id"].(string)
+	if !ok || eventID == "" {
+		t.Fatalf("expected event id in response, got %v", data["id"])
+	}
+	event := fixtures.MockService.Events["primary"][eventID]
+	if event == nil {
+		t.Fatalf("expected created event %q in mock storage", eventID)
+	}
+	if event.ColorId != "9" {
+		t.Errorf("expected color ID '9', got %q", event.ColorId)
+	}
+}
+
 // ============================================================================
 // calendar_update_event tests
 // ============================================================================
@@ -519,6 +552,68 @@ func TestCalendarUpdateEvent(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCalendarUpdateEventColorID(t *testing.T) {
+	t.Run("updates color ID when provided", func(t *testing.T) {
+		fixtures := NewCalendarTestFixtures()
+		fixtures.MockService.Events["primary"]["event001"].ColorId = "4"
+
+		request := CreateMCPRequest(map[string]any{
+			"event_id": "event001",
+			"color_id": "9",
+		})
+		result, err := TestableCalendarUpdateEvent(context.Background(), request, fixtures.Deps)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("unexpected error result: %s", getCalendarTextContent(result))
+		}
+		if got := fixtures.MockService.Events["primary"]["event001"].ColorId; got != "9" {
+			t.Errorf("expected color ID '9', got %q", got)
+		}
+	})
+
+	t.Run("preserves color ID when omitted", func(t *testing.T) {
+		fixtures := NewCalendarTestFixtures()
+		fixtures.MockService.Events["primary"]["event001"].ColorId = "4"
+
+		request := CreateMCPRequest(map[string]any{
+			"event_id": "event001",
+			"summary":  "Updated Meeting Title",
+		})
+		result, err := TestableCalendarUpdateEvent(context.Background(), request, fixtures.Deps)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("unexpected error result: %s", getCalendarTextContent(result))
+		}
+		if got := fixtures.MockService.Events["primary"]["event001"].ColorId; got != "4" {
+			t.Errorf("expected color ID to remain '4', got %q", got)
+		}
+	})
+
+	t.Run("preserves color ID when empty", func(t *testing.T) {
+		fixtures := NewCalendarTestFixtures()
+		fixtures.MockService.Events["primary"]["event001"].ColorId = "4"
+
+		request := CreateMCPRequest(map[string]any{
+			"event_id": "event001",
+			"color_id": "",
+		})
+		result, err := TestableCalendarUpdateEvent(context.Background(), request, fixtures.Deps)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.IsError {
+			t.Fatalf("unexpected error result: %s", getCalendarTextContent(result))
+		}
+		if got := fixtures.MockService.Events["primary"]["event001"].ColorId; got != "4" {
+			t.Errorf("expected color ID to remain '4', got %q", got)
+		}
+	})
 }
 
 // ============================================================================
