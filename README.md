@@ -21,7 +21,7 @@ gsuite-mcp auth personal
 # Add to your MCP client config
 ```
 
-`install.sh` builds the binary to `~/.local/bin/gsuite-mcp` and skips a rebuild if the installed version already matches HEAD. Re-run with `--force` or `FORCE_REBUILD=1` to force a rebuild. Set `INSTALL_PREFIX` to change the install location.
+`install.sh` builds the MCP harness binary to `~/.local/libexec/gsuite-mcp` and also installs a PATH/CLI copy at `~/.local/bin/gsuite-mcp`. It skips a rebuild only when both installed binaries match HEAD. Re-run with `--force` or `FORCE_REBUILD=1` to force a rebuild. Set `INSTALL_PREFIX` to change the install location.
 
 ## Why gsuite-mcp?
 
