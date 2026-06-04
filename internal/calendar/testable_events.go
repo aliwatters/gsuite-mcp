@@ -133,6 +133,10 @@ func TestableCalendarCreateEvent(ctx context.Context, request mcp.CallToolReques
 		event.Location = loc
 	}
 
+	if colorID := common.ParseStringArg(request.GetArguments(), "color_id", ""); colorID != "" {
+		event.ColorId = colorID
+	}
+
 	// Set start/end times (required start_time, optional end_time/all_day/timezone)
 	if errResult := setNewEventTimes(event, request.GetArguments()); errResult != nil {
 		return errResult, nil
@@ -206,6 +210,9 @@ func TestableCalendarUpdateEvent(ctx context.Context, request mcp.CallToolReques
 	}
 	if val, ok := request.GetArguments()["location"].(string); ok {
 		event.Location = val
+	}
+	if colorID := common.ParseStringArg(request.GetArguments(), "color_id", ""); colorID != "" {
+		event.ColorId = colorID
 	}
 
 	// Update times if provided
