@@ -12,15 +12,13 @@ Get from zero to working in under 10 minutes.
 ### From Source (Recommended)
 
 ```bash
-# Clone and build
+# Clone and install
 git clone https://github.com/aliwatters/gsuite-mcp.git
 cd gsuite-mcp
-go build -o gsuite-mcp ./cmd/gsuite-mcp/
-
-# Move to your PATH
-mv gsuite-mcp ~/.local/bin/
-# or: sudo mv gsuite-mcp /usr/local/bin/
+./install.sh
 ```
+
+This installs the MCP harness binary to `~/.local/libexec/gsuite-mcp` and a PATH/CLI copy to `~/.local/bin/gsuite-mcp`.
 
 ### Verify Installation
 
@@ -136,7 +134,7 @@ Add to `~/.claude/claude_desktop_config.json` (create if it doesn't exist):
 }
 ```
 
-Replace `/path/to/gsuite-mcp` with the actual path (e.g., `/Users/you/.local/bin/gsuite-mcp`).
+Replace `/path/to/gsuite-mcp` with the actual MCP harness path (e.g., `/Users/you/.local/libexec/gsuite-mcp`).
 
 ### Claude Desktop
 

@@ -12,8 +12,9 @@
 #   INSTALL_PREFIX=/opt ./install.sh
 #
 # Environment:
-#   INSTALL_PREFIX   Install root (default: $HOME/.local). gsuite-mcp goes to
-#                    $INSTALL_PREFIX/bin/gsuite-mcp.
+#   INSTALL_PREFIX   Install root (default: $HOME/.local). The MCP harness
+#                    binary goes to $INSTALL_PREFIX/libexec/gsuite-mcp, and a
+#                    PATH/CLI copy goes to $INSTALL_PREFIX/bin/gsuite-mcp.
 #   XDG_DATA_HOME    Where the version stamp is recorded. Defaults to
 #                    $HOME/.local/share. The stamp file is at
 #                    $XDG_DATA_HOME/gsuite-mcp/version.
@@ -71,7 +72,9 @@ fi
 
 INSTALL_PREFIX="${INSTALL_PREFIX:-$HOME/.local}"
 BIN_DIR="$INSTALL_PREFIX/bin"
-BINARY="$BIN_DIR/gsuite-mcp"
+LIBEXEC_DIR="$INSTALL_PREFIX/libexec"
+CLI_BINARY="$BIN_DIR/gsuite-mcp"
+HARNESS_BINARY="$LIBEXEC_DIR/gsuite-mcp"
 
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 STAMP_DIR="$XDG_DATA_HOME/gsuite-mcp"
@@ -119,31 +122,51 @@ if [[ -f "$STAMP_FILE" ]]; then
     INSTALLED_HEAD="$(cat "$STAMP_FILE" 2>/dev/null || true)"
 fi
 
+binary_matches_head() {
+    local binary="$1"
+    local version_output
+
+    if [[ ! -x "$binary" ]]; then
+        return 1
+    fi
+
+    version_output="$("$binary" version 2>/dev/null || true)"
+    [[ "$version_output" == *"($GIT_HEAD)"* ]]
+}
+
 # --- Idempotency check ------------------------------------------------------
 
 if [[ "$FORCE" -ne 1 ]] \
-   && [[ -x "$BINARY" ]] \
+   && binary_matches_head "$HARNESS_BINARY" \
+   && binary_matches_head "$CLI_BINARY" \
    && [[ -n "$INSTALLED_HEAD" ]] \
    && [[ "$INSTALLED_HEAD" == "$GIT_HEAD" ]]; then
     echo "gsuite-mcp already installed at $GIT_HEAD; nothing to do"
-    echo "  binary: $BINARY"
+    echo "  harness binary: $HARNESS_BINARY"
+    echo "  cli binary:     $CLI_BINARY"
     echo "(re-run with --force or FORCE_REBUILD=1 to rebuild)"
     exit 0
 fi
 
 # --- Build ------------------------------------------------------------------
 
-mkdir -p "$BIN_DIR" "$STAMP_DIR"
+mkdir -p "$LIBEXEC_DIR" "$BIN_DIR" "$STAMP_DIR"
 
 echo "Building gsuite-mcp (HEAD=$GIT_HEAD)"
+BUILD_BINARY="$HARNESS_BINARY.tmp.$$"
+rm -f "$BUILD_BINARY"
 if ! go build \
         -ldflags "-X main.GitCommit=$GIT_HEAD" \
-        -o "$BINARY" \
+        -o "$BUILD_BINARY" \
         ./cmd/gsuite-mcp/; then
+    rm -f "$BUILD_BINARY"
     echo "Error: gsuite-mcp build failed" >&2
     exit 1
 fi
-chmod +x "$BINARY"
+mv "$BUILD_BINARY" "$HARNESS_BINARY"
+chmod +x "$HARNESS_BINARY"
+cp "$HARNESS_BINARY" "$CLI_BINARY"
+chmod +x "$CLI_BINARY"
 
 # --- Record version stamp ---------------------------------------------------
 
@@ -153,8 +176,9 @@ printf '%s\n' "$GIT_HEAD" > "$STAMP_FILE"
 
 echo
 echo "Installed gsuite-mcp at $GIT_HEAD"
-echo "  binary: $BINARY"
-echo "  stamp:  $STAMP_FILE"
+echo "  harness binary: $HARNESS_BINARY"
+echo "  cli binary:     $CLI_BINARY"
+echo "  stamp:          $STAMP_FILE"
 
 # Hint about PATH
 case ":$PATH:" in
