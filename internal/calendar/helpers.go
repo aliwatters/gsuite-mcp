@@ -35,6 +35,10 @@ func formatEvent(event *calendar.Event) map[string]any {
 		result["location"] = event.Location
 	}
 
+	if event.ColorId != "" {
+		result["color_id"] = event.ColorId
+	}
+
 	if event.EventType != "" && event.EventType != "default" {
 		result["event_type"] = event.EventType
 	}

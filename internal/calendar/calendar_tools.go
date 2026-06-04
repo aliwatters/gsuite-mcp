@@ -15,9 +15,9 @@ import (
 // These reduce response payload size by only requesting needed fields.
 const (
 	// CalendarEventListFields contains fields for event listings (compact format)
-	CalendarEventListFields = "nextPageToken,items(id,summary,status,start,end,location,htmlLink,hangoutLink,eventType)"
+	CalendarEventListFields = "nextPageToken,items(id,summary,status,start,end,location,colorId,htmlLink,hangoutLink,eventType)"
 	// CalendarEventGetFields contains fields for single event retrieval (full format)
-	CalendarEventGetFields = "id,summary,status,description,location,start,end,htmlLink,created,updated,creator,organizer,attendees,reminders,recurrence,recurringEventId,hangoutLink,conferenceData,eventType"
+	CalendarEventGetFields = "id,summary,status,description,location,colorId,start,end,htmlLink,created,updated,creator,organizer,attendees,reminders,recurrence,recurringEventId,hangoutLink,conferenceData,eventType"
 	// CalendarListFields contains fields for calendar list
 	CalendarListFields = "items(id,summary,description,primary,backgroundColor,accessRole,timeZone)"
 )
