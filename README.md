@@ -410,6 +410,31 @@ The default OAuth callback port is **38917**. Override it in `config.json`:
 
 Or via environment variable: `GSUITE_MCP_OAUTH_PORT=9000`
 
+### Vendor-Neutral OAuth Token Command Hook
+
+Set `GSUITE_OAUTH_TOKEN_CMD` to supply OAuth refresh tokens from any external secret source
+(password manager, vault, environment injection — any tool that can print a token to stdout).
+
+**Contract**:
+- The command receives the account identifier (email address) as its first argument.
+- It must print the OAuth refresh token to stdout and exit 0.
+- Non-zero exit = failure; gsuite-mcp logs the exit code and stderr, then returns a clear error.
+
+```bash
+# Example: use any secret-retrieval tool that accepts an account id and prints a token
+export GSUITE_OAUTH_TOKEN_CMD="my-secret-tool get-oauth-token"
+
+# gsuite-mcp will call: my-secret-tool get-oauth-token user@example.com
+# and use the token printed to stdout as the OAuth refresh token for that account.
+```
+
+When `GSUITE_OAUTH_TOKEN_CMD` is **not set**, gsuite-mcp reads tokens from local JSON files
+in the credentials directory (default behaviour — unchanged). The env var is process-wide:
+all accounts use the hook when it is set.
+
+The hook is secret-manager agnostic. It works with 1Password CLI, HashiCorp Vault,
+`pass`, environment injection, or any other tool that follows the contract above.
+
 ### Drive Access Filtering
 
 Restrict which shared drives are accessible via MCP tools. Add `drive_access` to `config.json`:
@@ -467,6 +492,19 @@ go test -tags=e2e -v -count=1 ./e2e/...
 Tests create temporary artifacts (emails, labels, events, files, task lists) and clean up after themselves. The test account should be a dedicated account, not a production mailbox.
 
 See [docs/AGENTS.md](docs/AGENTS.md) for contribution guidelines.
+
+## Releases
+
+gsuite-mcp uses a **patch-first** versioning policy — an intentional deviation from strict SemVer:
+
+| Change type | Bump |
+|---|---|
+| Bug fix | patch |
+| Small / low-risk additive feature (e.g. a new optional parameter) | **patch** |
+| Larger feature set (multiple tools, new service area) | minor |
+| Breaking change (removed/renamed tool or param, behavior change) | major |
+
+See [RELEASING.md](RELEASING.md) for the full policy, rationale, and release process.
 
 ## Roadmap
 

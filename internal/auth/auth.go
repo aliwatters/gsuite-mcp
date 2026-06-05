@@ -402,7 +402,9 @@ func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) err
 	// empty RefreshToken would permanently destroy the user's offline access.
 	refreshToken := oauth2Token.RefreshToken
 	if refreshToken == "" {
-		existing, loadErr := loadTokenForEmail(email)
+		// Always read from the local file for refresh-token preservation — the
+		// token-command hook is for loading, not for persisting OAuth state.
+		existing, loadErr := loadTokenFromFile(email)
 		if loadErr != nil {
 			// Loading the existing credential failed (corrupt JSON, permission issue, etc.).
 			// We MUST NOT silently overwrite the file with an empty refresh_token — that is
@@ -566,8 +568,73 @@ func (m *Manager) authExpiredError(email string, cause error) error {
 	return &authExpiredErr{msg: msg, cause: cause}
 }
 
-// loadTokenForEmail loads the stored token for an email address.
-func loadTokenForEmail(email string) (*Token, error) {
+// oauthTokenCmdEnv is the environment variable that, when set, enables the
+// vendor-neutral OAuth token command hook. The named command is executed with
+// the account identifier (email) as its first argument; it must print the
+// OAuth refresh token to stdout and exit 0 on success, or exit non-zero on
+// failure.
+const oauthTokenCmdEnv = "GSUITE_OAUTH_TOKEN_CMD"
+
+// loadTokenViaCmd executes the command specified by oauthTokenCmdEnv with
+// email as the first argument and returns a Token whose RefreshToken field is
+// populated from the command's stdout.
+//
+// The Manager's oauthConfig (loaded from client_secret.json) is the authoritative
+// source for client credentials during token exchange — the Token.ClientID,
+// ClientSecret, TokenURI, and Scopes fields are best-effort seeds from the local
+// credential file (if it exists) and are used only if the file is written back to
+// disk. They do not affect how GetClientForEmail exchanges the refresh token.
+//
+// Returns an explicit, logged error when:
+//   - the command exits non-zero (non-zero exit = handled error, not swallowed)
+//   - the command produces no output
+func loadTokenViaCmd(email, cmd string) (*Token, error) {
+	parts := strings.Fields(cmd)
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("GSUITE_OAUTH_TOKEN_CMD is set but empty")
+	}
+
+	// Append the account identifier as the first positional argument.
+	args := append(parts[1:], email)
+	c := exec.Command(parts[0], args...)
+	out, err := c.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			log.Printf("[oauth] token-cmd: account=%s cmd=%q exit_code=%d stderr=%q",
+				email, cmd, exitErr.ExitCode(), strings.TrimSpace(string(exitErr.Stderr)))
+			return nil, fmt.Errorf("GSUITE_OAUTH_TOKEN_CMD exited %d for account %s: %w",
+				exitErr.ExitCode(), email, err)
+		}
+		log.Printf("[oauth] token-cmd: account=%s cmd=%q error=%v", email, cmd, err)
+		return nil, fmt.Errorf("running GSUITE_OAUTH_TOKEN_CMD for account %s: %w", email, err)
+	}
+
+	refreshToken := strings.TrimSpace(string(out))
+	if refreshToken == "" {
+		log.Printf("[oauth] token-cmd: account=%s cmd=%q result=empty-output", email, cmd)
+		return nil, fmt.Errorf("GSUITE_OAUTH_TOKEN_CMD produced no output for account %s", email)
+	}
+
+	log.Printf("[oauth] token-cmd: account=%s result=ok", email)
+
+	// Best-effort: seed ClientID/ClientSecret/TokenURI/Scopes from the local file
+	// so they are preserved if saveTokenForEmail writes the credential to disk later.
+	// These fields are NOT used for token exchange — the Manager's oauthConfig is.
+	token := &Token{RefreshToken: refreshToken}
+	if existing, loadErr := loadTokenFromFile(email); loadErr == nil {
+		token.TokenURI = existing.TokenURI
+		token.ClientID = existing.ClientID
+		token.ClientSecret = existing.ClientSecret
+		token.Scopes = existing.Scopes
+	}
+
+	return token, nil
+}
+
+// loadTokenFromFile loads the stored token for an email address directly from
+// the local credential file, bypassing any token-command hook.
+func loadTokenFromFile(email string) (*Token, error) {
 	path := config.CredentialPathForEmail(email)
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -583,6 +650,22 @@ func loadTokenForEmail(email string) (*Token, error) {
 	}
 
 	return &token, nil
+}
+
+// loadTokenForEmail loads the stored OAuth token for an email address.
+//
+// Resolution order:
+//  1. If GSUITE_OAUTH_TOKEN_CMD is set, execute it with email as the argument
+//     and use the refresh token it prints to stdout. The local credential file
+//     is used only to seed the client-credential fields (ClientID, ClientSecret,
+//     TokenURI, Scopes) if it exists.
+//  2. Otherwise, read the token directly from the local JSON credential file
+//     (default and offline-fallback behaviour — unchanged from before).
+func loadTokenForEmail(email string) (*Token, error) {
+	if cmd := os.Getenv(oauthTokenCmdEnv); cmd != "" {
+		return loadTokenViaCmd(email, cmd)
+	}
+	return loadTokenFromFile(email)
 }
 
 // GetClientOrAuthenticate returns an authenticated HTTP client for the given email.

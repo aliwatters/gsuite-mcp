@@ -206,8 +206,13 @@ Configuration:
   Client secret:  %s
 
 Environment variables:
-  GSUITE_MCP_CONFIG_DIR   Override config directory (same as --config-dir)
-  GSUITE_MCP_OAUTH_PORT   Override OAuth callback port (default: %d)
+  GSUITE_MCP_CONFIG_DIR    Override config directory (same as --config-dir)
+  GSUITE_MCP_OAUTH_PORT    Override OAuth callback port (default: %d)
+  GSUITE_OAUTH_TOKEN_CMD   Command to retrieve an OAuth refresh token from an external
+                            secret source. The command receives the account email as its
+                            first argument and must print the token to stdout; non-zero
+                            exit is treated as an error. When unset, tokens are read from
+                            local JSON files (default behaviour).
 
 For more information, see README.md
 `, serverName, serverName, serverName, serverName, serverName, serverName,
