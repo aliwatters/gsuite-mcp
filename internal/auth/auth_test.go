@@ -678,7 +678,7 @@ func TestSaveTokenForEmail_CredentialFilePermissions(t *testing.T) {
 
 	email := "perm@example.com"
 	token := &oauth2.Token{
-		AccessToken:  "access",
+		AccessToken:  "refresh",
 		RefreshToken: "refresh",
 		Expiry:       time.Now().Add(time.Hour),
 	}
@@ -696,5 +696,111 @@ func TestSaveTokenForEmail_CredentialFilePermissions(t *testing.T) {
 	// the constant itself would make this test vacuously pass (both sides move together).
 	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Errorf("expected file mode 0600, got %04o", perm)
+	}
+}
+
+// === GSUITE_OAUTH_TOKEN_CMD hook tests ===
+
+func TestLoadTokenViaCmd_SuppliesRefreshToken(t *testing.T) {
+	// When GSUITE_OAUTH_TOKEN_CMD is set, loadTokenForEmail must execute the command
+	// with the account email as the argument and use its stdout as the refresh token.
+	dir := t.TempDir()
+	config.SetConfigDir(dir)
+	t.Cleanup(func() {
+		config.SetConfigDir("")
+		os.Unsetenv(oauthTokenCmdEnv)
+	})
+
+	email := "cmd@example.com"
+	wantToken := "refresh-from-command"
+
+	// Write a small shell script that ignores its argument and prints a fixed token.
+	scriptPath := filepath.Join(dir, "get-token.sh")
+	script := "#!/bin/sh\necho " + wantToken + "\n"
+	if err := os.WriteFile(scriptPath, []byte(script), 0700); err != nil {
+		t.Fatalf("writing test script: %v", err)
+	}
+
+	t.Setenv(oauthTokenCmdEnv, scriptPath)
+
+	token, err := loadTokenForEmail(email)
+	if err != nil {
+		t.Fatalf("loadTokenForEmail with cmd hook failed: %v", err)
+	}
+	if token.RefreshToken != wantToken {
+		t.Errorf("expected refresh token %q from command, got %q", wantToken, token.RefreshToken)
+	}
+}
+
+func TestLoadTokenViaCmd_NonZeroExitReturnsError(t *testing.T) {
+	// A non-zero exit from GSUITE_OAUTH_TOKEN_CMD must return a clear error
+	// (not a silent failure / swallowed error).
+	dir := t.TempDir()
+	config.SetConfigDir(dir)
+	t.Cleanup(func() {
+		config.SetConfigDir("")
+		os.Unsetenv(oauthTokenCmdEnv)
+	})
+
+	email := "fail@example.com"
+	t.Setenv(oauthTokenCmdEnv, "false") // 'false' always exits 1
+
+	_, err := loadTokenForEmail(email)
+	if err == nil {
+		t.Fatal("expected error from non-zero exit command, got nil")
+	}
+	if !strings.Contains(err.Error(), "GSUITE_OAUTH_TOKEN_CMD") {
+		t.Errorf("expected GSUITE_OAUTH_TOKEN_CMD in error message, got: %v", err)
+	}
+}
+
+func TestLoadTokenViaCmd_EmptyOutputReturnsError(t *testing.T) {
+	// A command that exits 0 but prints nothing must return a clear error.
+	dir := t.TempDir()
+	config.SetConfigDir(dir)
+	t.Cleanup(func() {
+		config.SetConfigDir("")
+		os.Unsetenv(oauthTokenCmdEnv)
+	})
+
+	email := "empty@example.com"
+	t.Setenv(oauthTokenCmdEnv, "true") // 'true' exits 0 and prints nothing
+
+	_, err := loadTokenForEmail(email)
+	if err == nil {
+		t.Fatal("expected error from empty-output command, got nil")
+	}
+	if !strings.Contains(err.Error(), "no output") {
+		t.Errorf("expected 'no output' in error message, got: %v", err)
+	}
+}
+
+func TestLoadTokenForEmail_UnsetCmd_ReadsLocalFile(t *testing.T) {
+	// When GSUITE_OAUTH_TOKEN_CMD is not set, loadTokenForEmail must read from
+	// the local JSON credential file (unchanged default behaviour).
+	dir := t.TempDir()
+	m := newTestManager(t, dir)
+
+	email := "local@example.com"
+	wantRefresh := "local-refresh-token"
+
+	initial := &oauth2.Token{
+		AccessToken:  "access",
+		RefreshToken: wantRefresh,
+		Expiry:       time.Now().Add(time.Hour),
+	}
+	if err := m.saveTokenForEmail(email, initial); err != nil {
+		t.Fatalf("saving token: %v", err)
+	}
+
+	// Ensure env var is not set.
+	os.Unsetenv(oauthTokenCmdEnv)
+
+	token, err := loadTokenForEmail(email)
+	if err != nil {
+		t.Fatalf("loadTokenForEmail without cmd: %v", err)
+	}
+	if token.RefreshToken != wantRefresh {
+		t.Errorf("expected refresh token %q from local file, got %q", wantRefresh, token.RefreshToken)
 	}
 }
