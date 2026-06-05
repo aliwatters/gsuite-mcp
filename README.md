@@ -429,8 +429,8 @@ export GSUITE_OAUTH_TOKEN_CMD="my-secret-tool get-oauth-token"
 ```
 
 When `GSUITE_OAUTH_TOKEN_CMD` is **not set**, gsuite-mcp reads tokens from local JSON files
-in the credentials directory (default behaviour — unchanged). You can use local files for
-some accounts and the command hook for others by ensuring the env var is set only when needed.
+in the credentials directory (default behaviour — unchanged). The env var is process-wide:
+all accounts use the hook when it is set.
 
 The hook is secret-manager agnostic. It works with 1Password CLI, HashiCorp Vault,
 `pass`, environment injection, or any other tool that follows the contract above.

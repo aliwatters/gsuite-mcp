@@ -714,9 +714,17 @@ func TestLoadTokenViaCmd_SuppliesRefreshToken(t *testing.T) {
 	email := "cmd@example.com"
 	wantToken := "refresh-from-command"
 
-	// Write a small shell script that ignores its argument and prints a fixed token.
+	// Write a shell script that verifies it received the email as $1 and prints the token.
+	// This validates both that stdout is used as the refresh token AND that the account
+	// email is correctly passed as the first argument (per the GSUITE_OAUTH_TOKEN_CMD contract).
 	scriptPath := filepath.Join(dir, "get-token.sh")
-	script := "#!/bin/sh\necho " + wantToken + "\n"
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = \"" + email + "\" ]; then\n" +
+		"  echo " + wantToken + "\n" +
+		"else\n" +
+		"  echo \"unexpected account: $1\" >&2\n" +
+		"  exit 2\n" +
+		"fi\n"
 	if err := os.WriteFile(scriptPath, []byte(script), 0700); err != nil {
 		t.Fatalf("writing test script: %v", err)
 	}

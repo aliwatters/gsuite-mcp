@@ -577,13 +577,13 @@ const oauthTokenCmdEnv = "GSUITE_OAUTH_TOKEN_CMD"
 
 // loadTokenViaCmd executes the command specified by oauthTokenCmdEnv with
 // email as the first argument and returns a Token whose RefreshToken field is
-// populated from the command's stdout. The rest of the token fields (client
-// credentials, scopes, token_uri) are read from the local credential file so
-// that the token can be exchanged normally — only the refresh_token is
-// supplied by the external command.
+// populated from the command's stdout.
 //
-// If the local credential file does not exist the token fields are left at
-// their zero values; callers that need client credentials should handle this.
+// The Manager's oauthConfig (loaded from client_secret.json) is the authoritative
+// source for client credentials during token exchange — the Token.ClientID,
+// ClientSecret, TokenURI, and Scopes fields are best-effort seeds from the local
+// credential file (if it exists) and are used only if the file is written back to
+// disk. They do not affect how GetClientForEmail exchanges the refresh token.
 //
 // Returns an explicit, logged error when:
 //   - the command exits non-zero (non-zero exit = handled error, not swallowed)
@@ -618,8 +618,9 @@ func loadTokenViaCmd(email, cmd string) (*Token, error) {
 
 	log.Printf("[oauth] token-cmd: account=%s result=ok", email)
 
-	// Seed the token struct with client credentials from the local file when
-	// it exists, so that the token source can exchange correctly.
+	// Best-effort: seed ClientID/ClientSecret/TokenURI/Scopes from the local file
+	// so they are preserved if saveTokenForEmail writes the credential to disk later.
+	// These fields are NOT used for token exchange — the Manager's oauthConfig is.
 	token := &Token{RefreshToken: refreshToken}
 	if existing, loadErr := loadTokenFromFile(email); loadErr == nil {
 		token.TokenURI = existing.TokenURI
