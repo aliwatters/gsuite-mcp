@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/api/docs/v1"
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/googleapi"
 )
 
 // DocsService defines the interface for Google Docs API operations.
@@ -101,11 +102,14 @@ func (s *RealDocsService) BatchUpdateRaw(ctx context.Context, documentID string,
 		return nil, fmt.Errorf("marshal batch update body: %w", err)
 	}
 
-	url := fmt.Sprintf("%sdocuments/%s:batchUpdate", s.service.BasePath, documentID)
+	url := googleapi.ResolveRelative(s.service.BasePath, "v1/documents/{documentId}:batchUpdate")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
+	googleapi.Expand(req.URL, map[string]string{
+		"documentId": documentID,
+	})
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.httpClient.Do(req)
