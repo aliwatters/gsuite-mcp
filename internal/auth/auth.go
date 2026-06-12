@@ -391,6 +391,9 @@ func (m *Manager) AuthenticateDynamic(ctx context.Context) (string, error) {
 // initial grant). If oauth2Token.RefreshToken is empty we preserve the existing
 // on-disk value so the token file never loses its refresh token.
 func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) error {
+	if err := config.ValidateAccount(email); err != nil {
+		return fmt.Errorf("invalid account %q: %w", email, err)
+	}
 	if err := config.EnsureConfigDir(); err != nil {
 		return fmt.Errorf("ensuring config dir: %w", err)
 	}

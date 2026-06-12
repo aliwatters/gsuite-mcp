@@ -8,7 +8,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strings"
 )
 
 // DefaultOAuthPort is the default port used for the OAuth callback server.
@@ -17,6 +19,8 @@ const DefaultOAuthPort = 38917
 // configFileMode restricts config.json to owner-only access (matches credential files).
 // Config may contain organizational metadata (drive access rules, sheet IDs, feature flags).
 const configFileMode = 0600
+
+var accountEmailPattern = regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)+$`)
 
 // DriveAccess configures which shared drives are accessible via MCP tools.
 // Set either Allowed (allowlist) or Blocked (blocklist), not both.
@@ -167,7 +171,59 @@ func ClientSecretPath() string {
 
 // CredentialPathForEmail returns the credential file path for an email address.
 func CredentialPathForEmail(email string) string {
-	return filepath.Join(CredentialsDir(), email+".json")
+	path, err := credentialPathForEmail(email)
+	if err != nil {
+		return ""
+	}
+	return path
+}
+
+// ValidateAccount checks that an account identifier is a plausible email address,
+// not a filesystem path.
+func ValidateAccount(email string) error {
+	if email == "" {
+		return fmt.Errorf("account is required")
+	}
+	if strings.ContainsRune(email, 0) {
+		return fmt.Errorf("account must not contain NUL bytes")
+	}
+	if filepath.IsAbs(email) {
+		return fmt.Errorf("account must be an email address, not an absolute path")
+	}
+	if filepath.Base(email) != email || strings.Contains(email, `\`) {
+		return fmt.Errorf("account must not contain path separators")
+	}
+	if !accountEmailPattern.MatchString(email) {
+		return fmt.Errorf("account must be a valid email address")
+	}
+	if _, err := credentialPathForEmail(email); err != nil {
+		return err
+	}
+	return nil
+}
+
+func credentialPathForEmail(email string) (string, error) {
+	base := filepath.Base(email)
+	if base == "." || base == string(filepath.Separator) || strings.ContainsRune(base, 0) {
+		return "", fmt.Errorf("invalid account credential path")
+	}
+
+	credentialsDir, err := filepath.Abs(filepath.Clean(CredentialsDir()))
+	if err != nil {
+		return "", fmt.Errorf("resolving credentials dir: %w", err)
+	}
+	path, err := filepath.Abs(filepath.Clean(filepath.Join(credentialsDir, base+".json")))
+	if err != nil {
+		return "", fmt.Errorf("resolving credential path: %w", err)
+	}
+	rel, err := filepath.Rel(credentialsDir, path)
+	if err != nil {
+		return "", fmt.Errorf("checking credential path: %w", err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("credential path escapes credentials dir")
+	}
+	return path, nil
 }
 
 // EnsureConfigDir creates the configuration directory if it doesn't exist.
@@ -211,6 +267,9 @@ func GetAuthenticatedEmails() ([]string, error) {
 // HasCredentialsForEmail checks if credentials exist for an email.
 func HasCredentialsForEmail(email string) bool {
 	path := CredentialPathForEmail(email)
+	if path == "" {
+		return false
+	}
 	_, err := os.Stat(path)
 	return err == nil
 }
