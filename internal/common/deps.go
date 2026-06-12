@@ -63,6 +63,9 @@ func ResolveAccountFromRequestWithDeps(request mcp.CallToolRequest, d *Deps) (st
 	}
 
 	// Account param specified - check if credentials exist
+	if err := config.ValidateAccount(accountParam); err != nil {
+		return "", fmt.Errorf("invalid account %q: %w", accountParam, err)
+	}
 	if config.HasCredentialsForEmail(accountParam) {
 		return accountParam, nil
 	}

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -24,6 +25,102 @@ func TestCredentialPathForEmail(t *testing.T) {
 			}
 			if filepath.Base(path) != tt.wantSuffix {
 				t.Errorf("CredentialPathForEmail() = %s, want suffix %s", filepath.Base(path), tt.wantSuffix)
+			}
+		})
+	}
+}
+
+func TestValidateAccount(t *testing.T) {
+	tests := []struct {
+		name    string
+		account string
+		wantErr bool
+	}{
+		{name: "traversal", account: "../user@example.com", wantErr: true},
+		{name: "absolute path", account: filepath.Join(string(filepath.Separator), "tmp", "user@example.com"), wantErr: true},
+		{name: "null byte", account: "user\x00@example.com", wantErr: true},
+		{name: "empty", account: "", wantErr: true},
+		{name: "valid email", account: "user.name+tag@example.com"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateAccount(tt.account)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateAccount(%q) error = %v, wantErr %v", tt.account, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCredentialPathForEmailFailsClosed(t *testing.T) {
+	origOverride := configDirOverride
+	SetConfigDir(t.TempDir())
+	t.Cleanup(func() { configDirOverride = origOverride })
+
+	tests := []struct {
+		name     string
+		account  string
+		wantBase string
+		wantPath bool
+	}{
+		{
+			name:     "traversal collapses to basename",
+			account:  "../user@example.com",
+			wantBase: "user@example.com.json",
+			wantPath: true,
+		},
+		{
+			name:     "absolute path collapses to basename",
+			account:  filepath.Join(string(filepath.Separator), "tmp", "user@example.com"),
+			wantBase: "user@example.com.json",
+			wantPath: true,
+		},
+		{
+			name:    "null byte rejected",
+			account: "user\x00@example.com",
+		},
+		{
+			name:    "empty rejected",
+			account: "",
+		},
+		{
+			name:     "valid email unchanged",
+			account:  "user.name+tag@example.com",
+			wantBase: "user.name+tag@example.com.json",
+			wantPath: true,
+		},
+	}
+
+	credentialsDir, err := filepath.Abs(filepath.Clean(CredentialsDir()))
+	if err != nil {
+		t.Fatalf("failed to resolve credentials dir: %v", err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := CredentialPathForEmail(tt.account)
+			if !tt.wantPath {
+				if path != "" {
+					t.Fatalf("CredentialPathForEmail(%q) = %q, want empty", tt.account, path)
+				}
+				return
+			}
+			if path == "" {
+				t.Fatalf("CredentialPathForEmail(%q) returned empty path", tt.account)
+			}
+			if filepath.Base(path) != tt.wantBase {
+				t.Errorf("CredentialPathForEmail(%q) base = %q, want %q", tt.account, filepath.Base(path), tt.wantBase)
+			}
+			if !filepath.IsAbs(path) {
+				t.Errorf("CredentialPathForEmail(%q) returned non-absolute path: %s", tt.account, path)
+			}
+			rel, err := filepath.Rel(credentialsDir, path)
+			if err != nil {
+				t.Fatalf("failed to compare credential path: %v", err)
+			}
+			if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+				t.Errorf("CredentialPathForEmail(%q) escaped credentials dir: %s", tt.account, path)
 			}
 		})
 	}
