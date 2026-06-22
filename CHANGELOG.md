@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
+## [0.4.5] - 2026-06-22
+
+### Changed
+
+- Updated Go dependencies: `golang.org/x/sync` to `0.21.0`, `google.golang.org/api` to `0.284.0`, and `modernc.org/sqlite` to `1.52.0` (#184)
+
 ## [0.4.4] - 2026-06-22
 
 ### Changed
