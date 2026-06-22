@@ -40,6 +40,31 @@ type FormatMessageOptions struct {
 	BodyFormat BodyFormat
 }
 
+var defaultHeaderNames = map[string]struct{}{
+	"date":                   {},
+	"from":                   {},
+	"to":                     {},
+	"cc":                     {},
+	"bcc":                    {},
+	"subject":                {},
+	"message-id":             {},
+	"reply-to":               {},
+	"sender":                 {},
+	"delivered-to":           {},
+	"x-original-to":          {},
+	"return-path":            {},
+	"in-reply-to":            {},
+	"references":             {},
+	"list-unsubscribe":       {},
+	"list-unsubscribe-post":  {},
+	"list-id":                {},
+	"auto-submitted":         {},
+	"precedence":             {},
+	"content-type":           {},
+	"authentication-results": {},
+	"received-spf":           {},
+}
+
 // formatMessage extracts useful fields from a Gmail message
 func FormatMessage(msg *gmail.Message) map[string]any {
 	return FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: BodyFormatText})
@@ -65,7 +90,12 @@ func FormatMessageWithOptions(msg *gmail.Message, opts FormatMessageOptions) map
 			if h == nil {
 				continue
 			}
-			headers[strings.ToLower(h.Name)] = h.Value
+			headerName := strings.ToLower(h.Name)
+			if _, ok := defaultHeaderNames[headerName]; ok {
+				headers[headerName] = h.Value
+			} else if headerName == "dkim-signature" {
+				headers[headerName] = "present"
+			}
 			payloadHeaders = append(payloadHeaders, map[string]string{
 				"name":  h.Name,
 				"value": h.Value,

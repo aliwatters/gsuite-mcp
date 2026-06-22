@@ -8,6 +8,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+const defaultGmailHeaderDescription = "Default headers map includes lowercase date/from/to/cc/bcc/subject/message-id/reply-to/sender/delivered-to/x-original-to/return-path/in-reply-to/references/list-unsubscribe/list-unsubscribe-post/list-id/auto-submitted/precedence/content-type/authentication-results/received-spf, plus dkim-signature=present when available. Full ordered headers remain in payload_headers."
+
 // simpleMessageTool defines a tool that takes only message_id + account parameters.
 type simpleMessageTool struct {
 	name    string
@@ -57,7 +59,7 @@ func registerCoreTools(s *server.MCPServer) {
 
 	// gmail_get / gmail_get_message - Read single message
 	s.AddTool(newGetMessageTool("gmail_get",
-		"Get a single Gmail message by ID. Returns message metadata, a convenient headers map, payload_headers preserving Gmail's ordered header list and repeated headers, and body/raw content when requested by format.",
+		"Get a single Gmail message by ID. Returns message metadata, body/raw content when requested by format, payload_headers preserving Gmail's full ordered header list and repeated headers, and a curated convenience headers map. "+defaultGmailHeaderDescription,
 	), HandleGmailGetMessage)
 
 	s.AddTool(newGetMessageTool("gmail_get_message",
@@ -66,7 +68,7 @@ func registerCoreTools(s *server.MCPServer) {
 
 	// gmail_get_messages - Read batch of messages
 	s.AddTool(mcp.NewTool("gmail_get_messages",
-		mcp.WithDescription("Get multiple Gmail messages by ID (max 25). Each message includes a convenient headers map plus payload_headers preserving Gmail's ordered header list and repeated headers."),
+		mcp.WithDescription("Get multiple Gmail messages by ID (max 25). Each message includes payload_headers preserving Gmail's full ordered header list and repeated headers, plus a curated convenience headers map. "+defaultGmailHeaderDescription),
 		mcp.WithArray("message_ids", mcp.Required(), mcp.Description("Array of Gmail message IDs (max 25)")),
 		mcp.WithString("format", mcp.Description("Response format: full (default, includes payload_headers and body), metadata (includes payload_headers), minimal")),
 		mcp.WithString("body_format", mcp.Description("Body content format: text (default, plain text for reduced tokens), html (full HTML), full (both text and html)")),
@@ -75,7 +77,7 @@ func registerCoreTools(s *server.MCPServer) {
 
 	// gmail_get_thread - Read full conversation
 	s.AddTool(mcp.NewTool("gmail_get_thread",
-		mcp.WithDescription("Get all messages in a Gmail thread/conversation. Each message includes a convenient headers map plus payload_headers preserving Gmail's ordered header list and repeated headers."),
+		mcp.WithDescription("Get all messages in a Gmail thread/conversation. Each message includes payload_headers preserving Gmail's full ordered header list and repeated headers, plus a curated convenience headers map. "+defaultGmailHeaderDescription),
 		mcp.WithString("thread_id", mcp.Required(), mcp.Description("Gmail thread ID")),
 		mcp.WithString("format", mcp.Description("Response format: full (default, includes payload_headers and body), metadata (includes payload_headers), minimal")),
 		mcp.WithString("body_format", mcp.Description("Body content format: text (default, plain text for reduced tokens), html (full HTML), full (both text and html)")),

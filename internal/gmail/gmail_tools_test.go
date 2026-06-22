@@ -249,13 +249,30 @@ func TestGmailGetMessage_Success(t *testing.T) {
 	}
 }
 
-func TestGmailGetMessage_IncludesAllPayloadHeadersAndPreservesRepeatedHeaders(t *testing.T) {
+func TestGmailGetMessage_IncludesCuratedDefaultHeaders(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
 
 	msg := newTestMessage("msg123", "thread123", "Important Email", "boss@company.com", "me@example.com", "Please review the attached document.", []string{"INBOX", "IMPORTANT"})
 	msg.Payload.Headers = append(msg.Payload.Headers,
 		&gmail.MessagePartHeader{Name: "Reply-To", Value: "team@example.com"},
+		&gmail.MessagePartHeader{Name: "Cc", Value: "loop@example.com"},
+		&gmail.MessagePartHeader{Name: "Bcc", Value: "archive@example.com"},
+		&gmail.MessagePartHeader{Name: "Sender", Value: "sender@example.com"},
+		&gmail.MessagePartHeader{Name: "Delivered-To", Value: "alias@example.com"},
+		&gmail.MessagePartHeader{Name: "X-Original-To", Value: "original@example.com"},
+		&gmail.MessagePartHeader{Name: "Return-Path", Value: "<bounce@example.com>"},
+		&gmail.MessagePartHeader{Name: "In-Reply-To", Value: "<parent@example.com>"},
+		&gmail.MessagePartHeader{Name: "References", Value: "<root@example.com> <parent@example.com>"},
+		&gmail.MessagePartHeader{Name: "List-Unsubscribe", Value: "<mailto:unsubscribe@example.com>"},
+		&gmail.MessagePartHeader{Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click"},
+		&gmail.MessagePartHeader{Name: "List-Id", Value: "Example List <list.example.com>"},
+		&gmail.MessagePartHeader{Name: "Auto-Submitted", Value: "auto-generated"},
+		&gmail.MessagePartHeader{Name: "Precedence", Value: "bulk"},
+		&gmail.MessagePartHeader{Name: "Content-Type", Value: "multipart/alternative"},
 		&gmail.MessagePartHeader{Name: "Authentication-Results", Value: "mx.example.com; dkim=pass"},
+		&gmail.MessagePartHeader{Name: "Received-SPF", Value: "pass"},
+		&gmail.MessagePartHeader{Name: "DKIM-Signature", Value: "v=1; b=long-signature-blob"},
+		&gmail.MessagePartHeader{Name: "X-Provider-Metadata", Value: "noisy"},
 		&gmail.MessagePartHeader{Name: "Received", Value: "from first.example.com"},
 		&gmail.MessagePartHeader{Name: "Received", Value: "from second.example.com"},
 	)
@@ -284,6 +301,38 @@ func TestGmailGetMessage_IncludesAllPayloadHeadersAndPreservesRepeatedHeaders(t 
 	}
 	if headers["authentication-results"] != "mx.example.com; dkim=pass" {
 		t.Errorf("expected authentication-results header, got %v", headers["authentication-results"])
+	}
+	expectedHeaders := map[string]string{
+		"cc":                    "loop@example.com",
+		"bcc":                   "archive@example.com",
+		"sender":                "sender@example.com",
+		"delivered-to":          "alias@example.com",
+		"x-original-to":         "original@example.com",
+		"return-path":           "<bounce@example.com>",
+		"in-reply-to":           "<parent@example.com>",
+		"references":            "<root@example.com> <parent@example.com>",
+		"list-unsubscribe":      "<mailto:unsubscribe@example.com>",
+		"list-unsubscribe-post": "List-Unsubscribe=One-Click",
+		"list-id":               "Example List <list.example.com>",
+		"auto-submitted":        "auto-generated",
+		"precedence":            "bulk",
+		"content-type":          "multipart/alternative",
+		"received-spf":          "pass",
+		"dkim-signature":        "present",
+	}
+	for name, want := range expectedHeaders {
+		if headers[name] != want {
+			t.Errorf("expected %s=%q, got %v", name, want, headers[name])
+		}
+	}
+	if _, ok := headers["received"]; ok {
+		t.Error("did not expect verbose Received trace in default headers map")
+	}
+	if headers["dkim-signature"] == "v=1; b=long-signature-blob" {
+		t.Error("did not expect full DKIM-Signature value in default headers map")
+	}
+	if _, ok := headers["x-provider-metadata"]; ok {
+		t.Error("did not expect arbitrary X-* header in default headers map")
 	}
 
 	payloadHeaders, ok := response["payload_headers"].([]any)

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
+## [0.4.3] - 2026-06-22
+
+### Changed
+
+- Gmail message `headers` is now a curated convenience map again, widened with high-value routing, threading, list, content-type, and trust headers such as `reply-to`, `in-reply-to`, `references`, `list-unsubscribe`, and `authentication-results` (#188)
+
+### Fixed
+
+- Gmail message `headers` no longer includes verbose `Received` traces, arbitrary headers, or full `DKIM-Signature` values; full ordered headers remain available via `payload_headers` (#188)
+
 ## [0.4.2] - 2026-06-22
 
 ### Added
