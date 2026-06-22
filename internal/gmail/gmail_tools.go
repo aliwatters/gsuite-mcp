@@ -54,13 +54,25 @@ func FormatMessageWithOptions(msg *gmail.Message, opts FormatMessageOptions) map
 		"snippet":   msg.Snippet,
 	}
 
+	if msg.Raw != "" {
+		result["raw"] = msg.Raw
+	}
+
 	if msg.Payload != nil {
 		headers := make(map[string]string)
+		payloadHeaders := make([]map[string]string, 0, len(msg.Payload.Headers))
 		for _, h := range msg.Payload.Headers {
-			switch strings.ToLower(h.Name) {
-			case "from", "to", "cc", "bcc", "subject", "date", "message-id":
-				headers[strings.ToLower(h.Name)] = h.Value
+			if h == nil {
+				continue
 			}
+			headers[strings.ToLower(h.Name)] = h.Value
+			payloadHeaders = append(payloadHeaders, map[string]string{
+				"name":  h.Name,
+				"value": h.Value,
+			})
+		}
+		if len(payloadHeaders) > 0 {
+			result["payload_headers"] = payloadHeaders
 		}
 		result["headers"] = headers
 

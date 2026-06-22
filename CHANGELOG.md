@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
+## [0.4.2] - 2026-06-22
+
+### Added
+
+- Gmail message reads now include `payload_headers`, preserving Gmail's ordered `payload.headers[]` list and repeated headers such as `Received` (#187)
+
+### Changed
+
+- Gmail message `headers` now includes all returned message headers as lowercased lookup keys instead of a curated subset (#187)
+
+### Fixed
+
+- `gmail_get` with `format: "raw"` now returns Gmail's raw RFC822 base64url payload when provided by the API (#187)
+
 ## [0.2.0] - 2026-03-20
 
 ### Added

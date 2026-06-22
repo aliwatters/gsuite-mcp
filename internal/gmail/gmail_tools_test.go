@@ -249,6 +249,105 @@ func TestGmailGetMessage_Success(t *testing.T) {
 	}
 }
 
+func TestGmailGetMessage_IncludesAllPayloadHeadersAndPreservesRepeatedHeaders(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestMessage("msg123", "thread123", "Important Email", "boss@company.com", "me@example.com", "Please review the attached document.", []string{"INBOX", "IMPORTANT"})
+	msg.Payload.Headers = append(msg.Payload.Headers,
+		&gmail.MessagePartHeader{Name: "Reply-To", Value: "team@example.com"},
+		&gmail.MessagePartHeader{Name: "Authentication-Results", Value: "mx.example.com; dkim=pass"},
+		&gmail.MessagePartHeader{Name: "Received", Value: "from first.example.com"},
+		&gmail.MessagePartHeader{Name: "Received", Value: "from second.example.com"},
+	)
+	fixtures.MockService.AddMessage(msg)
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg123",
+		"format":     "full",
+	})
+
+	result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	headers, ok := response["headers"].(map[string]any)
+	if !ok {
+		t.Fatal("expected headers map in response")
+	}
+	if headers["reply-to"] != "team@example.com" {
+		t.Errorf("expected reply-to header, got %v", headers["reply-to"])
+	}
+	if headers["authentication-results"] != "mx.example.com; dkim=pass" {
+		t.Errorf("expected authentication-results header, got %v", headers["authentication-results"])
+	}
+
+	payloadHeaders, ok := response["payload_headers"].([]any)
+	if !ok {
+		t.Fatal("expected payload_headers array in response")
+	}
+
+	var receivedValues []string
+	for _, rawHeader := range payloadHeaders {
+		header, ok := rawHeader.(map[string]any)
+		if !ok {
+			t.Fatalf("expected payload header object, got %T", rawHeader)
+		}
+		if header["name"] == "Received" {
+			value, ok := header["value"].(string)
+			if !ok {
+				t.Fatalf("expected string Received value, got %T", header["value"])
+			}
+			receivedValues = append(receivedValues, value)
+		}
+	}
+
+	if len(receivedValues) != 2 {
+		t.Fatalf("expected 2 Received headers, got %d", len(receivedValues))
+	}
+	if receivedValues[0] != "from first.example.com" || receivedValues[1] != "from second.example.com" {
+		t.Errorf("expected Received headers to preserve order, got %v", receivedValues)
+	}
+}
+
+func TestGmailGetMessage_RawFormatIncludesRawPayload(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestMessage("msg123", "thread123", "Important Email", "boss@company.com", "me@example.com", "Please review the attached document.", []string{"INBOX", "IMPORTANT"})
+	msg.Raw = "UmVjZWl2ZWQ6IGZyb20gZXhhbXBsZS5jb20K"
+	fixtures.MockService.AddMessage(msg)
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg123",
+		"format":     "raw",
+	})
+
+	result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	lastCall := fixtures.MockService.GetLastCall()
+	if lastCall == nil || lastCall.Method != "GetMessage" {
+		t.Fatalf("expected GetMessage call, got %#v", lastCall)
+	}
+	if gotFormat := lastCall.Args[1]; gotFormat != "raw" {
+		t.Fatalf("expected format raw, got %v", gotFormat)
+	}
+
+	response := extractResponse(t, result)
+	if response["raw"] != msg.Raw {
+		t.Errorf("expected raw payload %q, got %v", msg.Raw, response["raw"])
+	}
+}
+
 func TestGmailGetMessage_NotFound(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
 
