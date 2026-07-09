@@ -5,6 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -109,6 +112,41 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func decodeRawEmail(t *testing.T, raw string) string {
+	t.Helper()
+	decoded, err := base64.URLEncoding.DecodeString(raw)
+	if err != nil {
+		t.Fatalf("failed to decode raw email: %v", err)
+	}
+	return string(decoded)
+}
+
+func lastGmailMessageArg(t *testing.T, fixtures *GmailTestFixtures, method string) *gmail.Message {
+	t.Helper()
+	lastCall := fixtures.MockService.GetLastCall()
+	if lastCall == nil || lastCall.Method != method {
+		t.Fatalf("expected %s call, got %#v", method, lastCall)
+	}
+	message, ok := lastCall.Args[0].(*gmail.Message)
+	if !ok {
+		t.Fatalf("expected gmail.Message arg, got %T", lastCall.Args[0])
+	}
+	return message
+}
+
+func lastGmailDraftArg(t *testing.T, fixtures *GmailTestFixtures, method string) *gmail.Draft {
+	t.Helper()
+	lastCall := fixtures.MockService.GetLastCall()
+	if lastCall == nil || lastCall.Method != method {
+		t.Fatalf("expected %s call, got %#v", method, lastCall)
+	}
+	draft, ok := lastCall.Args[0].(*gmail.Draft)
+	if !ok {
+		t.Fatalf("expected gmail.Draft arg, got %T", lastCall.Args[0])
+	}
+	return draft
 }
 
 // === gmail_search tests ===
@@ -643,6 +681,106 @@ func TestGmailSend_NoSubjectAllowed(t *testing.T) {
 	}
 }
 
+func TestGmailSend_WithAttachment(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	attachmentPath := filepath.Join(t.TempDir(), "notes.txt")
+	attachmentData := []byte("attachment contents")
+	if err := os.WriteFile(attachmentPath, attachmentData, 0o600); err != nil {
+		t.Fatalf("write attachment fixture: %v", err)
+	}
+
+	request := makeRequest(map[string]any{
+		"to":          "recipient@example.com",
+		"subject":     "Test Email",
+		"body":        "This is a test email.",
+		"attachments": []any{attachmentPath},
+	})
+
+	result, err := TestableGmailSend(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	raw := decodeRawEmail(t, lastGmailMessageArg(t, fixtures, "SendMessage").Raw)
+	for _, want := range []string{
+		"Content-Type: multipart/mixed;",
+		"Content-Type: text/plain; charset=\"UTF-8\"",
+		"Content-Disposition: attachment; filename=notes.txt",
+		"name=notes.txt",
+		"Content-Transfer-Encoding: base64",
+		base64.StdEncoding.EncodeToString(attachmentData),
+	} {
+		if !strings.Contains(raw, want) {
+			t.Errorf("raw message missing %q:\n%s", want, raw)
+		}
+	}
+}
+
+func TestGmailSend_MissingAttachmentPath(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	missingPath := filepath.Join(t.TempDir(), "missing.pdf")
+
+	request := makeRequest(map[string]any{
+		"to":          "recipient@example.com",
+		"subject":     "Test Email",
+		"body":        "This is a test email.",
+		"attachments": []any{missingPath},
+	})
+
+	result, err := TestableGmailSend(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error for missing attachment path")
+	}
+	if !strings.Contains(getTextResult(result), missingPath) {
+		t.Fatalf("expected error to name missing path %q, got %q", missingPath, getTextResult(result))
+	}
+	if fixtures.MockService.WasMethodCalled("SendMessage") {
+		t.Fatal("SendMessage should not be called when attachment validation fails")
+	}
+}
+
+func TestGmailSend_AttachmentSizeLimit(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	largePath := filepath.Join(t.TempDir(), "large.bin")
+	file, err := os.Create(largePath)
+	if err != nil {
+		t.Fatalf("create large attachment fixture: %v", err)
+	}
+	if err := file.Truncate(gmailMaxOutgoingRawBytes + 1); err != nil {
+		t.Fatalf("resize large attachment fixture: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("close large attachment fixture: %v", err)
+	}
+
+	request := makeRequest(map[string]any{
+		"to":          "recipient@example.com",
+		"subject":     "Test Email",
+		"body":        "This is a test email.",
+		"attachments": []any{largePath},
+	})
+
+	result, err := TestableGmailSend(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error for oversized attachment")
+	}
+	if !strings.Contains(getTextResult(result), largePath) {
+		t.Fatalf("expected error to name oversized path %q, got %q", largePath, getTextResult(result))
+	}
+	if fixtures.MockService.WasMethodCalled("SendMessage") {
+		t.Fatal("SendMessage should not be called when attachment validation fails")
+	}
+}
+
 // === gmail_reply tests ===
 
 func TestGmailReply_Success(t *testing.T) {
@@ -714,6 +852,51 @@ func TestGmailReply_MessageNotFound(t *testing.T) {
 	}
 }
 
+func TestGmailReply_WithAttachment(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	attachmentPath := filepath.Join(t.TempDir(), "reply.pdf")
+	attachmentData := []byte("%PDF-1.4 fake pdf data")
+	if err := os.WriteFile(attachmentPath, attachmentData, 0o600); err != nil {
+		t.Fatalf("write attachment fixture: %v", err)
+	}
+
+	originalMsg := newTestMessage("msg123", "thread123", "Original Subject", "sender@example.com", "me@example.com", "Original body", []string{"INBOX"})
+	originalMsg.Payload.Headers = append(originalMsg.Payload.Headers, &gmail.MessagePartHeader{Name: "Message-ID", Value: "<msg123@example.com>"})
+	fixtures.MockService.AddMessage(originalMsg)
+
+	request := makeRequest(map[string]any{
+		"message_id":  "msg123",
+		"body":        "Reply with file",
+		"attachments": []any{attachmentPath},
+	})
+
+	result, err := TestableGmailReply(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	message := lastGmailMessageArg(t, fixtures, "SendMessage")
+	if message.ThreadId != "thread123" {
+		t.Fatalf("expected reply to stay in thread123, got %q", message.ThreadId)
+	}
+	raw := decodeRawEmail(t, message.Raw)
+	for _, want := range []string{
+		"In-Reply-To: <msg123@example.com>",
+		"References: <msg123@example.com>",
+		"Content-Type: multipart/mixed;",
+		"Content-Type: application/pdf; name=reply.pdf",
+		"Content-Disposition: attachment; filename=reply.pdf",
+		base64.StdEncoding.EncodeToString(attachmentData),
+	} {
+		if !strings.Contains(raw, want) {
+			t.Errorf("raw reply missing %q:\n%s", want, raw)
+		}
+	}
+}
+
 // === gmail_draft tests ===
 
 func TestGmailDraft_Success(t *testing.T) {
@@ -761,6 +944,46 @@ func TestGmailDraft_ForThread(t *testing.T) {
 	}
 	if result.IsError {
 		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+}
+
+func TestGmailDraft_WithAttachment(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	attachmentPath := filepath.Join(t.TempDir(), "README")
+	attachmentData := []byte("no extension")
+	if err := os.WriteFile(attachmentPath, attachmentData, 0o600); err != nil {
+		t.Fatalf("write attachment fixture: %v", err)
+	}
+
+	request := makeRequest(map[string]any{
+		"to":          "recipient@example.com",
+		"subject":     "Draft Subject",
+		"body":        "Draft body content",
+		"attachments": []any{attachmentPath},
+	})
+
+	result, err := TestableGmailDraft(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	draft := lastGmailDraftArg(t, fixtures, "CreateDraft")
+	if draft.Message == nil {
+		t.Fatal("expected draft message")
+	}
+	raw := decodeRawEmail(t, draft.Message.Raw)
+	for _, want := range []string{
+		"Content-Type: multipart/mixed;",
+		"Content-Type: application/octet-stream; name=README",
+		"Content-Disposition: attachment; filename=README",
+		base64.StdEncoding.EncodeToString(attachmentData),
+	} {
+		if !strings.Contains(raw, want) {
+			t.Errorf("raw draft missing %q:\n%s", want, raw)
+		}
 	}
 }
 

@@ -92,9 +92,9 @@ Google Chat management: list/get/create spaces, list/get/send messages, thread r
 | `gmail_get_message` | Alias for `gmail_get` |
 | `gmail_get_messages` | Batch get messages (max 25) |
 | `gmail_get_thread` | Get full conversation thread |
-| `gmail_send` | Send new email |
-| `gmail_reply` | Reply to existing thread |
-| `gmail_draft` | Create draft |
+| `gmail_send` | Send new email, optionally with local attachments |
+| `gmail_reply` | Reply to existing thread, optionally with local attachments |
+| `gmail_draft` | Create draft, optionally with local attachments |
 | `gmail_list_labels` | List all labels with counts |
 
 #### Gmail Management
@@ -335,7 +335,7 @@ All tools accept an optional `account` parameter:
 ```
 1. gmail_search({"query": "is:unread", "account": "support"})
 2. gmail_get({"message_id": "...", "account": "support"})
-3. gmail_reply({"message_id": "...", "body": "Thanks for reaching out..."})
+3. gmail_reply({"message_id": "...", "body": "Thanks for reaching out...", "attachments": ["/abs/path/to/form.pdf"]})
 4. gmail_batch_archive({"message_ids": [...]})
 ```
 

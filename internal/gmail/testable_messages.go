@@ -134,7 +134,10 @@ func TestableGmailSend(ctx context.Context, request mcp.CallToolRequest, deps *G
 		return errResult, nil
 	}
 
-	message := buildMessageFromArgs(request.GetArguments())
+	message, err := buildMessageFromArgsWithAttachments(request.GetArguments())
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 
 	sent, err := svc.SendMessage(ctx, message)
 	if err != nil {
@@ -236,7 +239,15 @@ func TestableGmailReply(ctx context.Context, request mcp.CallToolRequest, deps *
 		},
 	}
 
-	raw := buildEmailMessage(emailMsg)
+	attachments, err := loadEmailAttachments(request.GetArguments()["attachments"])
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	raw, err := buildEmailMessageWithAttachments(emailMsg, attachments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 
 	message := &gmail.Message{
 		Raw:      raw,

@@ -175,7 +175,10 @@ func TestableGmailDraft(ctx context.Context, request mcp.CallToolRequest, deps *
 		return errResult, nil
 	}
 
-	message := buildMessageFromArgs(request.GetArguments())
+	message, err := buildMessageFromArgsWithAttachments(request.GetArguments())
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 
 	// Support creating draft as reply
 	if threadID := common.ParseStringArg(request.GetArguments(), "thread_id", ""); threadID != "" {

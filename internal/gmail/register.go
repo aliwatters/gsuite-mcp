@@ -92,6 +92,7 @@ func registerCoreTools(s *server.MCPServer) {
 		mcp.WithString("body", mcp.Required(), mcp.Description("Email body (plain text)")),
 		mcp.WithString("cc", mcp.Description("CC recipients, comma-separated")),
 		mcp.WithString("bcc", mcp.Description("BCC recipients, comma-separated")),
+		mcp.WithArray("attachments", mcp.Description("Optional local file paths to attach, for example [\"/abs/path/to/resume.pdf\"]. Total outgoing message must stay under about 25 MiB.")),
 		common.WithAccountParam(),
 	), HandleGmailSend)
 
@@ -103,6 +104,7 @@ func registerCoreTools(s *server.MCPServer) {
 		mcp.WithBoolean("reply_all", mcp.Description("Reply to all recipients (default: false)")),
 		mcp.WithString("to", mcp.Description("Override recipient (default: reply to sender)")),
 		mcp.WithString("cc", mcp.Description("Additional CC recipients")),
+		mcp.WithArray("attachments", mcp.Description("Optional local file paths to attach, for example [\"/abs/path/to/resume.pdf\"]. Total outgoing message must stay under about 25 MiB.")),
 		common.WithAccountParam(),
 	), HandleGmailReply)
 
@@ -115,6 +117,7 @@ func registerCoreTools(s *server.MCPServer) {
 		mcp.WithString("cc", mcp.Description("CC recipients")),
 		mcp.WithString("bcc", mcp.Description("BCC recipients")),
 		mcp.WithString("thread_id", mcp.Description("Thread ID for reply drafts")),
+		mcp.WithArray("attachments", mcp.Description("Optional local file paths to attach, for example [\"/abs/path/to/resume.pdf\"]. Total outgoing message must stay under about 25 MiB.")),
 		common.WithAccountParam(),
 	), HandleGmailDraft)
 
