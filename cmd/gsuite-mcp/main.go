@@ -30,7 +30,7 @@ import (
 
 const (
 	serverName    = "gsuite-mcp"
-	serverVersion = "0.4.5"
+	serverVersion = "0.4.7"
 )
 
 // GitCommit is injected at build time via (run from the repo root):
