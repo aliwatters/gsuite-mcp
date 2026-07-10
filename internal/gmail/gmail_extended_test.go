@@ -2,6 +2,8 @@ package gmail
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"google.golang.org/api/gmail/v1"
@@ -84,6 +86,168 @@ func TestGmailGetAttachment_MissingAttachmentID(t *testing.T) {
 	}
 	if !result.IsError {
 		t.Error("expected error for missing attachment_id")
+	}
+}
+
+func TestGmailListAttachments_Success(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithAttachment("msg-att-1"))
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg-att-1",
+	})
+
+	result, err := TestableGmailListAttachments(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["count"]; got != float64(1) {
+		t.Fatalf("count: got %v, want 1", got)
+	}
+	attachments, ok := response["attachments"].([]any)
+	if !ok {
+		t.Fatalf("expected attachments array, got %T", response["attachments"])
+	}
+	if len(attachments) != 1 {
+		t.Fatalf("expected 1 attachment, got %d", len(attachments))
+	}
+	attachment := attachments[0].(map[string]any)
+	if got := attachment["attachment_id"]; got != "ATT-PDF-1" {
+		t.Errorf("attachment_id: got %v, want ATT-PDF-1", got)
+	}
+	if got := attachment["filename"]; got != "spec.pdf" {
+		t.Errorf("filename: got %v, want spec.pdf", got)
+	}
+}
+
+func TestGmailDownloadAttachment_SingleAttachmentToOutputDir(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithAttachment("msg-att-1"))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg-att-1",
+		"output_dir": outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	outputPath, ok := response["path"].(string)
+	if !ok || outputPath == "" {
+		t.Fatalf("expected output path, got %v", response["path"])
+	}
+	if outputPath != filepath.Join(outputDir, "spec.pdf") {
+		t.Fatalf("path: got %q, want output dir/spec.pdf", outputPath)
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("read downloaded file: %v", err)
+	}
+	if string(data) != "Hello World!" {
+		t.Fatalf("downloaded data: got %q, want Hello World!", data)
+	}
+	if got := response["bytes_written"]; got != float64(len("Hello World!")) {
+		t.Errorf("bytes_written: got %v, want %d", got, len("Hello World!"))
+	}
+}
+
+func TestGmailDownloadAttachment_SanitizesFilename(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	msg := newTestMessageWithAttachment("msg-att-unsafe")
+	msg.Payload.Parts[1].Filename = "../../secret.txt"
+	fixtures.MockService.AddMessage(msg)
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg-att-unsafe",
+		"output_dir": outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	outputPath := response["path"].(string)
+	if outputPath != filepath.Join(outputDir, "secret.txt") {
+		t.Fatalf("path escaped output dir or kept unsafe name: %q", outputPath)
+	}
+}
+
+func TestGmailDownloadAttachment_RefusesOverwriteByDefault(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithAttachment("msg-att-1"))
+	outputPath := filepath.Join(t.TempDir(), "existing.pdf")
+	if err := os.WriteFile(outputPath, []byte("existing"), 0o600); err != nil {
+		t.Fatalf("write existing fixture: %v", err)
+	}
+
+	request := makeRequest(map[string]any{
+		"message_id":  "msg-att-1",
+		"output_path": outputPath,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected overwrite protection error")
+	}
+}
+
+func TestGmailDownloadAttachment_RequiresSelectionForMultipleAttachments(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(&gmail.Message{
+		Id:       "msg-multi",
+		ThreadId: "thread1",
+		Payload: &gmail.MessagePart{
+			MimeType: "multipart/mixed",
+			Parts: []*gmail.MessagePart{
+				{
+					PartId:   "1",
+					MimeType: "application/pdf",
+					Filename: "first.pdf",
+					Body:     &gmail.MessagePartBody{AttachmentId: "A1", Size: 100},
+				},
+				{
+					PartId:   "2",
+					MimeType: "image/jpeg",
+					Filename: "second.jpg",
+					Body:     &gmail.MessagePartBody{AttachmentId: "A2", Size: 200},
+				},
+			},
+		},
+	})
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg-multi",
+		"output_dir": t.TempDir(),
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected selection error")
 	}
 }
 

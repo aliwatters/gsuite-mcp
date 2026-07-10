@@ -24,7 +24,7 @@ const (
 // ServiceToolCounts maps each service to its expected tool count.
 // Update these when adding/removing tools.
 var ServiceToolCounts = map[string]int{
-	"gmail":    51,
+	"gmail":    53,
 	"calendar": 12,
 	"drive":    23,
 	"docs":     29,
