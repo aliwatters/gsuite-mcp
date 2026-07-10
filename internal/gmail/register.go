@@ -186,6 +186,25 @@ func registerExtendedTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleGmailGetAttachment)
 
+	// gmail_list_attachments - List attachment metadata
+	s.AddTool(mcp.NewTool("gmail_list_attachments",
+		mcp.WithDescription("List downloadable attachments on a Gmail message, including attachment_id, part_id, filename, MIME type, and size."),
+		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID containing the attachment")),
+		common.WithAccountParam(),
+	), HandleGmailListAttachments)
+
+	// gmail_download_attachment - Save attachment to a local file
+	s.AddTool(mcp.NewTool("gmail_download_attachment",
+		mcp.WithDescription("Download a Gmail attachment and write it to a local file. If the message has exactly one attachment, attachment_id/part_id can be omitted."),
+		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID containing the attachment")),
+		mcp.WithString("attachment_id", mcp.Description("Attachment ID from gmail_list_attachments or message payload")),
+		mcp.WithString("part_id", mcp.Description("Part ID from gmail_list_attachments; useful when selecting among multiple attachments")),
+		mcp.WithString("output_path", mcp.Description("Optional local file path to write. Parent directories are created. If omitted, writes to a temporary gsuite-mcp-attachments directory.")),
+		mcp.WithString("output_dir", mcp.Description("Optional local directory to write the sanitized attachment filename into. Mutually exclusive with output_path.")),
+		mcp.WithBoolean("overwrite", mcp.Description("Replace an existing output file (default: false)")),
+		common.WithAccountParam(),
+	), HandleGmailDownloadAttachment)
+
 	// gmail_list_filters - List all filters
 	s.AddTool(mcp.NewTool("gmail_list_filters",
 		mcp.WithDescription("List all Gmail filters for an account"),

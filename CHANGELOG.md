@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
+## [0.4.6] - 2026-07-10
+
+### Added
+
+- Added `gmail_list_attachments` and `gmail_download_attachment` for listing Gmail attachment metadata and saving attachments directly to local files (#192)
+
 ## [0.4.5] - 2026-06-22
 
 ### Changed

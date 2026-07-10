@@ -45,7 +45,7 @@ gsuite-mcp auth personal
 
 ## Tools Overview
 
-### Gmail (45 tools)
+### Gmail (47 tools)
 Full inbox management: search, read, send, reply, archive, trash, labels, filters, drafts, threads, batch operations, vacation responder, send-as aliases, delegation.
 
 ### Calendar (12 tools)
@@ -133,7 +133,9 @@ gmail_resolve_web_id(id="thread-f:1821570065795440641")
 #### Gmail Extended
 | Tool | Description |
 |------|-------------|
-| `gmail_get_attachment` | Download attachment |
+| `gmail_get_attachment` | Download attachment as base64 data |
+| `gmail_list_attachments` | List downloadable attachments on a message |
+| `gmail_download_attachment` | Save a message attachment to a local file |
 | `gmail_list_filters` / `gmail_create_filter` / `gmail_delete_filter` | Filter management |
 | `gmail_create_label` / `gmail_update_label` / `gmail_delete_label` | Label management |
 | `gmail_list_drafts` / `gmail_get_draft` / `gmail_update_draft` / `gmail_delete_draft` / `gmail_send_draft` | Draft management |
@@ -337,6 +339,13 @@ All tools accept an optional `account` parameter:
 2. gmail_get({"message_id": "...", "account": "support"})
 3. gmail_reply({"message_id": "...", "body": "Thanks for reaching out...", "attachments": ["/abs/path/to/form.pdf"]})
 4. gmail_batch_archive({"message_ids": [...]})
+```
+
+To inspect an inbound attachment:
+
+```
+1. gmail_list_attachments({"message_id": "...", "account": "support"})
+2. gmail_download_attachment({"message_id": "...", "attachment_id": "...", "output_dir": "~/Desktop", "account": "support"})
 ```
 
 </details>

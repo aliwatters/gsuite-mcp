@@ -9,7 +9,11 @@ import (
 // === Handle functions - generated via WrapHandler ===
 
 // Attachment Tools
-var HandleGmailGetAttachment = common.WrapHandler[GmailService](TestableGmailGetAttachment)
+var (
+	HandleGmailGetAttachment      = common.WrapHandler[GmailService](TestableGmailGetAttachment)
+	HandleGmailListAttachments    = common.WrapHandler[GmailService](TestableGmailListAttachments)
+	HandleGmailDownloadAttachment = common.WrapHandler[GmailService](TestableGmailDownloadAttachment)
+)
 
 // Filter Tools
 var (
