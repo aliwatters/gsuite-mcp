@@ -40,6 +40,24 @@ func parseBodyFormat(args map[string]any) BodyFormat {
 	}
 }
 
+// parseHeaderMode parses the "headers" argument from a request and returns the
+// corresponding HeaderMode. Missing or empty defaults to HeaderModeSummary.
+// Unlike parseBodyFormat, an unrecognized non-empty value is a hard error
+// rather than a silent fallback: a typo here (e.g. "rawish") would otherwise
+// silently withhold payload_headers from a caller who asked for it, which is
+// exactly the kind of silent failure the repo's engineering standard forbids.
+func parseHeaderMode(args map[string]any) (HeaderMode, *mcp.CallToolResult) {
+	hm := common.ParseStringArg(args, "headers", "")
+	switch hm {
+	case "", string(HeaderModeSummary):
+		return HeaderModeSummary, nil
+	case string(HeaderModeRaw):
+		return HeaderModeRaw, nil
+	default:
+		return "", mcp.NewToolResultError(fmt.Sprintf("headers: unsupported value %q (expected %q or %q)", hm, HeaderModeSummary, HeaderModeRaw))
+	}
+}
+
 // extractAddRemoveLabels extracts "add_labels" and "remove_labels" string arrays
 // from request arguments using extractStringArray.
 func extractAddRemoveLabels(args map[string]any) (addLabels, removeLabels []string) {

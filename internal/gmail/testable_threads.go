@@ -23,12 +23,17 @@ func TestableGmailGetThread(ctx context.Context, request mcp.CallToolRequest, de
 
 	format := common.ParseStringArg(request.GetArguments(), "format", "full")
 
+	headerMode, errResult := parseHeaderMode(request.GetArguments())
+	if errResult != nil {
+		return errResult, nil
+	}
+
 	thread, err := svc.GetThread(ctx, threadID, format)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Gmail API error: %v", err)), nil
 	}
 
-	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments())}
+	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments()), HeaderMode: headerMode}
 	messages := make([]map[string]any, 0, len(thread.Messages))
 	for _, msg := range thread.Messages {
 		messages = append(messages, FormatMessageWithOptions(msg, opts))

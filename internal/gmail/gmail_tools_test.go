@@ -66,6 +66,41 @@ func newTestMessage(id, threadID, subject, from, to, body string, labelIDs []str
 	}
 }
 
+// newTestMessageWithNoisyHeaders returns a message carrying the full curated
+// header set plus headers the default (summary) headers map must never
+// surface: ARC-Seal, X-Gm-Message-State, an arbitrary X-* header, and two
+// repeated Received headers (only payload_headers, gated behind
+// headers="raw", preserves repeats) (#199).
+func newTestMessageWithNoisyHeaders(id, threadID string) *gmail.Message {
+	msg := newTestMessage(id, threadID, "Important Email", "boss@company.com", "me@example.com", "Please review the attached document.", []string{"INBOX", "IMPORTANT"})
+	msg.Payload.Headers = append(msg.Payload.Headers,
+		&gmail.MessagePartHeader{Name: "Reply-To", Value: "team@example.com"},
+		&gmail.MessagePartHeader{Name: "Cc", Value: "loop@example.com"},
+		&gmail.MessagePartHeader{Name: "Bcc", Value: "archive@example.com"},
+		&gmail.MessagePartHeader{Name: "Sender", Value: "sender@example.com"},
+		&gmail.MessagePartHeader{Name: "Delivered-To", Value: "alias@example.com"},
+		&gmail.MessagePartHeader{Name: "X-Original-To", Value: "original@example.com"},
+		&gmail.MessagePartHeader{Name: "Return-Path", Value: "<bounce@example.com>"},
+		&gmail.MessagePartHeader{Name: "In-Reply-To", Value: "<parent@example.com>"},
+		&gmail.MessagePartHeader{Name: "References", Value: "<root@example.com> <parent@example.com>"},
+		&gmail.MessagePartHeader{Name: "List-Unsubscribe", Value: "<mailto:unsubscribe@example.com>"},
+		&gmail.MessagePartHeader{Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click"},
+		&gmail.MessagePartHeader{Name: "List-Id", Value: "Example List <list.example.com>"},
+		&gmail.MessagePartHeader{Name: "Auto-Submitted", Value: "auto-generated"},
+		&gmail.MessagePartHeader{Name: "Precedence", Value: "bulk"},
+		&gmail.MessagePartHeader{Name: "Content-Type", Value: "multipart/alternative"},
+		&gmail.MessagePartHeader{Name: "Authentication-Results", Value: "mx.example.com; dkim=pass"},
+		&gmail.MessagePartHeader{Name: "Received-SPF", Value: "pass"},
+		&gmail.MessagePartHeader{Name: "DKIM-Signature", Value: "v=1; b=long-signature-blob"},
+		&gmail.MessagePartHeader{Name: "X-Provider-Metadata", Value: "noisy"},
+		&gmail.MessagePartHeader{Name: "ARC-Seal", Value: "i=1; a=rsa-sha256; d=example.com; s=arc; b=arcsealvalue"},
+		&gmail.MessagePartHeader{Name: "X-Gm-Message-State", Value: "AOAM531verbosegmailstateblob"},
+		&gmail.MessagePartHeader{Name: "Received", Value: "from first.example.com"},
+		&gmail.MessagePartHeader{Name: "Received", Value: "from second.example.com"},
+	)
+	return msg
+}
+
 func newTestThread(id string, messages []*gmail.Message) *gmail.Thread {
 	return &gmail.Thread{
 		Id:       id,
@@ -290,35 +325,15 @@ func TestGmailGetMessage_Success(t *testing.T) {
 func TestGmailGetMessage_IncludesCuratedDefaultHeaders(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
 
-	msg := newTestMessage("msg123", "thread123", "Important Email", "boss@company.com", "me@example.com", "Please review the attached document.", []string{"INBOX", "IMPORTANT"})
-	msg.Payload.Headers = append(msg.Payload.Headers,
-		&gmail.MessagePartHeader{Name: "Reply-To", Value: "team@example.com"},
-		&gmail.MessagePartHeader{Name: "Cc", Value: "loop@example.com"},
-		&gmail.MessagePartHeader{Name: "Bcc", Value: "archive@example.com"},
-		&gmail.MessagePartHeader{Name: "Sender", Value: "sender@example.com"},
-		&gmail.MessagePartHeader{Name: "Delivered-To", Value: "alias@example.com"},
-		&gmail.MessagePartHeader{Name: "X-Original-To", Value: "original@example.com"},
-		&gmail.MessagePartHeader{Name: "Return-Path", Value: "<bounce@example.com>"},
-		&gmail.MessagePartHeader{Name: "In-Reply-To", Value: "<parent@example.com>"},
-		&gmail.MessagePartHeader{Name: "References", Value: "<root@example.com> <parent@example.com>"},
-		&gmail.MessagePartHeader{Name: "List-Unsubscribe", Value: "<mailto:unsubscribe@example.com>"},
-		&gmail.MessagePartHeader{Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click"},
-		&gmail.MessagePartHeader{Name: "List-Id", Value: "Example List <list.example.com>"},
-		&gmail.MessagePartHeader{Name: "Auto-Submitted", Value: "auto-generated"},
-		&gmail.MessagePartHeader{Name: "Precedence", Value: "bulk"},
-		&gmail.MessagePartHeader{Name: "Content-Type", Value: "multipart/alternative"},
-		&gmail.MessagePartHeader{Name: "Authentication-Results", Value: "mx.example.com; dkim=pass"},
-		&gmail.MessagePartHeader{Name: "Received-SPF", Value: "pass"},
-		&gmail.MessagePartHeader{Name: "DKIM-Signature", Value: "v=1; b=long-signature-blob"},
-		&gmail.MessagePartHeader{Name: "X-Provider-Metadata", Value: "noisy"},
-		&gmail.MessagePartHeader{Name: "Received", Value: "from first.example.com"},
-		&gmail.MessagePartHeader{Name: "Received", Value: "from second.example.com"},
-	)
+	msg := newTestMessageWithNoisyHeaders("msg123", "thread123")
 	fixtures.MockService.AddMessage(msg)
 
+	// headers="raw" opts into payload_headers explicitly; the curated
+	// headers map below is present in every mode (#199).
 	request := makeRequest(map[string]any{
 		"message_id": "msg123",
 		"format":     "full",
+		"headers":    "raw",
 	})
 
 	result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
@@ -398,6 +413,143 @@ func TestGmailGetMessage_IncludesCuratedDefaultHeaders(t *testing.T) {
 	}
 	if receivedValues[0] != "from first.example.com" || receivedValues[1] != "from second.example.com" {
 		t.Errorf("expected Received headers to preserve order, got %v", receivedValues)
+	}
+}
+
+// TestGmailGetMessage_DefaultOmitsPayloadHeaders locks in the #199 default:
+// no "headers" argument means payload_headers is absent while the curated
+// headers map is still fully populated.
+func TestGmailGetMessage_DefaultOmitsPayloadHeaders(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestMessageWithNoisyHeaders("msg123", "thread123")
+	fixtures.MockService.AddMessage(msg)
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg123",
+	})
+
+	result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if _, ok := response["payload_headers"]; ok {
+		t.Error("expected payload_headers to be absent by default (#199)")
+	}
+	headers, ok := response["headers"].(map[string]any)
+	if !ok {
+		t.Fatal("expected headers map in response")
+	}
+	if headers["subject"] != "Important Email" {
+		t.Errorf("expected subject header in curated map, got %v", headers["subject"])
+	}
+	if headers["reply-to"] != "team@example.com" {
+		t.Errorf("expected reply-to header in curated map, got %v", headers["reply-to"])
+	}
+	if headers["dkim-signature"] != "present" {
+		t.Errorf("expected dkim-signature=present in curated map, got %v", headers["dkim-signature"])
+	}
+}
+
+// TestGmailGetMessage_HeadersSummaryExplicitMatchesDefault verifies
+// headers="summary" behaves identically to omitting the argument.
+func TestGmailGetMessage_HeadersSummaryExplicitMatchesDefault(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestMessageWithNoisyHeaders("msg123", "thread123")
+	fixtures.MockService.AddMessage(msg)
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg123",
+		"headers":    "summary",
+	})
+
+	result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if _, ok := response["payload_headers"]; ok {
+		t.Error("expected payload_headers to be absent for headers=summary")
+	}
+	headers, ok := response["headers"].(map[string]any)
+	if !ok {
+		t.Fatal("expected headers map in response")
+	}
+	if headers["subject"] != "Important Email" {
+		t.Errorf("expected subject header in curated map, got %v", headers["subject"])
+	}
+}
+
+// TestGmailGetMessage_SummaryOmitsNoisyHeadersEntirely asserts that noisy
+// headers (ARC-Seal, X-Gm-Message-State, an arbitrary X-* header, repeated
+// Received) do not leak anywhere in the summary response, not just outside
+// the curated map (#199).
+func TestGmailGetMessage_SummaryOmitsNoisyHeadersEntirely(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestMessageWithNoisyHeaders("msg123", "thread123")
+	fixtures.MockService.AddMessage(msg)
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg123",
+	})
+
+	result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	raw, err := json.Marshal(response)
+	if err != nil {
+		t.Fatalf("failed to marshal response: %v", err)
+	}
+	body := string(raw)
+
+	for _, noisy := range []string{"ARC-Seal", "arcsealvalue", "X-Gm-Message-State", "AOAM531verbosegmailstateblob", "X-Provider-Metadata", "from first.example.com", "from second.example.com"} {
+		if strings.Contains(body, noisy) {
+			t.Errorf("expected summary response to omit %q entirely, got: %s", noisy, body)
+		}
+	}
+}
+
+// TestGmailGetMessage_HeadersInvalidValueReturnsError verifies an
+// unrecognized "headers" value is a hard error rather than a silent
+// fallback, per the repo's No Silent Failures standard.
+func TestGmailGetMessage_HeadersInvalidValueReturnsError(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg := newTestMessage("msg123", "thread123", "Subject", "a@example.com", "me@example.com", "Body", []string{"INBOX"})
+	fixtures.MockService.AddMessage(msg)
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg123",
+		"headers":    "rawish",
+	})
+
+	result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error for invalid headers value")
+	}
+	errText := fmt.Sprintf("%v", result.Content)
+	if !strings.Contains(errText, "rawish") {
+		t.Errorf("expected error to name the rejected value %q, got: %s", "rawish", errText)
 	}
 }
 
@@ -542,6 +694,130 @@ func TestGmailGetMessages_TooMany(t *testing.T) {
 	}
 }
 
+// TestGmailGetMessages_DefaultOmitsPayloadHeaders verifies the #199 default
+// applies to the batch surface too: no "headers" argument means no message
+// in the batch carries payload_headers, while each still gets the curated
+// headers map.
+func TestGmailGetMessages_DefaultOmitsPayloadHeaders(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg1 := newTestMessageWithNoisyHeaders("msg1", "thread1")
+	msg2 := newTestMessageWithNoisyHeaders("msg2", "thread2")
+	fixtures.MockService.AddMessage(msg1)
+	fixtures.MockService.AddMessage(msg2)
+
+	request := makeRequest(map[string]any{
+		"message_ids": []any{"msg1", "msg2"},
+	})
+
+	result, err := TestableGmailGetMessages(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	messages, ok := response["messages"].([]any)
+	if !ok || len(messages) != 2 {
+		t.Fatalf("expected 2 messages in response, got %v", response["messages"])
+	}
+	for _, rawMsg := range messages {
+		message, ok := rawMsg.(map[string]any)
+		if !ok {
+			t.Fatalf("expected message object, got %T", rawMsg)
+		}
+		if _, ok := message["payload_headers"]; ok {
+			t.Error("expected payload_headers to be absent by default (#199)")
+		}
+		headers, ok := message["headers"].(map[string]any)
+		if !ok {
+			t.Fatal("expected headers map in each message")
+		}
+		if headers["subject"] != "Important Email" {
+			t.Errorf("expected subject header in curated map, got %v", headers["subject"])
+		}
+	}
+}
+
+// TestGmailGetMessages_HeadersRawIncludesPayloadHeaders verifies the batch
+// surface opts into payload_headers per message when headers="raw",
+// preserving repeated headers in order.
+func TestGmailGetMessages_HeadersRawIncludesPayloadHeaders(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg1 := newTestMessageWithNoisyHeaders("msg1", "thread1")
+	fixtures.MockService.AddMessage(msg1)
+
+	request := makeRequest(map[string]any{
+		"message_ids": []any{"msg1"},
+		"headers":     "raw",
+	})
+
+	result, err := TestableGmailGetMessages(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	messages, ok := response["messages"].([]any)
+	if !ok || len(messages) != 1 {
+		t.Fatalf("expected 1 message in response, got %v", response["messages"])
+	}
+	message, ok := messages[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected message object, got %T", messages[0])
+	}
+	payloadHeaders, ok := message["payload_headers"].([]any)
+	if !ok {
+		t.Fatal("expected payload_headers array with headers=raw")
+	}
+
+	var receivedValues []string
+	for _, rawHeader := range payloadHeaders {
+		header, ok := rawHeader.(map[string]any)
+		if !ok {
+			t.Fatalf("expected payload header object, got %T", rawHeader)
+		}
+		if header["name"] == "Received" {
+			receivedValues = append(receivedValues, fmt.Sprintf("%v", header["value"]))
+		}
+	}
+	if len(receivedValues) != 2 || receivedValues[0] != "from first.example.com" || receivedValues[1] != "from second.example.com" {
+		t.Errorf("expected 2 ordered Received headers, got %v", receivedValues)
+	}
+}
+
+// TestGmailGetMessages_HeadersInvalidValueReturnsError mirrors the single-get
+// hard-error behavior for the batch surface.
+func TestGmailGetMessages_HeadersInvalidValueReturnsError(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg1 := newTestMessage("msg1", "thread1", "Subject", "a@example.com", "me@example.com", "Body", []string{"INBOX"})
+	fixtures.MockService.AddMessage(msg1)
+
+	request := makeRequest(map[string]any{
+		"message_ids": []any{"msg1"},
+		"headers":     "rawish",
+	})
+
+	result, err := TestableGmailGetMessages(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error for invalid headers value")
+	}
+	errText := fmt.Sprintf("%v", result.Content)
+	if !strings.Contains(errText, "rawish") {
+		t.Errorf("expected error to name the rejected value %q, got: %s", "rawish", errText)
+	}
+}
+
 // === gmail_get_thread tests ===
 
 func TestGmailGetThread_Success(t *testing.T) {
@@ -591,6 +867,128 @@ func TestGmailGetThread_NotFound(t *testing.T) {
 	}
 	if !result.IsError {
 		t.Error("expected error for nonexistent thread")
+	}
+}
+
+// TestGmailGetThread_DefaultOmitsPayloadHeaders verifies the #199 default
+// applies to the thread surface: no "headers" argument means no message in
+// the thread carries payload_headers, while each still gets the curated
+// headers map.
+func TestGmailGetThread_DefaultOmitsPayloadHeaders(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg1 := newTestMessageWithNoisyHeaders("msg1", "thread123")
+	msg2 := newTestMessageWithNoisyHeaders("msg2", "thread123")
+	thread := newTestThread("thread123", []*gmail.Message{msg1, msg2})
+	fixtures.MockService.AddThread(thread)
+
+	request := makeRequest(map[string]any{
+		"thread_id": "thread123",
+	})
+
+	result, err := TestableGmailGetThread(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	messages, ok := response["messages"].([]any)
+	if !ok || len(messages) != 2 {
+		t.Fatalf("expected 2 messages in response, got %v", response["messages"])
+	}
+	for _, rawMsg := range messages {
+		message, ok := rawMsg.(map[string]any)
+		if !ok {
+			t.Fatalf("expected message object, got %T", rawMsg)
+		}
+		if _, ok := message["payload_headers"]; ok {
+			t.Error("expected payload_headers to be absent by default (#199)")
+		}
+		if _, ok := message["headers"].(map[string]any); !ok {
+			t.Fatal("expected headers map in each message")
+		}
+	}
+}
+
+// TestGmailGetThread_HeadersRawIncludesPayloadHeaders verifies the thread
+// surface opts into payload_headers per message when headers="raw",
+// preserving repeated headers in order.
+func TestGmailGetThread_HeadersRawIncludesPayloadHeaders(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg1 := newTestMessageWithNoisyHeaders("msg1", "thread123")
+	thread := newTestThread("thread123", []*gmail.Message{msg1})
+	fixtures.MockService.AddThread(thread)
+
+	request := makeRequest(map[string]any{
+		"thread_id": "thread123",
+		"headers":   "raw",
+	})
+
+	result, err := TestableGmailGetThread(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	messages, ok := response["messages"].([]any)
+	if !ok || len(messages) != 1 {
+		t.Fatalf("expected 1 message in response, got %v", response["messages"])
+	}
+	message, ok := messages[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected message object, got %T", messages[0])
+	}
+	payloadHeaders, ok := message["payload_headers"].([]any)
+	if !ok {
+		t.Fatal("expected payload_headers array with headers=raw")
+	}
+
+	var receivedValues []string
+	for _, rawHeader := range payloadHeaders {
+		header, ok := rawHeader.(map[string]any)
+		if !ok {
+			t.Fatalf("expected payload header object, got %T", rawHeader)
+		}
+		if header["name"] == "Received" {
+			receivedValues = append(receivedValues, fmt.Sprintf("%v", header["value"]))
+		}
+	}
+	if len(receivedValues) != 2 || receivedValues[0] != "from first.example.com" || receivedValues[1] != "from second.example.com" {
+		t.Errorf("expected 2 ordered Received headers, got %v", receivedValues)
+	}
+}
+
+// TestGmailGetThread_HeadersInvalidValueReturnsError mirrors the single-get
+// hard-error behavior for the thread surface.
+func TestGmailGetThread_HeadersInvalidValueReturnsError(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	msg1 := newTestMessage("msg1", "thread123", "Subject", "a@example.com", "me@example.com", "Body", []string{"INBOX"})
+	thread := newTestThread("thread123", []*gmail.Message{msg1})
+	fixtures.MockService.AddThread(thread)
+
+	request := makeRequest(map[string]any{
+		"thread_id": "thread123",
+		"headers":   "rawish",
+	})
+
+	result, err := TestableGmailGetThread(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error for invalid headers value")
+	}
+	errText := fmt.Sprintf("%v", result.Content)
+	if !strings.Contains(errText, "rawish") {
+		t.Errorf("expected error to name the rejected value %q, got: %s", "rawish", errText)
 	}
 }
 

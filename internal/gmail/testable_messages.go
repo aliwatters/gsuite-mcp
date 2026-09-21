@@ -70,12 +70,17 @@ func TestableGmailGetMessage(ctx context.Context, request mcp.CallToolRequest, d
 
 	format := common.ParseStringArg(request.GetArguments(), "format", "full")
 
+	headerMode, errResult := parseHeaderMode(request.GetArguments())
+	if errResult != nil {
+		return errResult, nil
+	}
+
 	msg, err := svc.GetMessage(ctx, messageID, format)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Gmail API error: %v", err)), nil
 	}
 
-	result := FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments())})
+	result := FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments()), HeaderMode: headerMode})
 	return common.MarshalToolResult(result)
 }
 
@@ -97,10 +102,15 @@ func TestableGmailGetMessages(ctx context.Context, request mcp.CallToolRequest, 
 
 	format := common.ParseStringArg(request.GetArguments(), "format", "full")
 
+	headerMode, errResult := parseHeaderMode(request.GetArguments())
+	if errResult != nil {
+		return errResult, nil
+	}
+
 	messages := make([]map[string]any, 0, len(messageIDsRaw))
 	var errors []string
 
-	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments())}
+	opts := FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments()), HeaderMode: headerMode}
 	for _, idRaw := range messageIDsRaw {
 		messageID, ok := idRaw.(string)
 		if !ok {
