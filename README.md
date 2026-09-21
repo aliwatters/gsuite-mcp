@@ -134,8 +134,8 @@ gmail_resolve_web_id(id="thread-f:1821570065795440641")
 | Tool | Description |
 |------|-------------|
 | `gmail_get_attachment` | Download attachment as base64 data |
-| `gmail_list_attachments` | List downloadable attachments on a message |
-| `gmail_download_attachment` | Save a message attachment to a local file |
+| `gmail_list_attachments` | List downloadable attachments on a message (`part_id` is the stable handle) |
+| `gmail_download_attachment` | Save a message attachment to a local file (select by `part_id`) |
 | `gmail_list_filters` / `gmail_create_filter` / `gmail_delete_filter` | Filter management |
 | `gmail_create_label` / `gmail_update_label` / `gmail_delete_label` | Label management |
 | `gmail_list_drafts` / `gmail_get_draft` / `gmail_update_draft` / `gmail_delete_draft` / `gmail_send_draft` | Draft management |
@@ -345,8 +345,15 @@ To inspect an inbound attachment:
 
 ```
 1. gmail_list_attachments({"message_id": "...", "account": "support"})
-2. gmail_download_attachment({"message_id": "...", "attachment_id": "...", "output_dir": "~/Desktop", "account": "support"})
+2. gmail_download_attachment({"message_id": "...", "part_id": "1", "output_dir": "~/Desktop", "account": "support"})
 ```
+
+`part_id` is the stable handle. Gmail mints a new `attachment_id` on every read, so
+two listings of the same message report different `attachment_id` values for the same
+file. Earlier tokens keep working — `gmail_download_attachment` passes an
+`attachment_id` it does not recognise straight to the Gmail API rather than rejecting
+it — but `part_id` is what you can hold on to and compare. When a message has exactly
+one attachment, both selectors can be omitted.
 
 </details>
 

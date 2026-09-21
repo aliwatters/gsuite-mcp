@@ -848,3 +848,391 @@ func TestGmailGetProfile_ServiceError(t *testing.T) {
 		t.Error("expected error when service fails")
 	}
 }
+
+// === Attachment selection under Gmail's regenerated attachment_id (#204) ===
+
+// newTestMessageWithTwoAttachments builds a two-attachment message whose
+// attachment ids are the ones a *current* listing would report. Tests pass a
+// different id to stand in for one minted by an earlier read.
+func newTestMessageWithTwoAttachments(id string, firstSize, secondSize int64) *gmail.Message {
+	return &gmail.Message{
+		Id:       id,
+		ThreadId: "thread1",
+		Payload: &gmail.MessagePart{
+			MimeType: "multipart/mixed",
+			Parts: []*gmail.MessagePart{
+				{
+					PartId:   "1",
+					MimeType: "image/jpeg",
+					Filename: "first.jpg",
+					Body:     &gmail.MessagePartBody{AttachmentId: "FRESH-1", Size: firstSize},
+				},
+				{
+					PartId:   "2",
+					MimeType: "image/png",
+					Filename: "second.png",
+					Body:     &gmail.MessagePartBody{AttachmentId: "FRESH-2", Size: secondSize},
+				},
+			},
+		},
+	}
+}
+
+// helloWorldBody is what the mock serves by default: "Hello World!" base64'd.
+func helloWorldBody(size int64) *gmail.MessagePartBody {
+	return &gmail.MessagePartBody{Size: size, Data: "SGVsbG8gV29ybGQh"}
+}
+
+// TestGmailDownloadAttachment_StaleAttachmentIDIsPassedThrough is the #204
+// regression. Gmail re-mints body.attachmentId on every messages.get, so an id
+// copied from an earlier gmail_list_attachments call matches nothing in the
+// current listing — yet it still resolves at the API. The download must
+// succeed rather than reject the token locally.
+func TestGmailDownloadAttachment_StaleAttachmentIDIsPassedThrough(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-stale", 100, 200))
+	fixtures.MockService.AddAttachmentBody("STALE-FROM-EARLIER-READ", helloWorldBody(100))
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-stale",
+		"attachment_id": "STALE-FROM-EARLIER-READ",
+		"output_dir":    t.TempDir(),
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("stale attachment_id must be passed through, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["attachment_id"]; got != "STALE-FROM-EARLIER-READ" {
+		t.Errorf("attachment_id: got %v, want the caller's token verbatim", got)
+	}
+	if got := response["attachment_id_rematched"]; got != true {
+		t.Errorf("attachment_id_rematched: got %v, want true", got)
+	}
+}
+
+// TestGmailDownloadAttachment_StaleIDWithPartIDUsesPartMetadata checks that an
+// explicit part_id supplies the filename when the token itself cannot.
+func TestGmailDownloadAttachment_StaleIDWithPartIDUsesPartMetadata(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-stale-part", 100, 200))
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(200))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-stale-part",
+		"attachment_id": "STALE",
+		"part_id":       "2",
+		"output_dir":    outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["metadata_source"]; got != "part_id" {
+		t.Errorf("metadata_source: got %v, want part_id", got)
+	}
+	if got := response["path"]; got != filepath.Join(outputDir, "second.png") {
+		t.Errorf("path: got %v, want second.png from part 2", got)
+	}
+	// The caller's token must reach the API, not part 2's freshly listed one.
+	if got := response["attachment_id"]; got != "STALE" {
+		t.Errorf("attachment_id: got %v, want STALE", got)
+	}
+}
+
+// TestGmailDownloadAttachment_StaleIDRecoversMetadataBySize covers the case
+// with no part_id: a unique size match identifies which part was fetched.
+func TestGmailDownloadAttachment_StaleIDRecoversMetadataBySize(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-size", 100, 200))
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(200))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-size",
+		"attachment_id": "STALE",
+		"output_dir":    outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["metadata_source"]; got != "size_match" {
+		t.Errorf("metadata_source: got %v, want size_match", got)
+	}
+	if got := response["path"]; got != filepath.Join(outputDir, "second.png") {
+		t.Errorf("path: got %v, want second.png (the 200-byte part)", got)
+	}
+	if got := response["part_id"]; got != "2" {
+		t.Errorf("part_id: got %v, want 2", got)
+	}
+}
+
+// TestGmailDownloadAttachment_StaleIDAmbiguousSizeFallsBack checks that two
+// equally sized parts are treated as unidentifiable rather than guessed at:
+// the bytes are still written, under a generated name, with no part_id claimed.
+func TestGmailDownloadAttachment_StaleIDAmbiguousSizeFallsBack(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-ambiguous", 150, 150))
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(150))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-ambiguous",
+		"attachment_id": "STALE",
+		"output_dir":    outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["metadata_source"]; got != "none" {
+		t.Errorf("metadata_source: got %v, want none", got)
+	}
+	if _, claimed := response["part_id"]; claimed {
+		t.Errorf("part_id must be omitted when the part is unidentifiable, got %v", response["part_id"])
+	}
+	if got := response["path"]; got != filepath.Join(outputDir, "attachment-STALE") {
+		t.Errorf("path: got %v, want the generated attachment-STALE name", got)
+	}
+}
+
+// TestGmailDownloadAttachment_PartIDUsesFreshlyListedToken confirms part_id
+// selection still resolves through the current listing's token.
+func TestGmailDownloadAttachment_PartIDUsesFreshlyListedToken(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-part", 100, 200))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg-part",
+		"part_id":    "1",
+		"output_dir": outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["attachment_id"]; got != "FRESH-1" {
+		t.Errorf("attachment_id: got %v, want FRESH-1", got)
+	}
+	if got := response["metadata_source"]; got != "part_id" {
+		t.Errorf("metadata_source: got %v, want part_id", got)
+	}
+	if got := response["attachment_id_rematched"]; got != false {
+		t.Errorf("attachment_id_rematched: got %v, want false", got)
+	}
+	if got := response["path"]; got != filepath.Join(outputDir, "first.jpg") {
+		t.Errorf("path: got %v, want first.jpg", got)
+	}
+}
+
+// TestGmailDownloadAttachment_UnknownPartIDStillErrors keeps part_id strict:
+// it is the durable handle, so a miss is a real caller error, not a stale token.
+func TestGmailDownloadAttachment_UnknownPartIDStillErrors(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-badpart", 100, 200))
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg-badpart",
+		"part_id":    "99",
+		"output_dir": t.TempDir(),
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected an error for a part_id that is not on the message")
+	}
+}
+
+// TestGmailDownloadAttachment_ExactMatchOnConflictingPartIDErrors preserves the
+// pre-existing contradiction check.
+func TestGmailDownloadAttachment_ExactMatchOnConflictingPartIDErrors(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-conflict", 100, 200))
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-conflict",
+		"attachment_id": "FRESH-1",
+		"part_id":       "2",
+		"output_dir":    t.TempDir(),
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected an error when attachment_id and part_id disagree")
+	}
+}
+
+// TestGmailDownloadAttachment_SingleAttachmentAcceptsAnyID: with one
+// attachment there is nothing to disambiguate, so an unrecognised token still
+// downloads and reports the sole attachment's metadata.
+func TestGmailDownloadAttachment_SingleAttachmentAcceptsAnyID(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithAttachment("msg-single-stale"))
+	// Same byte count as the message's only attachment, so the token is
+	// consistent with it.
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(123456))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-single-stale",
+		"attachment_id": "STALE",
+		"output_dir":    outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["metadata_source"]; got != "sole_attachment" {
+		t.Errorf("metadata_source: got %v, want sole_attachment", got)
+	}
+	if got := response["path"]; got != filepath.Join(outputDir, "spec.pdf") {
+		t.Errorf("path: got %v, want spec.pdf", got)
+	}
+}
+
+// TestGmailDownloadAttachment_StaleIDContradictingPartIDErrors: a token the
+// listing does not know, paired with a part_id whose size it does not match,
+// means the caller named two different attachments. Writing the fetched bytes
+// under the named part's filename would put real data behind a wrong name, so
+// this must fail rather than mislabel. The exact-match branch already rejects
+// the same contradiction; this keeps the pass-through branch consistent.
+func TestGmailDownloadAttachment_StaleIDContradictingPartIDErrors(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-mislabel", 100, 200))
+	// The stale token serves part 1's 100 bytes while the caller names part 2.
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(100))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-mislabel",
+		"attachment_id": "STALE",
+		"part_id":       "2",
+		"output_dir":    outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected an error when the token's bytes do not match the named part")
+	}
+	entries, err := os.ReadDir(outputDir)
+	if err != nil {
+		t.Fatalf("read output dir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("nothing may be written on a mislabel refusal, found %d file(s)", len(entries))
+	}
+}
+
+// TestGmailDownloadAttachment_StaleIDContradictingSoleAttachmentErrors covers
+// the same guard on the single-attachment path, where the token may well have
+// come from an entirely different message.
+func TestGmailDownloadAttachment_StaleIDContradictingSoleAttachmentErrors(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithAttachment("msg-single-mismatch"))
+	// The message's only attachment is 123456 bytes; the token serves 100.
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(100))
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-single-mismatch",
+		"attachment_id": "STALE",
+		"output_dir":    t.TempDir(),
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected an error when the token's bytes do not match the sole attachment")
+	}
+}
+
+// TestGmailDownloadAttachment_ExactMatchOnMultiAttachmentMessage pins the most
+// common path: an attachment_id still present in the current listing, on a
+// message where the choice actually matters. The other exact-match test only
+// reaches this branch's error return, which left the success return free to
+// regress silently.
+func TestGmailDownloadAttachment_ExactMatchOnMultiAttachmentMessage(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-exact", 100, 200))
+	fixtures.MockService.AddAttachmentBody("FRESH-2", helloWorldBody(200))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-exact",
+		"attachment_id": "FRESH-2",
+		"output_dir":    outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["metadata_source"]; got != "exact" {
+		t.Errorf("metadata_source: got %v, want exact", got)
+	}
+	if got := response["attachment_id_rematched"]; got != false {
+		t.Errorf("attachment_id_rematched: got %v, want false", got)
+	}
+	if got := response["part_id"]; got != "2" {
+		t.Errorf("part_id: got %v, want 2", got)
+	}
+	if got := response["path"]; got != filepath.Join(outputDir, "second.png") {
+		t.Errorf("path: got %v, want second.png", got)
+	}
+	if got := response["mime_type"]; got != "image/png" {
+		t.Errorf("mime_type: got %v, want image/png", got)
+	}
+}

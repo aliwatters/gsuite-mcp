@@ -24,6 +24,10 @@ type MockGmailService struct {
 	SendAs    map[string]*gmail.SendAs
 	Delegates map[string]*gmail.Delegate
 
+	// AttachmentBodies overrides GetAttachment per attachment id. Keys need not
+	// correspond to any part in Messages.
+	AttachmentBodies map[string]*gmail.MessagePartBody
+
 	// Error to return (if set, operations return this error)
 	Error error
 
@@ -504,12 +508,31 @@ func (m *MockGmailService) GetAttachment(ctx context.Context, messageID, attachm
 		return nil, m.Error
 	}
 
+	// Gmail serves a token minted by any earlier messages.get, including one the
+	// message's current listing no longer advertises. AttachmentBodies lets a
+	// test model that: register a body under an id that appears nowhere in the
+	// payload and it is still served.
+	if body, ok := m.AttachmentBodies[attachmentID]; ok {
+		served := *body
+		served.AttachmentId = attachmentID
+		return &served, nil
+	}
+
 	// Return mock attachment data
 	return &gmail.MessagePartBody{
 		AttachmentId: attachmentID,
 		Size:         1024,
 		Data:         "SGVsbG8gV29ybGQh", // base64 encoded "Hello World!"
 	}, nil
+}
+
+// AddAttachmentBody registers a body served for an exact attachment id,
+// regardless of whether any message part advertises that id.
+func (m *MockGmailService) AddAttachmentBody(attachmentID string, body *gmail.MessagePartBody) {
+	if m.AttachmentBodies == nil {
+		m.AttachmentBodies = make(map[string]*gmail.MessagePartBody)
+	}
+	m.AttachmentBodies[attachmentID] = body
 }
 
 // === Filters ===

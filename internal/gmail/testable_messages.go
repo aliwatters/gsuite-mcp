@@ -424,16 +424,40 @@ func TestableGmailDownloadAttachment(ctx context.Context, request mcp.CallToolRe
 	}
 
 	attachments := ExtractAttachments(msg.Payload)
-	selected, selectErr := selectAttachment(attachments, common.ParseStringArg(args, "attachment_id", ""), common.ParseStringArg(args, "part_id", ""))
+	selection, selectErr := selectAttachment(attachments, common.ParseStringArg(args, "attachment_id", ""), common.ParseStringArg(args, "part_id", ""))
 	if selectErr != nil {
 		return mcp.NewToolResultError(selectErr.Error()), nil
 	}
 
-	attachmentID := attachmentString(selected, "attachment_id")
+	attachmentID := selection.attachmentID
 	attach, err := svc.GetAttachment(ctx, messageID, attachmentID)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Gmail API error: %v", err)), nil
 	}
+
+	// A passed-through token carries no metadata of its own, so the fetched
+	// body's size is the only identifying signal available. Every branch that
+	// labels such a token has to consult it: a part_id or a sole attachment
+	// says which part the *caller* meant, not which part Gmail just served.
+	switch {
+	case selection.metadataSource == metadataSourcePending:
+		if entry := resolveAttachmentBySize(attachments, attach.Size); entry != nil {
+			selection.entry, selection.metadataSource = entry, metadataSourceSizeMatch
+		} else {
+			selection.metadataSource = metadataSourceNone
+		}
+	case selection.rematched && selection.entry != nil:
+		// The caller named a part and supplied a token the listing does not
+		// know. If the bytes are the wrong length for that part, the two
+		// identifiers point at different attachments and writing the fetched
+		// bytes under the named part's filename would mislabel real data.
+		if listed := attachmentInt64(selection.entry, "size"); listed != attach.Size {
+			return mcp.NewToolResultError(fmt.Sprintf(
+				"attachment_id %q returned %d bytes, but %s is %d bytes; the two identifiers refer to different attachments",
+				attachmentID, attach.Size, describeAttachment(selection.entry), listed)), nil
+		}
+	}
+	selected := selection.entry
 
 	data, err := decodeGmailAttachmentData(attach.Data)
 	if err != nil {
@@ -461,6 +485,10 @@ func TestableGmailDownloadAttachment(ctx context.Context, request mcp.CallToolRe
 		"bytes_written":  len(data),
 		"sha256":         fmt.Sprintf("%x", sum),
 		"overwrote_file": common.ParseBoolArg(args, "overwrite", false),
+		// Never let the pass-through be silent: the caller has to be able to
+		// tell a verified hit from a token Gmail no longer lists.
+		"attachment_id_rematched": selection.rematched,
+		"metadata_source":         selection.metadataSource,
 	}
 	if partID := attachmentString(selected, "part_id"); partID != "" {
 		result["part_id"] = partID
@@ -469,34 +497,152 @@ func TestableGmailDownloadAttachment(ctx context.Context, request mcp.CallToolRe
 	return common.MarshalToolResult(result)
 }
 
-func selectAttachment(attachments []map[string]any, attachmentID string, partID string) (map[string]any, error) {
+// Metadata provenance for a download, reported back to the caller as
+// "metadata_source" so a recovered filename is never mistaken for a verified one.
+const (
+	// metadataSourceExact means the supplied attachment_id appeared in the
+	// message's current attachment listing.
+	metadataSourceExact = "exact"
+	// metadataSourcePartID means metadata came from the caller's part_id.
+	metadataSourcePartID = "part_id"
+	// metadataSourceSole means the message has exactly one attachment, so the
+	// selection was unambiguous.
+	metadataSourceSole = "sole_attachment"
+	// metadataSourceSizeMatch means metadata was recovered by matching the
+	// fetched body's size against the listing.
+	metadataSourceSizeMatch = "size_match"
+	// metadataSourceNone means nothing identified the part; the filename falls
+	// back to "attachment-<id>" and part_id is omitted.
+	metadataSourceNone = "none"
+	// metadataSourcePending is internal: the selection is resolvable only after
+	// the body is fetched. It never reaches a response.
+	metadataSourcePending = "pending_size_match"
+)
+
+// attachmentSelection is the outcome of resolving the caller's attachment_id /
+// part_id arguments against the listing extracted from a fresh messages.get.
+type attachmentSelection struct {
+	// attachmentID is the token handed to the Gmail API.
+	attachmentID string
+	// entry is the listing row supplying filename/mime_type/part_id. It is nil
+	// while metadataSource is metadataSourcePending, and stays nil when nothing
+	// identifies the part.
+	entry map[string]any
+	// rematched reports that the caller's attachment_id was absent from the
+	// current listing and was passed through to the API unchanged.
+	rematched bool
+	// metadataSource is one of the metadataSource* constants above.
+	metadataSource string
+}
+
+// selectAttachment decides which attachment a download refers to.
+//
+// part_id is the durable handle: Gmail re-mints body.attachmentId on every
+// users.messages.get, so an attachment_id from an earlier read never matches a
+// freshly extracted listing. It does, however, remain valid at the API — a
+// token superseded by two later reads still returned HTTP 200 and the correct
+// bytes. Rejecting an unmatched token therefore failed every caller who
+// followed the documented list-then-download flow (#204); such a token is now
+// passed through for the Gmail API to arbitrate.
+func selectAttachment(attachments []map[string]any, attachmentID string, partID string) (attachmentSelection, error) {
 	if len(attachments) == 0 {
-		return nil, fmt.Errorf("message has no downloadable attachments")
+		return attachmentSelection{}, fmt.Errorf("message has no downloadable attachments")
 	}
 
-	for _, attachment := range attachments {
-		if attachmentID != "" && attachmentString(attachment, "attachment_id") == attachmentID {
-			if partID != "" && attachmentString(attachment, "part_id") != partID {
-				return nil, fmt.Errorf("attachment_id %q is not on part_id %q", attachmentID, partID)
+	// Resolve part_id first: it is authoritative, and it can supply metadata for
+	// an attachment_id the current listing no longer knows about.
+	var partEntry map[string]any
+	if partID != "" {
+		for _, attachment := range attachments {
+			if attachmentString(attachment, "part_id") == partID {
+				partEntry = attachment
+				break
 			}
-			return attachment, nil
 		}
-		if attachmentID == "" && partID != "" && attachmentString(attachment, "part_id") == partID {
-			return attachment, nil
+		if partEntry == nil {
+			return attachmentSelection{}, fmt.Errorf("part_id %q was not found on message", partID)
 		}
 	}
 
 	if attachmentID != "" {
-		return nil, fmt.Errorf("attachment_id %q was not found on message", attachmentID)
-	}
-	if partID != "" {
-		return nil, fmt.Errorf("part_id %q was not found on message", partID)
-	}
-	if len(attachments) > 1 {
-		return nil, fmt.Errorf("message has %d attachments; provide attachment_id or part_id from gmail_list_attachments", len(attachments))
+		for _, attachment := range attachments {
+			if attachmentString(attachment, "attachment_id") != attachmentID {
+				continue
+			}
+			if partID != "" && attachmentString(attachment, "part_id") != partID {
+				return attachmentSelection{}, fmt.Errorf("attachment_id %q is not on part_id %q", attachmentID, partID)
+			}
+			return attachmentSelection{
+				attachmentID:   attachmentID,
+				entry:          attachment,
+				metadataSource: metadataSourceExact,
+			}, nil
+		}
+
+		selection := attachmentSelection{attachmentID: attachmentID, rematched: true}
+		switch {
+		case partEntry != nil:
+			selection.entry, selection.metadataSource = partEntry, metadataSourcePartID
+		case len(attachments) == 1:
+			selection.entry, selection.metadataSource = attachments[0], metadataSourceSole
+		default:
+			selection.metadataSource = metadataSourcePending
+		}
+		return selection, nil
 	}
 
-	return attachments[0], nil
+	if partEntry != nil {
+		return attachmentSelection{
+			attachmentID:   attachmentString(partEntry, "attachment_id"),
+			entry:          partEntry,
+			metadataSource: metadataSourcePartID,
+		}, nil
+	}
+
+	if len(attachments) > 1 {
+		return attachmentSelection{}, fmt.Errorf("message has %d attachments; provide part_id from gmail_list_attachments (part_id is stable, attachment_id is regenerated on every read)", len(attachments))
+	}
+
+	return attachmentSelection{
+		attachmentID:   attachmentString(attachments[0], "attachment_id"),
+		entry:          attachments[0],
+		metadataSource: metadataSourceSole,
+	}, nil
+}
+
+// resolveAttachmentBySize recovers the listing row for a passed-through
+// attachment_id by matching the fetched body's size. It returns nil unless
+// exactly one attachment has that size: two equally sized parts are genuinely
+// ambiguous, and guessing would attach the wrong filename to real bytes.
+func resolveAttachmentBySize(attachments []map[string]any, size int64) map[string]any {
+	var match map[string]any
+	for _, attachment := range attachments {
+		if attachmentInt64(attachment, "size") != size {
+			continue
+		}
+		if match != nil {
+			return nil
+		}
+		match = attachment
+	}
+	return match
+}
+
+// describeAttachment names an attachment for an error message, preferring the
+// durable handle and falling back to the filename when a part carries no part_id.
+func describeAttachment(attachment map[string]any) string {
+	if partID := attachmentString(attachment, "part_id"); partID != "" {
+		return fmt.Sprintf("part_id %q", partID)
+	}
+	if filename := attachmentString(attachment, "filename"); filename != "" {
+		return fmt.Sprintf("attachment %q", filename)
+	}
+	return "the message's only attachment"
+}
+
+func attachmentInt64(attachment map[string]any, key string) int64 {
+	value, _ := attachment[key].(int64)
+	return value
 }
 
 func attachmentString(attachment map[string]any, key string) string {
