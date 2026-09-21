@@ -1193,3 +1193,46 @@ func TestGmailDownloadAttachment_StaleIDContradictingSoleAttachmentErrors(t *tes
 		t.Fatal("expected an error when the token's bytes do not match the sole attachment")
 	}
 }
+
+// TestGmailDownloadAttachment_ExactMatchOnMultiAttachmentMessage pins the most
+// common path: an attachment_id still present in the current listing, on a
+// message where the choice actually matters. The other exact-match test only
+// reaches this branch's error return, which left the success return free to
+// regress silently.
+func TestGmailDownloadAttachment_ExactMatchOnMultiAttachmentMessage(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-exact", 100, 200))
+	fixtures.MockService.AddAttachmentBody("FRESH-2", helloWorldBody(200))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-exact",
+		"attachment_id": "FRESH-2",
+		"output_dir":    outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	if got := response["metadata_source"]; got != "exact" {
+		t.Errorf("metadata_source: got %v, want exact", got)
+	}
+	if got := response["attachment_id_rematched"]; got != false {
+		t.Errorf("attachment_id_rematched: got %v, want false", got)
+	}
+	if got := response["part_id"]; got != "2" {
+		t.Errorf("part_id: got %v, want 2", got)
+	}
+	if got := response["path"]; got != filepath.Join(outputDir, "second.png") {
+		t.Errorf("path: got %v, want second.png", got)
+	}
+	if got := response["mime_type"]; got != "image/png" {
+		t.Errorf("mime_type: got %v, want image/png", got)
+	}
+}
