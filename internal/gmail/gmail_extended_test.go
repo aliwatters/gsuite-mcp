@@ -571,6 +571,12 @@ func TestGmailGetDraft_Success(t *testing.T) {
 // is a fifth surface gated by headers=raw: no "headers" argument means
 // payload_headers is absent while the curated headers map is still fully
 // populated (#199).
+//
+// This is a contract test, not a regression test for the commit that added it:
+// gmail_get_draft already omitted payload_headers beforehand, because the bare
+// FormatMessage it used left HeaderMode at its zero value (summary). What was
+// missing was the opt-in, which TestGmailGetDraft_HeadersRawIncludesPayloadHeaders
+// covers. This test guards the default against future reintroduction.
 func TestGmailGetDraft_DefaultOmitsPayloadHeaders(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
 
