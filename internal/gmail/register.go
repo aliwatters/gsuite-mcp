@@ -182,23 +182,23 @@ func registerExtendedTools(s *server.MCPServer) {
 	s.AddTool(mcp.NewTool("gmail_get_attachment",
 		mcp.WithDescription("Download attachment content by ID. Returns base64-encoded data."),
 		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID containing the attachment")),
-		mcp.WithString("attachment_id", mcp.Required(), mcp.Description("Attachment ID from message payload")),
+		mcp.WithString("attachment_id", mcp.Required(), mcp.Description("Attachment ID from gmail_list_attachments or a message payload. Gmail mints a new token on every read, but previously issued tokens stay valid.")),
 		common.WithAccountParam(),
 	), HandleGmailGetAttachment)
 
 	// gmail_list_attachments - List attachment metadata
 	s.AddTool(mcp.NewTool("gmail_list_attachments",
-		mcp.WithDescription("List downloadable attachments on a Gmail message, including attachment_id, part_id, filename, MIME type, and size."),
+		mcp.WithDescription("List downloadable attachments on a Gmail message, including part_id, attachment_id, filename, MIME type, and size. part_id is the stable handle; attachment_id is regenerated on every read (older tokens keep working)."),
 		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID containing the attachment")),
 		common.WithAccountParam(),
 	), HandleGmailListAttachments)
 
 	// gmail_download_attachment - Save attachment to a local file
 	s.AddTool(mcp.NewTool("gmail_download_attachment",
-		mcp.WithDescription("Download a Gmail attachment and write it to a local file. If the message has exactly one attachment, attachment_id/part_id can be omitted."),
+		mcp.WithDescription("Download a Gmail attachment and write it to a local file. Prefer part_id to select among multiple attachments. If the message has exactly one attachment, both selectors can be omitted."),
 		mcp.WithString("message_id", mcp.Required(), mcp.Description("Gmail message ID containing the attachment")),
-		mcp.WithString("attachment_id", mcp.Description("Attachment ID from gmail_list_attachments or message payload")),
-		mcp.WithString("part_id", mcp.Description("Part ID from gmail_list_attachments; useful when selecting among multiple attachments")),
+		mcp.WithString("attachment_id", mcp.Description("Attachment ID from gmail_list_attachments or a message payload. Regenerated on every read, so it is passed through to the Gmail API rather than matched locally; prefer part_id.")),
+		mcp.WithString("part_id", mcp.Description("Part ID from gmail_list_attachments. The stable handle, and the preferred way to select among multiple attachments.")),
 		mcp.WithString("output_path", mcp.Description("Optional local file path to write. Parent directories are created. If omitted, writes to a temporary gsuite-mcp-attachments directory.")),
 		mcp.WithString("output_dir", mcp.Description("Optional local directory to write the sanitized attachment filename into. Mutually exclusive with output_path.")),
 		mcp.WithBoolean("overwrite", mcp.Description("Replace an existing output file (default: false)")),

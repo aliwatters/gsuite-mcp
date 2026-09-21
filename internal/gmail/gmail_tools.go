@@ -142,7 +142,8 @@ func FormatMessageWithOptions(msg *gmail.Message, opts FormatMessageOptions) map
 	// Surface attachment metadata so callers can pair gmail_get* with
 	// gmail_get_attachment. The Gmail API exposes attachment_id only via
 	// payload.parts[].body — historically dropped by this wrapper, which left
-	// gmail_get_attachment unreachable in practice (#156).
+	// gmail_get_attachment unreachable in practice (#156). Note the id is
+	// re-minted on every read; part_id is the handle that survives (#204).
 	if attachments := ExtractAttachments(msg.Payload); len(attachments) > 0 {
 		result["attachments"] = attachments
 	}
@@ -171,7 +172,14 @@ func ExtractBodyPreferHTML(payload *gmail.MessagePart) string {
 // ExtractAttachments walks the payload tree and returns one entry per part
 // that carries a Body.AttachmentId, with the four fields a caller needs to
 // invoke gmail_get_attachment: attachment_id, filename, mime_type, size.
-// part_id is included for traceability (Gmail uses dotted paths like "0.1").
+// part_id is included as the durable selector (Gmail uses dotted paths like
+// "0.1").
+//
+// attachment_id is only as stable as the read that produced it: Gmail mints a
+// fresh token on every users.messages.get, so two listings of one message
+// disagree on every attachment_id while agreeing on every part_id. Superseded
+// tokens still resolve at the API, so they remain usable — they just cannot be
+// compared against a later listing (#204).
 //
 // Returns an empty slice if there are no attachments — callers should treat
 // nil and empty identically.
