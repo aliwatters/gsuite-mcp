@@ -1106,6 +1106,9 @@ func TestGmailDownloadAttachment_ExactMatchOnConflictingPartIDErrors(t *testing.
 func TestGmailDownloadAttachment_SingleAttachmentAcceptsAnyID(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
 	fixtures.MockService.AddMessage(newTestMessageWithAttachment("msg-single-stale"))
+	// Same byte count as the message's only attachment, so the token is
+	// consistent with it.
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(123456))
 	outputDir := t.TempDir()
 
 	request := makeRequest(map[string]any{
@@ -1128,5 +1131,65 @@ func TestGmailDownloadAttachment_SingleAttachmentAcceptsAnyID(t *testing.T) {
 	}
 	if got := response["path"]; got != filepath.Join(outputDir, "spec.pdf") {
 		t.Errorf("path: got %v, want spec.pdf", got)
+	}
+}
+
+// TestGmailDownloadAttachment_StaleIDContradictingPartIDErrors: a token the
+// listing does not know, paired with a part_id whose size it does not match,
+// means the caller named two different attachments. Writing the fetched bytes
+// under the named part's filename would put real data behind a wrong name, so
+// this must fail rather than mislabel. The exact-match branch already rejects
+// the same contradiction; this keeps the pass-through branch consistent.
+func TestGmailDownloadAttachment_StaleIDContradictingPartIDErrors(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithTwoAttachments("msg-mislabel", 100, 200))
+	// The stale token serves part 1's 100 bytes while the caller names part 2.
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(100))
+	outputDir := t.TempDir()
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-mislabel",
+		"attachment_id": "STALE",
+		"part_id":       "2",
+		"output_dir":    outputDir,
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected an error when the token's bytes do not match the named part")
+	}
+	entries, err := os.ReadDir(outputDir)
+	if err != nil {
+		t.Fatalf("read output dir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("nothing may be written on a mislabel refusal, found %d file(s)", len(entries))
+	}
+}
+
+// TestGmailDownloadAttachment_StaleIDContradictingSoleAttachmentErrors covers
+// the same guard on the single-attachment path, where the token may well have
+// come from an entirely different message.
+func TestGmailDownloadAttachment_StaleIDContradictingSoleAttachmentErrors(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithAttachment("msg-single-mismatch"))
+	// The message's only attachment is 123456 bytes; the token serves 100.
+	fixtures.MockService.AddAttachmentBody("STALE", helloWorldBody(100))
+
+	request := makeRequest(map[string]any{
+		"message_id":    "msg-single-mismatch",
+		"attachment_id": "STALE",
+		"output_dir":    t.TempDir(),
+	})
+
+	result, err := TestableGmailDownloadAttachment(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected an error when the token's bytes do not match the sole attachment")
 	}
 }

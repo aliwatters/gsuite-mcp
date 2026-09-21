@@ -436,12 +436,25 @@ func TestableGmailDownloadAttachment(ctx context.Context, request mcp.CallToolRe
 	}
 
 	// A passed-through token carries no metadata of its own, so the fetched
-	// body's size is the last identifying signal available.
-	if selection.metadataSource == metadataSourcePending {
+	// body's size is the only identifying signal available. Every branch that
+	// labels such a token has to consult it: a part_id or a sole attachment
+	// says which part the *caller* meant, not which part Gmail just served.
+	switch {
+	case selection.metadataSource == metadataSourcePending:
 		if entry := resolveAttachmentBySize(attachments, attach.Size); entry != nil {
 			selection.entry, selection.metadataSource = entry, metadataSourceSizeMatch
 		} else {
 			selection.metadataSource = metadataSourceNone
+		}
+	case selection.rematched && selection.entry != nil:
+		// The caller named a part and supplied a token the listing does not
+		// know. If the bytes are the wrong length for that part, the two
+		// identifiers point at different attachments and writing the fetched
+		// bytes under the named part's filename would mislabel real data.
+		if listed := attachmentInt64(selection.entry, "size"); listed != attach.Size {
+			return mcp.NewToolResultError(fmt.Sprintf(
+				"attachment_id %q returned %d bytes, but %s is %d bytes; the two identifiers refer to different attachments",
+				attachmentID, attach.Size, describeAttachment(selection.entry), listed)), nil
 		}
 	}
 	selected := selection.entry
@@ -613,6 +626,18 @@ func resolveAttachmentBySize(attachments []map[string]any, size int64) map[strin
 		match = attachment
 	}
 	return match
+}
+
+// describeAttachment names an attachment for an error message, preferring the
+// durable handle and falling back to the filename when a part carries no part_id.
+func describeAttachment(attachment map[string]any) string {
+	if partID := attachmentString(attachment, "part_id"); partID != "" {
+		return fmt.Sprintf("part_id %q", partID)
+	}
+	if filename := attachmentString(attachment, "filename"); filename != "" {
+		return fmt.Sprintf("attachment %q", filename)
+	}
+	return "the message's only attachment"
 }
 
 func attachmentInt64(attachment map[string]any, key string) int64 {
