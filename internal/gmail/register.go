@@ -273,7 +273,7 @@ func registerExtendedTools(s *server.MCPServer) {
 
 	// gmail_get_draft - Get draft content
 	s.AddTool(mcp.NewTool("gmail_get_draft",
-		mcp.WithDescription("Get draft content by ID. Returns the draft's message with body/raw content when requested by format, and a curated convenience headers map. "+defaultGmailHeaderDescription),
+		mcp.WithDescription("Get draft content by ID. Returns the draft's message with body content when requested by format, and a curated convenience headers map. "+defaultGmailHeaderDescription),
 		mcp.WithString("draft_id", mcp.Required(), mcp.Description("Draft ID")),
 		mcp.WithString("format", mcp.Description("Response format: full (default), metadata, minimal")),
 		mcp.WithString("body_format", mcp.Description("Body content format: text (default, plain-text body only, no MIME multipart scaffolding), html (full HTML), full (both text and html)")),
