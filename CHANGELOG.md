@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
+## [Unreleased]
+
+### Changed
+
+- **Breaking:** Gmail read tools (`gmail_get`, `gmail_get_message`, `gmail_get_messages`, `gmail_get_thread`, `gmail_get_draft`) now return only the curated `headers` map by default; the full ordered raw MIME header list (`payload_headers`) requires `headers: "raw"` (#199)
+
 ## [0.4.7] - 2026-07-10
 
 ### Fixed

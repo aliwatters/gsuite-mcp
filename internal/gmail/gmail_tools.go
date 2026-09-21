@@ -88,7 +88,10 @@ var defaultHeaderNames = map[string]struct{}{
 	"received-spf":           {},
 }
 
-// formatMessage extracts useful fields from a Gmail message
+// FormatMessage extracts useful fields from a Gmail message, formatting with
+// summary headers (the curated headers map, no payload_headers) and a
+// text-only body. Callers that need to honor caller-supplied body_format or
+// headers options should use FormatMessageWithOptions instead.
 func FormatMessage(msg *gmail.Message) map[string]any {
 	return FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: BodyFormatText})
 }
