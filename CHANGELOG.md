@@ -10,7 +10,7 @@ This project uses a patch-first versioning policy — see [RELEASING.md](RELEASI
 ### Changed
 
 - **Breaking:** Gmail read tools (`gmail_get`, `gmail_get_message`, `gmail_get_messages`, `gmail_get_thread`, `gmail_get_draft`) now return only the curated `headers` map by default; the full ordered raw MIME header list (`payload_headers`) requires `headers: "raw"` (#199)
-- An unrecognized or non-string `headers` value on those tools is rejected with an error naming the value, before the Gmail API call, rather than silently falling back to the default (#199)
+- An unrecognized or non-string `headers` value on those tools is rejected before the Gmail API call — naming the value when it is a string, the type when it is not — rather than silently falling back to the default (#199)
 
 ## [0.4.7] - 2026-07-10
 
