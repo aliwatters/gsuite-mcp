@@ -529,6 +529,128 @@ func TestGmailGetMessage_SummaryOmitsNoisyHeadersEntirely(t *testing.T) {
 // TestGmailGetMessage_HeadersInvalidValueReturnsError verifies an
 // unrecognized "headers" value is a hard error rather than a silent
 // fallback, per the repo's No Silent Failures standard.
+// TestGmailGetMessage_HeadersNonStringReturnsError covers the malformed-type
+// case. The server is constructed without input-schema validation, so a client
+// can send a non-string "headers" value. Routing that through
+// common.ParseStringArg would collapse it to "" and silently serve summary to
+// a caller who may have asked for raw — the exact silent failure the hard
+// error on an unrecognized value exists to prevent.
+func TestGmailGetMessage_HeadersNonStringReturnsError(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		val  any
+	}{
+		{"number", 123},
+		{"bool", true},
+		{"array", []any{"raw"}},
+		{"object", map[string]any{"mode": "raw"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixtures := NewGmailTestFixtures()
+			fixtures.MockService.AddMessage(newTestMessageWithNoisyHeaders("msg123", "thread123"))
+
+			request := makeRequest(map[string]any{
+				"message_id": "msg123",
+				"headers":    tc.val,
+			})
+
+			result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !result.IsError {
+				t.Fatalf("expected error for non-string headers value %#v", tc.val)
+			}
+			if fixtures.MockService.WasMethodCalled("GetMessage") {
+				t.Error("expected rejection before the Gmail API call")
+			}
+			errText := fmt.Sprintf("%v", result.Content)
+			if !strings.Contains(errText, "expected a string") {
+				t.Errorf("expected error to say a string was expected, got: %s", errText)
+			}
+		})
+	}
+}
+
+// TestGmailGetMessage_HeadersNilTreatedAsDefault documents that an explicit
+// JSON null is treated as absent (summary), not as a malformed value.
+func TestGmailGetMessage_HeadersNilTreatedAsDefault(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+	fixtures.MockService.AddMessage(newTestMessageWithNoisyHeaders("msg123", "thread123"))
+
+	request := makeRequest(map[string]any{
+		"message_id": "msg123",
+		"headers":    nil,
+	})
+
+	result, err := TestableGmailGetMessage(t.Context(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success for nil headers, got error: %v", result.Content)
+	}
+	response := extractResponse(t, result)
+	if _, present := response["payload_headers"]; present {
+		t.Error("nil headers should behave as summary and omit payload_headers")
+	}
+}
+
+// TestFormatMessageWithOptions_EmptyAndNilHeaders locks in the empty-list rule
+// the gating change had to preserve: payload_headers is omitted rather than
+// emitted as an empty array, even in raw mode, and nil header entries are
+// skipped without panicking.
+func TestFormatMessageWithOptions_EmptyAndNilHeaders(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		headers []*gmail.MessagePartHeader
+	}{
+		{"no headers", nil},
+		{"empty slice", []*gmail.MessagePartHeader{}},
+		{"all nil entries", []*gmail.MessagePartHeader{nil, nil}},
+	} {
+		for _, mode := range []HeaderMode{HeaderModeSummary, HeaderModeRaw} {
+			t.Run(fmt.Sprintf("%s/%s", tc.name, mode), func(t *testing.T) {
+				msg := &gmail.Message{
+					Id:       "msg123",
+					ThreadId: "thread123",
+					Payload:  &gmail.MessagePart{Headers: tc.headers},
+				}
+
+				result := FormatMessageWithOptions(msg, FormatMessageOptions{HeaderMode: mode})
+
+				if _, present := result["payload_headers"]; present {
+					t.Errorf("payload_headers should be omitted when there are no headers (mode %s)", mode)
+				}
+				headers, ok := result["headers"].(map[string]string)
+				if !ok {
+					t.Fatalf("expected a curated headers map, got %T", result["headers"])
+				}
+				if len(headers) != 0 {
+					t.Errorf("expected an empty curated map, got %v", headers)
+				}
+			})
+		}
+	}
+}
+
+// TestFormatMessageWithOptions_NilPayloadOmitsHeaders documents that the
+// curated map is present only when Gmail returns a payload — format=minimal
+// returns none, which is why the docs say "whenever Gmail returns a payload"
+// rather than "always".
+func TestFormatMessageWithOptions_NilPayloadOmitsHeaders(t *testing.T) {
+	msg := &gmail.Message{Id: "msg123", ThreadId: "thread123"}
+
+	result := FormatMessageWithOptions(msg, FormatMessageOptions{HeaderMode: HeaderModeRaw})
+
+	if _, present := result["headers"]; present {
+		t.Error("expected no curated headers map when the payload is nil")
+	}
+	if _, present := result["payload_headers"]; present {
+		t.Error("expected no payload_headers when the payload is nil")
+	}
+}
+
 func TestGmailGetMessage_HeadersInvalidValueReturnsError(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
 

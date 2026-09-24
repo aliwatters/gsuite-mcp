@@ -47,7 +47,19 @@ func parseBodyFormat(args map[string]any) BodyFormat {
 // silently withhold payload_headers from a caller who asked for it, which is
 // exactly the kind of silent failure the repo's engineering standard forbids.
 func parseHeaderMode(args map[string]any) (HeaderMode, *mcp.CallToolResult) {
-	hm := common.ParseStringArg(args, "headers", "")
+	raw, present := args["headers"]
+	if !present || raw == nil {
+		return HeaderModeSummary, nil
+	}
+	// Inspect the argument directly rather than via common.ParseStringArg,
+	// which collapses a type mismatch into the default. The server is
+	// constructed without input-schema validation, so a caller really can
+	// send headers: 123; routing that through ParseStringArg would hand back
+	// "" and silently serve summary to a caller who may have meant raw.
+	hm, ok := raw.(string)
+	if !ok {
+		return "", mcp.NewToolResultError(fmt.Sprintf("headers: expected a string (%q or %q), got %T", HeaderModeSummary, HeaderModeRaw, raw))
+	}
 	switch hm {
 	case "", string(HeaderModeSummary):
 		return HeaderModeSummary, nil

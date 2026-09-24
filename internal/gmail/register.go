@@ -8,7 +8,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-const defaultGmailHeaderDescription = "The curated headers map (always returned) includes lowercase date/from/to/cc/bcc/subject/message-id/reply-to/sender/delivered-to/x-original-to/return-path/in-reply-to/references/list-unsubscribe/list-unsubscribe-post/list-id/auto-submitted/precedence/content-type/authentication-results/received-spf, plus dkim-signature=present when available. Gmail's full ordered raw header list (payload_headers), which preserves repeated headers like multiple Received lines, is only included when headers=\"raw\" — pass that for SPF/DKIM/ARC debugging."
+const defaultGmailHeaderDescription = "The curated headers map (returned whenever Gmail returns a message payload; format=minimal returns none) includes lowercase date/from/to/cc/bcc/subject/message-id/reply-to/sender/delivered-to/x-original-to/return-path/in-reply-to/references/list-unsubscribe/list-unsubscribe-post/list-id/auto-submitted/precedence/content-type/authentication-results/received-spf, plus dkim-signature=present when available. Gmail's full ordered raw header list (payload_headers), which preserves repeated headers like multiple Received lines, is only included when headers=\"raw\" — pass that for SPF/DKIM/ARC debugging."
 
 const gmailHeaderModeDescription = "Header detail: summary (default) returns only the curated headers map above; raw additionally includes payload_headers, Gmail's full ordered raw MIME header list (every Received/ARC-Seal/DKIM-Signature/X-Gm-* header), preserving repeated headers. Use raw only when debugging SPF/DKIM/ARC — it can be very large on messages with long delivery chains (#199)."
 
