@@ -97,6 +97,8 @@ Google Chat management: list/get/create spaces, list/get/send messages, thread r
 | `gmail_draft` | Create draft, optionally with local attachments |
 | `gmail_list_labels` | List all labels with counts |
 
+**Header detail on `gmail_get`/`gmail_get_message`/`gmail_get_messages`/`gmail_get_thread`/`gmail_get_draft`** (breaking change): these tools return a curated, lowercase `headers` map whenever Gmail returns a message payload (`format: "minimal"` returns none) (`date`, `from`, `to`, `cc`, `bcc`, `subject`, `message-id`, `reply-to`, `sender`, `delivered-to`, `x-original-to`, `return-path`, `in-reply-to`, `references`, `list-unsubscribe`, `list-unsubscribe-post`, `list-id`, `auto-submitted`, `precedence`, `content-type`, `authentication-results`, `received-spf`, plus `dkim-signature=present` when available). Gmail's full ordered raw MIME header list — `payload_headers`, which preserves repeated headers like multiple `Received` lines — is **no longer included by default**. Pass `headers: "raw"` to opt in for SPF/DKIM/ARC debugging; a batch of messages with `payload_headers` inlined can blow past output size limits (#199). `body_format` defaults to `"text"`, which already returns just the decoded plain-text body with no MIME multipart scaffolding.
+
 #### Gmail Management
 | Tool | Description |
 |------|-------------|

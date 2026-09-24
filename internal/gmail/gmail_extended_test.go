@@ -2,8 +2,10 @@ package gmail
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"google.golang.org/api/gmail/v1"
@@ -562,6 +564,139 @@ func TestGmailGetDraft_Success(t *testing.T) {
 	// Verify GetDraft was called
 	if !fixtures.MockService.WasMethodCalled("GetDraft") {
 		t.Error("expected GetDraft to be called")
+	}
+}
+
+// TestGmailGetDraft_DefaultOmitsPayloadHeaders locks in that gmail_get_draft
+// is a fifth surface gated by headers=raw: no "headers" argument means
+// payload_headers is absent while the curated headers map is still fully
+// populated (#199).
+//
+// This is a contract test, not a regression test for the commit that added it:
+// gmail_get_draft already omitted payload_headers beforehand, because the bare
+// FormatMessage it used left HeaderMode at its zero value (summary). What was
+// missing was the opt-in, which TestGmailGetDraft_HeadersRawIncludesPayloadHeaders
+// covers. This test guards the default against future reintroduction.
+func TestGmailGetDraft_DefaultOmitsPayloadHeaders(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	fixtures.MockService.AddDraft(&gmail.Draft{
+		Id:      "draft123",
+		Message: newTestMessageWithNoisyHeaders("msg123", "thread123"),
+	})
+
+	request := makeRequest(map[string]any{
+		"draft_id": "draft123",
+	})
+
+	result, err := TestableGmailGetDraft(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	message, ok := response["message"].(map[string]any)
+	if !ok {
+		t.Fatal("expected message object in response")
+	}
+	if _, ok := message["payload_headers"]; ok {
+		t.Error("expected payload_headers to be absent by default (#199)")
+	}
+	headers, ok := message["headers"].(map[string]any)
+	if !ok {
+		t.Fatal("expected headers map in response")
+	}
+	if headers["subject"] != "Important Email" {
+		t.Errorf("expected subject header in curated map, got %v", headers["subject"])
+	}
+}
+
+// TestGmailGetDraft_HeadersRawIncludesPayloadHeaders verifies headers="raw"
+// opts the draft's message into payload_headers, preserving repeated
+// headers like multiple Received lines in order (#199).
+func TestGmailGetDraft_HeadersRawIncludesPayloadHeaders(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	fixtures.MockService.AddDraft(&gmail.Draft{
+		Id:      "draft123",
+		Message: newTestMessageWithNoisyHeaders("msg123", "thread123"),
+	})
+
+	request := makeRequest(map[string]any{
+		"draft_id": "draft123",
+		"headers":  "raw",
+	})
+
+	result, err := TestableGmailGetDraft(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	response := extractResponse(t, result)
+	message, ok := response["message"].(map[string]any)
+	if !ok {
+		t.Fatal("expected message object in response")
+	}
+	payloadHeaders, ok := message["payload_headers"].([]any)
+	if !ok {
+		t.Fatal("expected payload_headers array with headers=raw")
+	}
+
+	var receivedValues []string
+	for _, rawHeader := range payloadHeaders {
+		header, ok := rawHeader.(map[string]any)
+		if !ok {
+			t.Fatalf("expected payload header object, got %T", rawHeader)
+		}
+		if header["name"] == "Received" {
+			value, ok := header["value"].(string)
+			if !ok {
+				t.Fatalf("expected string Received value, got %T", header["value"])
+			}
+			receivedValues = append(receivedValues, value)
+		}
+	}
+
+	if len(receivedValues) != 2 {
+		t.Fatalf("expected 2 Received headers, got %d", len(receivedValues))
+	}
+	if receivedValues[0] != "from first.example.com" || receivedValues[1] != "from second.example.com" {
+		t.Errorf("expected Received headers to preserve order, got %v", receivedValues)
+	}
+}
+
+// TestGmailGetDraft_HeadersInvalidValueReturnsError verifies an
+// unrecognized "headers" value is a hard error rather than a silent
+// fallback, per the repo's No Silent Failures standard.
+func TestGmailGetDraft_HeadersInvalidValueReturnsError(t *testing.T) {
+	fixtures := NewGmailTestFixtures()
+
+	fixtures.MockService.AddDraft(&gmail.Draft{
+		Id:      "draft123",
+		Message: newTestMessageWithNoisyHeaders("msg123", "thread123"),
+	})
+
+	request := makeRequest(map[string]any{
+		"draft_id": "draft123",
+		"headers":  "rawish",
+	})
+
+	result, err := TestableGmailGetDraft(context.Background(), request, fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("expected error for invalid headers value")
+	}
+	errText := fmt.Sprintf("%v", result.Content)
+	if !strings.Contains(errText, "rawish") {
+		t.Errorf("expected error to name the rejected value %q, got: %s", "rawish", errText)
 	}
 }
 

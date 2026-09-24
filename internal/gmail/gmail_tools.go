@@ -35,9 +35,32 @@ const (
 	BodyFormatFull BodyFormat = "full"
 )
 
+// HeaderMode controls whether the full ordered Gmail payload_headers list is
+// included alongside the curated headers map.
+type HeaderMode string
+
+const (
+	// HeaderModeSummary returns only the curated lowercase headers map
+	// (date/from/to/subject/etc., plus dkim-signature=present when
+	// present). This is the default: a batch of 8 messages including the
+	// full ordered raw MIME header list (every Received/ARC-Seal/
+	// DKIM-Signature/X-Gm-* header) measured 65,517 chars on one line,
+	// blowing the harness output cap (#199). Callers almost always want
+	// only the curated map.
+	HeaderModeSummary HeaderMode = "summary"
+	// HeaderModeRaw additionally includes payload_headers: Gmail's full
+	// ordered raw MIME header list, preserving repeated headers. Opt in
+	// for debugging SPF/DKIM/ARC chains.
+	HeaderModeRaw HeaderMode = "raw"
+)
+
 // FormatMessageOptions configures how messages are formatted.
 type FormatMessageOptions struct {
 	BodyFormat BodyFormat
+	// HeaderMode controls inclusion of payload_headers. The zero value
+	// ("") behaves as HeaderModeSummary, so existing struct-literal
+	// callers get the new default with no edit.
+	HeaderMode HeaderMode
 }
 
 var defaultHeaderNames = map[string]struct{}{
@@ -65,7 +88,10 @@ var defaultHeaderNames = map[string]struct{}{
 	"received-spf":           {},
 }
 
-// formatMessage extracts useful fields from a Gmail message
+// FormatMessage extracts useful fields from a Gmail message, formatting with
+// summary headers (the curated headers map, no payload_headers) and a
+// text-only body. Callers that need to honor caller-supplied body_format or
+// headers options should use FormatMessageWithOptions instead.
 func FormatMessage(msg *gmail.Message) map[string]any {
 	return FormatMessageWithOptions(msg, FormatMessageOptions{BodyFormat: BodyFormatText})
 }
@@ -85,7 +111,10 @@ func FormatMessageWithOptions(msg *gmail.Message, opts FormatMessageOptions) map
 
 	if msg.Payload != nil {
 		headers := make(map[string]string)
-		payloadHeaders := make([]map[string]string, 0, len(msg.Payload.Headers))
+		var payloadHeaders []map[string]string
+		if opts.HeaderMode == HeaderModeRaw {
+			payloadHeaders = make([]map[string]string, 0, len(msg.Payload.Headers))
+		}
 		for _, h := range msg.Payload.Headers {
 			if h == nil {
 				continue
@@ -96,10 +125,12 @@ func FormatMessageWithOptions(msg *gmail.Message, opts FormatMessageOptions) map
 			} else if headerName == "dkim-signature" {
 				headers[headerName] = "present"
 			}
-			payloadHeaders = append(payloadHeaders, map[string]string{
-				"name":  h.Name,
-				"value": h.Value,
-			})
+			if opts.HeaderMode == HeaderModeRaw {
+				payloadHeaders = append(payloadHeaders, map[string]string{
+					"name":  h.Name,
+					"value": h.Value,
+				})
+			}
 		}
 		if len(payloadHeaders) > 0 {
 			result["payload_headers"] = payloadHeaders
