@@ -17,7 +17,7 @@ The account-resolution path traversal reported in [#182](https://github.com/aliw
 
 ## Out of scope
 
-The local control plane retains a low-adversary assumption: the operator's own configuration, caches, filesystem, and processes running as that same user are trusted. A hostile local user is outside this profile. Symlink, no-follow, TOCTOU, and path-identity guards over those operator-owned files, or signatures and attestation between the operator's own processes, need a reproduced failure to justify their cost. PCI, cardholder-data, and payment controls are also outside this profile.
+The local control plane retains a low-adversary assumption: operator-authored configuration and same-user processes are trusted, and a hostile local user is outside this profile. Externally supplied content remains untrusted when saved in operator-owned caches or files, and OAuth credentials stored there remain protected assets. Symlink, no-follow, TOCTOU, and path-identity guards over those operator-owned files, or signatures and attestation between the operator's own processes, need a reproduced failure to justify their cost. PCI, cardholder-data, and payment controls are also outside this profile.
 
 ## Mitigation standard
 
