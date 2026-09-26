@@ -9,7 +9,7 @@ This document provides AI agents with project-specific context and guidelines fo
 | **Language** | Go 1.23+ |
 | **Framework** | [mcp-go](https://github.com/mark3labs/mcp-go) |
 | **Config** | `~/.config/gsuite-mcp/` |
-| **Build** | `go build -o gsuite-mcp` |
+| **Build** | `go build -o gsuite-mcp ./cmd/gsuite-mcp` |
 | **Test** | `go test ./...` |
 
 ## Project Overview
@@ -204,7 +204,7 @@ return mcp.NewToolResultError("not found"), nil  // Don't do this
 
 ```bash
 # Build
-go build -o gsuite-mcp
+go build -o gsuite-mcp ./cmd/gsuite-mcp
 
 # Run MCP server (for integration)
 ./gsuite-mcp
@@ -308,7 +308,7 @@ chore: update dependencies
 
 ```bash
 # Development cycle
-go build && ./gsuite-mcp accounts
+go build -o gsuite-mcp ./cmd/gsuite-mcp && ./gsuite-mcp accounts
 
 # Run tests
 go test ./...
@@ -320,7 +320,7 @@ go vet ./...
 gofmt -w .
 
 # Full build check
-go build && go test ./... && go vet ./...
+go build ./... && go test ./... && go vet ./...
 ```
 
 ## References
