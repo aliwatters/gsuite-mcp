@@ -4,6 +4,8 @@
 
 This repository uses `hostile-public-service` as its review posture. The server exposes no public network endpoint; the label describes the trust boundaries around its data and capabilities, not its network topology.
 
+Review tooling resolves a pull request's profile from its base commit. A pull request that introduces or changes this file is reviewed under the profile in its base; the new declaration applies to subsequent pull requests.
+
 ## In scope
 
 - **Protected assets:** OAuth tokens for a real Google account across Gmail, Drive, and Calendar scopes, and the operator's mail, files, and calendar contents. Credential and token handling must protect those assets.
