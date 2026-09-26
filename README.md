@@ -484,7 +484,7 @@ When a tool encounters missing credentials, the error message includes a clickab
 ## Development
 
 ```bash
-go build -o gsuite-mcp
+go build -o gsuite-mcp ./cmd/gsuite-mcp
 go test ./...
 go vet ./...
 ```
