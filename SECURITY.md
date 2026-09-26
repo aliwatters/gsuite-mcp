@@ -8,7 +8,7 @@ Review tooling resolves a pull request's profile from its base commit. A pull re
 
 ## In scope
 
-- **Protected assets:** OAuth tokens for a real Google account across Gmail, Drive, and Calendar scopes, and the operator's mail, files, and calendar contents. Credential and token handling must protect those assets.
+- **Protected assets:** OAuth tokens for a real Google account, including the Gmail, Drive, Calendar, Docs, Sheets, Slides, Forms, Tasks, and Contacts scopes requested by this server, and the operator's account data accessible through those scopes. Credential and token handling must protect those assets.
 - **Untrusted content:** Anyone can send the operator an email or calendar invite, or share a Drive document. The content of those messages, invites, and documents is attacker-authored input.
 - **Agent actions:** This MCP server exposes privileged capabilities to an agent whose context can contain that untrusted content. Instructions embedded in the content can influence calls to `send`, `draft`, or `download`; ordinary input validation alone does not address this prompt-injection boundary. Outward-facing or hard-to-reverse actions, including sending mail and changing calendar entries, warrant explicit review.
 - **External code:** The repository is public and accepts external pull requests, so contributed code is within the review threat model.
