@@ -21,7 +21,6 @@ tmp/
 .mcp-activity.json
 .workflow-state.*
 .workflow-reports/
-.ax/
 .plans/
 rod-mcp.yaml
 
@@ -32,6 +31,10 @@ rod-mcp.yaml
 # Credentials (never commit)
 *.json
 !schemas/*.json
+.ax/
+!.ax/
+.ax/*
+!.ax/config.json
 credentials/
 .workflow-state.json
 

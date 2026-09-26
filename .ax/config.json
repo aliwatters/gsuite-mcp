@@ -1,0 +1,9 @@
+{
+  "reviews": {
+    "independent_deep_review": {
+      "nonmaterial_carry": {
+        "doc_path_globs": ["CHANGELOG.md"]
+      }
+    }
+  }
+}
