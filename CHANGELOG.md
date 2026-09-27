@@ -7,6 +7,10 @@ This project uses a patch-first versioning policy — see [RELEASING.md](RELEASI
 
 ## [0.5.0] - 2026-09-27
 
+### Added
+
+- `gmail_download_attachment` results now report whether an attachment ID was rematched (`attachment_id_rematched`) and how metadata was identified (`metadata_source`) (#210)
+
 ### Changed
 
 - **Breaking:** Gmail read tools (`gmail_get`, `gmail_get_message`, `gmail_get_messages`, `gmail_get_thread`, `gmail_get_draft`) now return only the curated `headers` map by default; the full ordered raw MIME header list (`payload_headers`) requires `headers: "raw"` (#199)

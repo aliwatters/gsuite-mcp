@@ -12,13 +12,14 @@ deviation from strict Semantic Versioning (which would treat any new feature as 
 | Bug fix | **patch** | Fix a nil-pointer panic in Gmail search → `v0.3.3 → v0.3.4` |
 | Small / low-risk additive feature (e.g. a new optional tool parameter, a new optional field in a response) | **patch** | Add optional `color_id` param to `calendar_create_event` → `v0.3.3 → v0.3.4` |
 | Larger or notable feature set (multiple new tools, new service area) | **minor** | Add Google Chat support (9 tools) → `v0.3.x → v0.4.0` |
-| Breaking change (removed or renamed tool/parameter, changed required parameter type, behavior change that breaks existing callers) | **major** | Rename `gmail_get` → `gmail_get_message` (breaking) → `v0.x.y → v1.0.0` |
+| Breaking change at or above `1.0.0` (removed or renamed tool/parameter, changed required parameter type, behavior change that breaks existing callers) | **major** | Rename `gmail_get` → `gmail_get_message` (breaking) → `v1.x.y → v2.0.0` |
 
 While the version is below `1.0.0`, breaking changes take a **minor** bump because SemVer permits any change in `0.y.z`. Version `1.0.0` is reserved for the migration to the official Go MCP SDK (#200); the major-bump rule above applies from then on.
 
 **Guiding principle**: patch is the default for bug fixes and small/low-risk additive changes.
 Reserve minor for releases that add meaningful new surface area (a new service, a batch of new
-tools, or a notable capability). Major is for breaking changes only.
+tools, or a notable capability), and for breaking changes below `1.0.0`. Major is for breaking
+changes at or above `1.0.0` only.
 
 Strict SemVer would call any new feature a minor bump. For this project's cadence — where individual
 optional parameters and small quality-of-life additions ship frequently — that would produce a lot
