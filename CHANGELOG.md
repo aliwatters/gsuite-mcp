@@ -5,13 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
-## [Unreleased]
+## [0.5.0] - 2026-09-27
 
 ### Changed
 
 - **Breaking:** Gmail read tools (`gmail_get`, `gmail_get_message`, `gmail_get_messages`, `gmail_get_thread`, `gmail_get_draft`) now return only the curated `headers` map by default; the full ordered raw MIME header list (`payload_headers`) requires `headers: "raw"` (#199)
 - An unrecognized or non-string `headers` value on those tools is rejected before the Gmail API call — naming the value when it is a string, the type when it is not — rather than silently falling back to the default (#199)
 - An unrecognized or non-string `body_format` value on Gmail read tools is rejected before the Gmail API call instead of silently falling back to text (#213)
+
+### Fixed
+
+- Fixed `gmail_download_attachment` rejecting attachment IDs Gmail re-mints between API calls, restoring the list-then-download flow (#210)
 
 ## [0.4.7] - 2026-07-10
 
