@@ -69,6 +69,10 @@ func TestableGmailGetDraft(ctx context.Context, request mcp.CallToolRequest, dep
 	if errResult != nil {
 		return errResult, nil
 	}
+	bodyFormat, errResult := parseBodyFormat(request.GetArguments())
+	if errResult != nil {
+		return errResult, nil
+	}
 
 	draft, err := svc.GetDraft(ctx, draftID, format)
 	if err != nil {
@@ -80,7 +84,7 @@ func TestableGmailGetDraft(ctx context.Context, request mcp.CallToolRequest, dep
 	}
 
 	if draft.Message != nil {
-		result["message"] = FormatMessageWithOptions(draft.Message, FormatMessageOptions{BodyFormat: parseBodyFormat(request.GetArguments()), HeaderMode: headerMode})
+		result["message"] = FormatMessageWithOptions(draft.Message, FormatMessageOptions{BodyFormat: bodyFormat, HeaderMode: headerMode})
 	}
 
 	return common.MarshalToolResult(result)
