@@ -26,26 +26,37 @@ const (
 	gmailMaxOutgoingRawBytes       = 25 * 1024 * 1024
 )
 
-// parseBodyFormat parses the "body_format" argument from a request and returns the
-// corresponding BodyFormat. Defaults to BodyFormatText if not specified.
-func parseBodyFormat(args map[string]any) BodyFormat {
-	bf := common.ParseStringArg(args, "body_format", "")
+// parseBodyFormat parses the "body_format" argument from a request and returns
+// the corresponding BodyFormat. Missing or empty defaults to BodyFormatText.
+func parseBodyFormat(args map[string]any) (BodyFormat, *mcp.CallToolResult) {
+	raw, present := args["body_format"]
+	if !present || raw == nil {
+		return BodyFormatText, nil
+	}
+
+	bf, ok := raw.(string)
+	if !ok {
+		return "", mcp.NewToolResultError(fmt.Sprintf("body_format: expected a string (%q, %q, or %q), got %T", BodyFormatText, BodyFormatHTML, BodyFormatFull, raw))
+	}
+
 	switch bf {
-	case "html":
-		return BodyFormatHTML
-	case "full":
-		return BodyFormatFull
+	case "", string(BodyFormatText):
+		return BodyFormatText, nil
+	case string(BodyFormatHTML):
+		return BodyFormatHTML, nil
+	case string(BodyFormatFull):
+		return BodyFormatFull, nil
 	default:
-		return BodyFormatText
+		return "", mcp.NewToolResultError(fmt.Sprintf("body_format: unsupported value %q (expected %q, %q, or %q)", bf, BodyFormatText, BodyFormatHTML, BodyFormatFull))
 	}
 }
 
 // parseHeaderMode parses the "headers" argument from a request and returns the
 // corresponding HeaderMode. Missing or empty defaults to HeaderModeSummary.
-// Unlike parseBodyFormat, an unrecognized non-empty value is a hard error
-// rather than a silent fallback: a typo here (e.g. "rawish") would otherwise
-// silently withhold payload_headers from a caller who asked for it, which is
-// exactly the kind of silent failure the repo's engineering standard forbids.
+// An unrecognized non-empty value is a hard error rather than a silent
+// fallback: a typo here (e.g. "rawish") would otherwise silently withhold
+// payload_headers from a caller who asked for it, which is exactly the kind of
+// silent failure the repo's engineering standard forbids.
 func parseHeaderMode(args map[string]any) (HeaderMode, *mcp.CallToolResult) {
 	raw, present := args["headers"]
 	if !present || raw == nil {
