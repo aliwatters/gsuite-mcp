@@ -625,6 +625,26 @@ func TestGmailGetDraft_HeadersRawIncludesPayloadHeaders(t *testing.T) {
 		Message: newTestMessageWithNoisyHeaders("msg123", "thread123"),
 	})
 
+	// The same fixture omits payload_headers by default and includes them only
+	// when headers="raw".
+	defaultResult, err := TestableGmailGetDraft(context.Background(), makeRequest(map[string]any{
+		"draft_id": "draft123",
+	}), fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected default-mode error: %v", err)
+	}
+	if defaultResult.IsError {
+		t.Fatalf("expected default-mode success, got error: %v", defaultResult.Content)
+	}
+	defaultResponse := extractResponse(t, defaultResult)
+	defaultMessage, ok := defaultResponse["message"].(map[string]any)
+	if !ok {
+		t.Fatal("expected message object in default response")
+	}
+	if _, ok := defaultMessage["payload_headers"]; ok {
+		t.Error("expected payload_headers to be absent by default (#199)")
+	}
+
 	request := makeRequest(map[string]any{
 		"draft_id": "draft123",
 		"headers":  "raw",

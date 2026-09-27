@@ -322,11 +322,26 @@ func TestGmailGetMessage_Success(t *testing.T) {
 	}
 }
 
-func TestGmailGetMessage_IncludesCuratedDefaultHeaders(t *testing.T) {
+func TestGmailGetMessage_HeadersRawIncludesPayloadHeaders(t *testing.T) {
 	fixtures := NewGmailTestFixtures()
 
 	msg := newTestMessageWithNoisyHeaders("msg123", "thread123")
 	fixtures.MockService.AddMessage(msg)
+
+	// The same fixture omits payload_headers by default and includes them only
+	// when headers="raw".
+	defaultResult, err := TestableGmailGetMessage(t.Context(), makeRequest(map[string]any{
+		"message_id": "msg123",
+	}), fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected default-mode error: %v", err)
+	}
+	if defaultResult.IsError {
+		t.Fatalf("expected default-mode success, got error: %v", defaultResult.Content)
+	}
+	if _, ok := extractResponse(t, defaultResult)["payload_headers"]; ok {
+		t.Error("expected payload_headers to be absent by default (#199)")
+	}
 
 	// headers="raw" opts into payload_headers explicitly; the curated
 	// headers map below is present in every mode (#199).
@@ -872,6 +887,30 @@ func TestGmailGetMessages_HeadersRawIncludesPayloadHeaders(t *testing.T) {
 	msg1 := newTestMessageWithNoisyHeaders("msg1", "thread1")
 	fixtures.MockService.AddMessage(msg1)
 
+	// The same fixture omits payload_headers by default and includes them only
+	// when headers="raw".
+	defaultResult, err := TestableGmailGetMessages(context.Background(), makeRequest(map[string]any{
+		"message_ids": []any{"msg1"},
+	}), fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected default-mode error: %v", err)
+	}
+	if defaultResult.IsError {
+		t.Fatalf("expected default-mode success, got error: %v", defaultResult.Content)
+	}
+	defaultResponse := extractResponse(t, defaultResult)
+	defaultMessages, ok := defaultResponse["messages"].([]any)
+	if !ok || len(defaultMessages) != 1 {
+		t.Fatalf("expected 1 message in default response, got %v", defaultResponse["messages"])
+	}
+	defaultMessage, ok := defaultMessages[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected default message object, got %T", defaultMessages[0])
+	}
+	if _, ok := defaultMessage["payload_headers"]; ok {
+		t.Error("expected payload_headers to be absent by default (#199)")
+	}
+
 	request := makeRequest(map[string]any{
 		"message_ids": []any{"msg1"},
 		"headers":     "raw",
@@ -1044,6 +1083,30 @@ func TestGmailGetThread_HeadersRawIncludesPayloadHeaders(t *testing.T) {
 	msg1 := newTestMessageWithNoisyHeaders("msg1", "thread123")
 	thread := newTestThread("thread123", []*gmail.Message{msg1})
 	fixtures.MockService.AddThread(thread)
+
+	// The same fixture omits payload_headers by default and includes them only
+	// when headers="raw".
+	defaultResult, err := TestableGmailGetThread(context.Background(), makeRequest(map[string]any{
+		"thread_id": "thread123",
+	}), fixtures.Deps)
+	if err != nil {
+		t.Fatalf("unexpected default-mode error: %v", err)
+	}
+	if defaultResult.IsError {
+		t.Fatalf("expected default-mode success, got error: %v", defaultResult.Content)
+	}
+	defaultResponse := extractResponse(t, defaultResult)
+	defaultMessages, ok := defaultResponse["messages"].([]any)
+	if !ok || len(defaultMessages) != 1 {
+		t.Fatalf("expected 1 message in default response, got %v", defaultResponse["messages"])
+	}
+	defaultMessage, ok := defaultMessages[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected default message object, got %T", defaultMessages[0])
+	}
+	if _, ok := defaultMessage["payload_headers"]; ok {
+		t.Error("expected payload_headers to be absent by default (#199)")
+	}
 
 	request := makeRequest(map[string]any{
 		"thread_id": "thread123",
