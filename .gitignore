@@ -32,9 +32,6 @@ rod-mcp.yaml
 *.json
 !schemas/*.json
 .ax/
-!/.ax/
-.ax/*
-!.ax/config.json
 credentials/
 .workflow-state.json
 
