@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
+## [0.6.1] - 2026-10-10
+
+### Fixed
+
+- The reported server version now matches the release; v0.6.0 binaries still reported `0.5.0` because the version constant was not bumped (#232)
+
 ## [0.6.0] - 2026-10-10
 
 ### Added
