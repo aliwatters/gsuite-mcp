@@ -230,7 +230,8 @@ Go-based Gmail, Google Calendar, Google Docs, Google Tasks, and Google Drive MCP
 | `drive_search` | Search files with query syntax | ✅ Complete |
 | `drive_get` | Get file metadata | ✅ Complete |
 | `drive_download` | Download file content | ✅ Complete |
-| `drive_upload` | Upload new file | ✅ Complete |
+| `drive_upload` | Upload new file (inline content or local `file_path`) | ✅ Complete |
+| `drive_update_file` | Replace file body and/or rename | ✅ Complete |
 
 ### File Management
 | Tool | Description | Status |

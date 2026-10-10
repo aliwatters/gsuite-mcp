@@ -11,9 +11,9 @@ import (
 // These reduce response payload size by only requesting needed fields.
 const (
 	// DriveFileListFields contains fields for file listings (search, list)
-	DriveFileListFields = "nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,parents,driveId,webViewLink)"
+	DriveFileListFields = "nextPageToken,files(id,name,mimeType,size,md5Checksum,createdTime,modifiedTime,parents,driveId,webViewLink)"
 	// DriveFileGetFields contains fields for single file retrieval (full metadata)
-	DriveFileGetFields = "id,name,mimeType,size,createdTime,modifiedTime,parents,driveId,webViewLink,webContentLink,description,starred,trashed,owners,permissions"
+	DriveFileGetFields = "id,name,mimeType,size,md5Checksum,createdTime,modifiedTime,parents,driveId,webViewLink,webContentLink,description,starred,trashed,owners,permissions"
 	// DriveFileDownloadFields contains minimal fields for download operations
 	DriveFileDownloadFields = "id,name,mimeType,size"
 	// DriveFileCreateFields contains fields for file creation responses
@@ -68,6 +68,7 @@ var (
 	HandleDriveGet              = common.WrapHandler[DriveService](TestableDriveGet)
 	HandleDriveDownload         = common.WrapHandler[DriveService](TestableDriveDownload)
 	HandleDriveUpload           = common.WrapHandler[DriveService](TestableDriveUpload)
+	HandleDriveUpdateFile       = common.WrapHandler[DriveService](TestableDriveUpdateFile)
 	HandleDriveList             = common.WrapHandler[DriveService](TestableDriveList)
 	HandleDriveCreateFolder     = common.WrapHandler[DriveService](TestableDriveCreateFolder)
 	HandleDriveMove             = common.WrapHandler[DriveService](TestableDriveMove)
@@ -103,6 +104,10 @@ func formatFile(file *drive.File) map[string]any {
 
 	if file.Size > 0 {
 		result["size"] = file.Size
+	}
+
+	if file.Md5Checksum != "" {
+		result["md5Checksum"] = file.Md5Checksum
 	}
 
 	if file.CreatedTime != "" {

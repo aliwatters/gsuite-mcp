@@ -26,7 +26,7 @@ const (
 var ServiceToolCounts = map[string]int{
 	"gmail":    53,
 	"calendar": 12,
-	"drive":    23,
+	"drive":    24,
 	"docs":     29,
 	"sheets":   16,
 	"slides":   5,

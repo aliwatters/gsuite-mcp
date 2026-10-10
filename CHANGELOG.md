@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
+## [Unreleased]
+
+### Added
+
+- `drive_upload` accepts an optional `file_path` (absolute local regular file) streamed with Drive's resumable upload; exactly one of `content` or `file_path` is required. Results include `id`, `name`, `size` and `md5Checksum` (#232)
+- `drive_update_file` replaces a file's body and/or renames it without deleting anything (#232)
+- `drive_list` and `drive_search` accept an exact `name` filter (and `drive_search` a `parent_id`), and results include `size` and `md5Checksum` (#232)
+
+### Changed
+
+- Drive upload/update errors are logged with the file name; 403 and 429 responses return Google's error reason and are never retried (#232)
+
 ## [0.5.0] - 2026-09-27
 
 ### Added

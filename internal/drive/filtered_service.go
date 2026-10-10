@@ -129,6 +129,14 @@ func (f *FilteredDriveService) UpdateFile(ctx context.Context, fileID string, fi
 	return f.inner.UpdateFile(ctx, fileID, file)
 }
 
+// UpdateFileContent checks drive access before replacing file content.
+func (f *FilteredDriveService) UpdateFileContent(ctx context.Context, fileID string, file *drive.File, content io.Reader) (*drive.File, error) {
+	if err := f.checkFileAccess(ctx, fileID); err != nil {
+		return nil, fmt.Errorf("UpdateFileContent access check: %w", err)
+	}
+	return f.inner.UpdateFileContent(ctx, fileID, file, content)
+}
+
 // MoveFile checks both source file and destination drive.
 func (f *FilteredDriveService) MoveFile(ctx context.Context, fileID string, newParentID string, previousParents string) (*drive.File, error) {
 	if err := f.checkFileAccess(ctx, fileID); err != nil {

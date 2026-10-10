@@ -28,6 +28,11 @@ type DriveFileWriter interface {
 	DeleteFile(ctx context.Context, fileID string) error
 }
 
+// DriveFileContentWriter replaces the body of an existing Drive file.
+type DriveFileContentWriter interface {
+	UpdateFileContent(ctx context.Context, fileID string, file *drive.File, content io.Reader) (*drive.File, error)
+}
+
 // DrivePermissionService manages Drive file permissions.
 type DrivePermissionService interface {
 	ListPermissions(ctx context.Context, fileID string) (*drive.PermissionList, error)
@@ -69,6 +74,7 @@ type DriveDriveService interface {
 type DriveService interface {
 	DriveFileReader
 	DriveFileWriter
+	DriveFileContentWriter
 	DrivePermissionService
 	DriveCommentService
 	DriveReplyService
@@ -139,17 +145,29 @@ func (s *RealDriveService) GetFile(ctx context.Context, fileID string, fields st
 // CreateFile creates a new file.
 func (s *RealDriveService) CreateFile(ctx context.Context, file *drive.File, content io.Reader) (*drive.File, error) {
 	call := s.service.Files.Create(file).Context(ctx).
-		SupportsAllDrives(true)
+		SupportsAllDrives(true).
+		Fields(googleapi.Field(DriveFileUploadResultFields))
 	if content != nil {
-		call = call.Media(content)
+		// Media with a chunk size uses Drive's resumable protocol for bodies
+		// larger than one chunk, streaming from the reader.
+		call = call.Media(content, googleapi.ChunkSize(uploadChunkSize))
 	}
 	return call.Do()
+}
+
+// UpdateFileContent replaces a file's body (and optionally its metadata).
+func (s *RealDriveService) UpdateFileContent(ctx context.Context, fileID string, file *drive.File, content io.Reader) (*drive.File, error) {
+	return s.service.Files.Update(fileID, file).Context(ctx).
+		SupportsAllDrives(true).
+		Fields(googleapi.Field(DriveFileUploadResultFields)).
+		Media(content, googleapi.ChunkSize(uploadChunkSize)).Do()
 }
 
 // UpdateFile updates an existing file's metadata.
 func (s *RealDriveService) UpdateFile(ctx context.Context, fileID string, file *drive.File) (*drive.File, error) {
 	return s.service.Files.Update(fileID, file).Context(ctx).
-		SupportsAllDrives(true).Do()
+		SupportsAllDrives(true).
+		Fields(googleapi.Field(DriveFileUploadResultFields)).Do()
 }
 
 // MoveFile moves a file to a new folder.

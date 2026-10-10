@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
+	"log"
 	"strings"
 
 	"github.com/aliwatters/gsuite-mcp/internal/common"
@@ -19,9 +21,27 @@ func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	query, errResult := common.RequireStringArg(request.GetArguments(), "query")
-	if errResult != nil {
-		return errResult, nil
+	query := common.ParseStringArg(request.GetArguments(), "query", "")
+	exactName := common.ParseStringArg(request.GetArguments(), "name", "")
+	searchParent := common.ParseStringArg(request.GetArguments(), "parent_id", "")
+	if query == "" && exactName == "" && searchParent == "" {
+		return mcp.NewToolResultError("provide at least one of query, name, or parent_id"), nil
+	}
+	if exactName != "" {
+		clause := fmt.Sprintf("name = '%s'", escapeDriveQueryValue(exactName))
+		if query == "" {
+			query = clause
+		} else {
+			query = fmt.Sprintf("(%s) and %s", query, clause)
+		}
+	}
+	if searchParent != "" {
+		clause := fmt.Sprintf("'%s' in parents", escapeDriveQueryValue(common.ExtractGoogleResourceID(searchParent)))
+		if query == "" {
+			query = clause
+		} else {
+			query = fmt.Sprintf("(%s) and %s", query, clause)
+		}
 	}
 
 	// Apply friendly file_type filter if provided
@@ -153,7 +173,71 @@ func TestableDriveDownload(ctx context.Context, request mcp.CallToolRequest, dep
 	return common.MarshalToolResult(result)
 }
 
-// TestableDriveUpload uploads a new file.
+// resolveUploadBody returns the reader for an upload or content update from
+// exactly one of "content" or "file_path". The returned close func must be
+// called when done. Content-based bodies are capped at DriveMaxFileSize; local
+// files are streamed and not size-capped.
+func resolveUploadBody(args map[string]any, required bool) (io.Reader, func(), *mcp.CallToolResult) {
+	noop := func() {}
+	contentStr := common.ParseStringArg(args, "content", "")
+	_, hasContent := args["content"]
+	filePath := common.ParseStringArg(args, "file_path", "")
+
+	if hasContent && filePath != "" {
+		return nil, noop, mcp.NewToolResultError("provide exactly one of content or file_path, not both")
+	}
+	if !hasContent && filePath == "" {
+		if required {
+			return nil, noop, mcp.NewToolResultError("exactly one of content or file_path is required")
+		}
+		return nil, noop, nil
+	}
+
+	if filePath != "" {
+		f, _, err := openRegularFile(filePath)
+		if err != nil {
+			log.Printf("drive: upload source rejected: %v", err)
+			return nil, noop, mcp.NewToolResultError(err.Error())
+		}
+		return f, func() { _ = f.Close() }, nil
+	}
+
+	// Reject obviously oversized content before decoding
+	if int64(len(contentStr)) > common.DriveMaxFileSize*2 {
+		return nil, noop, mcp.NewToolResultError(fmt.Sprintf("Content too large. Maximum supported size is %d bytes", common.DriveMaxFileSize))
+	}
+
+	var data []byte
+	if common.ParseStringArg(args, "encoding", "") == "base64" {
+		var err error
+		data, err = base64.StdEncoding.DecodeString(contentStr)
+		if err != nil {
+			return nil, noop, mcp.NewToolResultError(fmt.Sprintf("Invalid base64 content: %v", err))
+		}
+	} else {
+		data = []byte(contentStr)
+	}
+	if int64(len(data)) > common.DriveMaxFileSize {
+		return nil, noop, mcp.NewToolResultError(fmt.Sprintf("Content too large (%d bytes). Maximum supported size is %d bytes", len(data), common.DriveMaxFileSize))
+	}
+	return bytes.NewReader(data), noop, nil
+}
+
+// formatUploadResult formats an upload/update result, including size and md5Checksum.
+func formatUploadResult(f *drive.File) map[string]any {
+	return map[string]any{
+		"id":           f.Id,
+		"file_id":      f.Id,
+		"name":         f.Name,
+		"mime_type":    f.MimeType,
+		"size":         f.Size,
+		"md5Checksum":  f.Md5Checksum,
+		"created_time": f.CreatedTime,
+		"url":          f.WebViewLink,
+	}
+}
+
+// TestableDriveUpload uploads a new file from inline content or a local file path.
 func TestableDriveUpload(ctx context.Context, request mcp.CallToolRequest, deps *DriveHandlerDeps) (*mcp.CallToolResult, error) {
 	srv, errResult, ok := ResolveDriveServiceOrError(ctx, request, deps)
 	if !ok {
@@ -165,32 +249,11 @@ func TestableDriveUpload(ctx context.Context, request mcp.CallToolRequest, deps 
 		return errResult, nil
 	}
 
-	contentStr, errResult := common.RequireStringArg(request.GetArguments(), "content")
+	body, closeBody, errResult := resolveUploadBody(request.GetArguments(), true)
 	if errResult != nil {
 		return errResult, nil
 	}
-
-	// Reject obviously oversized content before decoding
-	if int64(len(contentStr)) > common.DriveMaxFileSize*2 {
-		return mcp.NewToolResultError(fmt.Sprintf("Content too large. Maximum supported size is %d bytes", common.DriveMaxFileSize)), nil
-	}
-
-	// Decode content if base64 encoded
-	var data []byte
-	encoding := common.ParseStringArg(request.GetArguments(), "encoding", "")
-	if encoding == "base64" {
-		var err error
-		data, err = base64.StdEncoding.DecodeString(contentStr)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Invalid base64 content: %v", err)), nil
-		}
-	} else {
-		data = []byte(contentStr)
-	}
-
-	if int64(len(data)) > common.DriveMaxFileSize {
-		return mcp.NewToolResultError(fmt.Sprintf("Content too large (%d bytes). Maximum supported size is %d bytes", len(data), common.DriveMaxFileSize)), nil
-	}
+	defer closeBody()
 
 	file := &drive.File{
 		Name: name,
@@ -208,20 +271,62 @@ func TestableDriveUpload(ctx context.Context, request mcp.CallToolRequest, deps 
 		file.Description = description
 	}
 
-	created, err := srv.CreateFile(ctx, file, bytes.NewReader(data))
+	created, err := srv.CreateFile(ctx, file, body)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("Drive API error: %v", err)), nil
+		return driveAPIErrorResult("upload", name, err), nil
 	}
 
-	result := map[string]any{
-		"file_id":      created.Id,
-		"name":         created.Name,
-		"mime_type":    created.MimeType,
-		"size":         created.Size,
-		"created_time": created.CreatedTime,
-		"url":          created.WebViewLink,
+	return common.MarshalToolResult(formatUploadResult(created))
+}
+
+// TestableDriveUpdateFile replaces a file's body and/or renames it.
+func TestableDriveUpdateFile(ctx context.Context, request mcp.CallToolRequest, deps *DriveHandlerDeps) (*mcp.CallToolResult, error) {
+	srv, errResult, ok := ResolveDriveServiceOrError(ctx, request, deps)
+	if !ok {
+		return errResult, nil
 	}
 
+	fileID, idErrResult := extractRequiredFileID(request)
+	if idErrResult != nil {
+		return idErrResult, nil
+	}
+
+	args := request.GetArguments()
+	newName := common.ParseStringArg(args, "name", "")
+
+	body, closeBody, errResult := resolveUploadBody(args, false)
+	if errResult != nil {
+		return errResult, nil
+	}
+	defer closeBody()
+
+	if body == nil && newName == "" {
+		return mcp.NewToolResultError("nothing to update: provide name, content, or file_path"), nil
+	}
+
+	meta := &drive.File{Name: newName}
+	if mimeType := common.ParseStringArg(args, "mime_type", ""); mimeType != "" {
+		meta.MimeType = mimeType
+	}
+
+	label := newName
+	if label == "" {
+		label = fileID
+	}
+
+	var updated *drive.File
+	var err error
+	if body != nil {
+		updated, err = srv.UpdateFileContent(ctx, fileID, meta, body)
+	} else {
+		updated, err = srv.UpdateFile(ctx, fileID, meta)
+	}
+	if err != nil {
+		return driveAPIErrorResult("update", label+" ("+fileID+")", err), nil
+	}
+
+	result := formatUploadResult(updated)
+	result["success"] = true
 	return common.MarshalToolResult(result)
 }
 
@@ -237,7 +342,10 @@ func TestableDriveList(ctx context.Context, request mcp.CallToolRequest, deps *D
 		folderID = common.ExtractGoogleResourceID(folderID)
 	}
 
-	query := fmt.Sprintf("'%s' in parents and trashed = false", folderID)
+	query := fmt.Sprintf("'%s' in parents and trashed = false", escapeDriveQueryValue(folderID))
+	if exactName := common.ParseStringArg(request.GetArguments(), "name", ""); exactName != "" {
+		query += fmt.Sprintf(" and name = '%s'", escapeDriveQueryValue(exactName))
+	}
 	maxResults := common.ParseMaxResults(request.GetArguments(), common.DriveListDefaultMaxResults, common.DriveListMaxResultsLimit)
 	pageToken := common.ParseStringArg(request.GetArguments(), "page_token", "")
 	orderBy := common.ParseStringArg(request.GetArguments(), "order_by", "name")
