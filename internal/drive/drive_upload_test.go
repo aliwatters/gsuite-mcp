@@ -204,6 +204,22 @@ func TestDriveUpdateFileErrors(t *testing.T) {
 	}
 }
 
+func TestDriveUpdateFileBodyErrorUsesExistingName(t *testing.T) {
+	f := NewDriveTestFixtures()
+	f.MockService.UpdateFileContentFunc = func(context.Context, string, *drive.File, io.Reader) (*drive.File, error) {
+		return nil, rateLimitErr(429, "userRateLimitExceeded")
+	}
+	f.MockService.GetFileFunc = func(context.Context, string, string) (*drive.File, error) {
+		return &drive.File{Name: "existing.mp3"}, nil
+	}
+
+	res, _ := TestableDriveUpdateFile(context.Background(), common.CreateMCPRequest(map[string]any{"file_id": "f1", "content": "new body"}), f.Deps)
+	text := resultText(t, res)
+	if !res.IsError || !strings.Contains(text, "existing.mp3") || !strings.Contains(text, "userRateLimitExceeded") {
+		t.Fatalf("body update error must include existing name and reason: %s", text)
+	}
+}
+
 func TestDriveListAndSearchExactNameFilter(t *testing.T) {
 	f := NewDriveTestFixtures()
 	var q string

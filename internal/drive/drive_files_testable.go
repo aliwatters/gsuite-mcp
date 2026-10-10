@@ -322,6 +322,14 @@ func TestableDriveUpdateFile(ctx context.Context, request mcp.CallToolRequest, d
 		updated, err = srv.UpdateFile(ctx, fileID, meta)
 	}
 	if err != nil {
+		if newName == "" {
+			file, lookupErr := srv.GetFile(ctx, fileID, "name")
+			if lookupErr != nil {
+				log.Printf("drive: update failed for file ID %q; name lookup failed: %v", fileID, lookupErr)
+			} else if file.Name != "" {
+				label = file.Name
+			}
+		}
 		return driveAPIErrorResult("update", label+" ("+fileID+")", err), nil
 	}
 
