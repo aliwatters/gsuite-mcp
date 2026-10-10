@@ -10,15 +10,16 @@ import (
 // MockDriveService implements DriveService for testing.
 type MockDriveService struct {
 	// Files
-	ListFilesFunc    func(ctx context.Context, opts *ListFilesOptions) (*drive.FileList, error)
-	GetFileFunc      func(ctx context.Context, fileID string, fields string) (*drive.File, error)
-	CreateFileFunc   func(ctx context.Context, file *drive.File, content io.Reader) (*drive.File, error)
-	UpdateFileFunc   func(ctx context.Context, fileID string, file *drive.File) (*drive.File, error)
-	MoveFileFunc     func(ctx context.Context, fileID string, newParentID string, previousParents string) (*drive.File, error)
-	CopyFileFunc     func(ctx context.Context, fileID string, file *drive.File) (*drive.File, error)
-	DeleteFileFunc   func(ctx context.Context, fileID string) error
-	DownloadFileFunc func(ctx context.Context, fileID string) (io.ReadCloser, error)
-	ExportFileFunc   func(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error)
+	ListFilesFunc         func(ctx context.Context, opts *ListFilesOptions) (*drive.FileList, error)
+	GetFileFunc           func(ctx context.Context, fileID string, fields string) (*drive.File, error)
+	CreateFileFunc        func(ctx context.Context, file *drive.File, content io.Reader) (*drive.File, error)
+	UpdateFileFunc        func(ctx context.Context, fileID string, file *drive.File) (*drive.File, error)
+	MoveFileFunc          func(ctx context.Context, fileID string, newParentID string, previousParents string) (*drive.File, error)
+	CopyFileFunc          func(ctx context.Context, fileID string, file *drive.File) (*drive.File, error)
+	UpdateFileContentFunc func(ctx context.Context, fileID string, file *drive.File, content io.Reader) (*drive.File, error)
+	DeleteFileFunc        func(ctx context.Context, fileID string) error
+	DownloadFileFunc      func(ctx context.Context, fileID string) (io.ReadCloser, error)
+	ExportFileFunc        func(ctx context.Context, fileID string, mimeType string) (io.ReadCloser, error)
 
 	// Drives
 	GetDriveFunc   func(ctx context.Context, driveID string) (*drive.Drive, error)
@@ -72,6 +73,13 @@ func (m *MockDriveService) CreateFile(ctx context.Context, file *drive.File, con
 func (m *MockDriveService) UpdateFile(ctx context.Context, fileID string, file *drive.File) (*drive.File, error) {
 	if m.UpdateFileFunc != nil {
 		return m.UpdateFileFunc(ctx, fileID, file)
+	}
+	return file, nil
+}
+
+func (m *MockDriveService) UpdateFileContent(ctx context.Context, fileID string, file *drive.File, content io.Reader) (*drive.File, error) {
+	if m.UpdateFileContentFunc != nil {
+		return m.UpdateFileContentFunc(ctx, fileID, file, content)
 	}
 	return file, nil
 }

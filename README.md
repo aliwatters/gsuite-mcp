@@ -51,7 +51,7 @@ Full inbox management: search, read, send, reply, archive, trash, labels, filter
 ### Calendar (12 tools)
 Complete calendar control: list events, create/update/delete, recurring events, free/busy queries, Google Meet integration.
 
-### Drive (23 tools)
+### Drive (24 tools)
 File management with shared drive support: search (with friendly file type filter), upload, download, list, create folders, move, copy, trash, delete, share, permissions, shareable links, comments & replies, version history (revisions).
 
 ### Docs (29 tools)
@@ -171,8 +171,9 @@ gmail_resolve_web_id(id="thread-f:1821570065795440641")
 | `drive_search` | Search files with query syntax (includes shared drives) |
 | `drive_get` | Get file metadata |
 | `drive_download` | Download file content (text or base64) |
-| `drive_upload` | Upload new file |
-| `drive_list` | List files in folder |
+| `drive_upload` | Upload new file from inline content or a local `file_path` (resumable streaming); returns id, name, size, md5Checksum |
+| `drive_update_file` | Replace a file's body and/or rename it (no delete) |
+| `drive_list` | List files in folder (optional exact `name` filter; returns size and md5Checksum) |
 | `drive_create_folder` | Create folder |
 | `drive_move` | Move file to different folder |
 | `drive_copy` | Copy a file |

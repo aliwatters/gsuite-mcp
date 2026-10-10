@@ -19,7 +19,9 @@ func registerDriveCoreTools(s *server.MCPServer) {
 	// drive_search - Search files with query syntax
 	s.AddTool(mcp.NewTool("drive_search",
 		mcp.WithDescription("Search Google Drive files including shared drives. Supports metadata queries like \"name contains 'report'\" and full-text content search with \"fullText contains 'keyword'\" (searches inside PDFs, Docs, Sheets, Slides, Office files). Combine with \"and\"/\"or\" operators. Use file_type for easy filtering by type."),
-		mcp.WithString("query", mcp.Required(), mcp.Description("Drive search query. Examples: \"name contains 'budget'\", \"fullText contains 'keyword'\" (searches file content), \"fullText contains 'quarterly' and mimeType = 'application/pdf'\"")),
+		mcp.WithString("query", mcp.Description("Drive search query (optional if name or parent_id is given). Examples: \"name contains 'budget'\", \"fullText contains 'keyword'\" (searches file content), \"fullText contains 'quarterly' and mimeType = 'application/pdf'\"")),
+		mcp.WithString("name", mcp.Description("Exact file name match (combined with query and parent_id using AND)")),
+		mcp.WithString("parent_id", mcp.Description("Restrict to direct children of this folder ID")),
 		mcp.WithString("file_type", mcp.Description("Friendly file type filter: doc, sheet, slides, pdf, folder, image, video, audio, form, drawing. Also accepts raw mimeType strings.")),
 		mcp.WithNumber("max_results", mcp.Description("Maximum results to return (1-100, default 20)")),
 		mcp.WithString("corpora", mcp.Description("Search scope: allDrives (default, includes shared drives), user (My Drive only), domain")),
@@ -43,9 +45,10 @@ func registerDriveCoreTools(s *server.MCPServer) {
 
 	// drive_upload - Upload new file
 	s.AddTool(mcp.NewTool("drive_upload",
-		mcp.WithDescription("Upload a new file to Google Drive."),
+		mcp.WithDescription("Upload a new file to Google Drive. Provide exactly one of content (inline text/base64, max 10MB) or file_path (absolute path to a local regular file, streamed with resumable upload, no size cap). Returns id, name, size and md5Checksum."),
 		mcp.WithString("name", mcp.Required(), mcp.Description("File name")),
-		mcp.WithString("content", mcp.Required(), mcp.Description("File content (text or base64-encoded)")),
+		mcp.WithString("content", mcp.Description("File content (text or base64-encoded). Exactly one of content or file_path is required.")),
+		mcp.WithString("file_path", mcp.Description("Absolute path to a local regular file to stream (symlinks and directories are rejected). Exactly one of content or file_path is required.")),
 		mcp.WithString("encoding", mcp.Description("Content encoding: utf-8 (default) or base64")),
 		mcp.WithString("mime_type", mcp.Description("MIME type (auto-detected if omitted)")),
 		mcp.WithString("parent_id", mcp.Description("Parent folder ID (uploads to root if omitted)")),
@@ -53,10 +56,23 @@ func registerDriveCoreTools(s *server.MCPServer) {
 		common.WithAccountParam(),
 	), HandleDriveUpload)
 
+	// drive_update_file - Replace body and/or rename
+	s.AddTool(mcp.NewTool("drive_update_file",
+		mcp.WithDescription("Replace an existing Drive file's body (content or file_path) and/or rename it (name). Nothing is deleted. Returns id, name, size and md5Checksum."),
+		mcp.WithString("file_id", mcp.Required(), mcp.Description("File ID or Google Drive URL")),
+		mcp.WithString("name", mcp.Description("New file name")),
+		mcp.WithString("content", mcp.Description("New file content (text or base64-encoded); at most one of content or file_path")),
+		mcp.WithString("file_path", mcp.Description("Absolute path to a local regular file to stream as the new body; at most one of content or file_path")),
+		mcp.WithString("encoding", mcp.Description("Content encoding: utf-8 (default) or base64")),
+		mcp.WithString("mime_type", mcp.Description("MIME type for the new body")),
+		common.WithAccountParam(),
+	), HandleDriveUpdateFile)
+
 	// drive_list - List files in folder
 	s.AddTool(mcp.NewTool("drive_list",
 		mcp.WithDescription("List files in a Google Drive folder."),
 		mcp.WithString("folder_id", mcp.Description("Folder ID (default: root folder)")),
+		mcp.WithString("name", mcp.Description("Exact file name match within the folder")),
 		mcp.WithNumber("max_results", mcp.Description("Maximum results (1-1000, default 100)")),
 		common.WithPageToken(),
 		mcp.WithString("order_by", mcp.Description("Sort order: name, modifiedTime, createdTime (default: name)")),
