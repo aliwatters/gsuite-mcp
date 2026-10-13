@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project uses a patch-first versioning policy — see [RELEASING.md](RELEASING.md) for the full policy.
 
+## [Unreleased]
+
+### Added
+
+- `gsuite-mcp call` invokes registered tools non-interactively, prints JSON results to stdout, and uses exit code 2 when authentication is required (#236)
+- `drive_list` and `drive_search` return `truncated` alongside `next_page_token` so callers can detect additional pages (#236)
+
 ## [0.6.1] - 2026-10-10
 
 ### Fixed

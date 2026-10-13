@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aliwatters/gsuite-mcp/internal/auth"
@@ -25,6 +29,7 @@ import (
 	"github.com/aliwatters/gsuite-mcp/internal/sheets"
 	"github.com/aliwatters/gsuite-mcp/internal/slides"
 	"github.com/aliwatters/gsuite-mcp/internal/tasks"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
@@ -58,6 +63,8 @@ func main() {
 		case "check":
 			runCheck()
 			return
+		case "call":
+			os.Exit(runCall(os.Args[2:], os.Stdout, os.Stderr))
 		case "help", "--help", "-h":
 			printUsage()
 			return
@@ -101,24 +108,7 @@ func main() {
 		}()
 	}
 
-	s := server.NewMCPServer(serverName, serverVersion)
-
-	// Register all service tools
-	gmail.RegisterTools(s)
-	calendar.RegisterTools(s)
-	docs.RegisterTools(s)
-	tasks.RegisterTools(s)
-	drive.RegisterTools(s)
-	sheets.RegisterTools(s)
-	slides.RegisterTools(s)
-	forms.RegisterTools(s)
-	contacts.RegisterTools(s)
-	meet.RegisterTools(s)
-	driveactivity.RegisterTools(s)
-	chat.RegisterTools(s)
-
-	// Conditionally register citation tools (feature-flagged)
-	registerCitationIfEnabled(s)
+	s := newRegisteredServer()
 
 	// Start server
 	if err := server.ServeStdio(s); err != nil {
@@ -181,6 +171,167 @@ func initializeApp() error {
 	return nil
 }
 
+// newRegisteredServer creates the same in-process tool registry used by stdio and call mode.
+func newRegisteredServer() *server.MCPServer {
+	s := server.NewMCPServer(serverName, serverVersion)
+	gmail.RegisterTools(s)
+	calendar.RegisterTools(s)
+	docs.RegisterTools(s)
+	tasks.RegisterTools(s)
+	drive.RegisterTools(s)
+	sheets.RegisterTools(s)
+	slides.RegisterTools(s)
+	forms.RegisterTools(s)
+	contacts.RegisterTools(s)
+	meet.RegisterTools(s)
+	driveactivity.RegisterTools(s)
+	chat.RegisterTools(s)
+	registerCitationIfEnabled(s)
+	return s
+}
+
+const (
+	callExitError        = 1
+	callExitAuthRequired = 2
+)
+
+func runCall(args []string, stdout, stderr io.Writer) int {
+	toolName, flagArgs := extractCallToolName(args)
+	flags := flag.NewFlagSet("call", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	account := flags.String("account", "", "Google account email")
+	argsJSON := flags.String("args", "", "Tool arguments as a JSON object")
+	argsFile := flags.String("args-file", "", "Read tool arguments from a JSON file")
+	flags.Usage = func() {
+		fmt.Fprintln(stderr, "Usage: gsuite-mcp call <tool> --account <email> (--args '<json>' | --args-file <path>)")
+		fmt.Fprintln(stderr, "Exit codes: 0 success, 1 tool/argument error, 2 authentication required")
+		flags.PrintDefaults()
+	}
+	if err := flags.Parse(flagArgs); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return callExitError
+	}
+	if toolName == "" || *account == "" || (*argsJSON == "" && *argsFile == "") || (*argsJSON != "" && *argsFile != "") {
+		flags.Usage()
+		return callExitError
+	}
+	var raw []byte
+	var err error
+	if *argsFile != "" {
+		raw, err = os.ReadFile(*argsFile)
+	} else {
+		raw = []byte(*argsJSON)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "%s account=%s: reading arguments: %v\n", toolName, *account, err)
+		return callExitError
+	}
+	toolArgs := make(map[string]any)
+	if err := json.Unmarshal(raw, &toolArgs); err != nil {
+		fmt.Fprintf(stderr, "%s account=%s: invalid JSON arguments: %v\n", toolName, *account, err)
+		return callExitError
+	}
+	if toolArgs == nil {
+		fmt.Fprintf(stderr, "%s account=%s: arguments must be a JSON object\n", toolName, *account)
+		return callExitError
+	}
+	toolArgs["account"] = *account
+
+	registry := newRegisteredServer()
+	if registry.GetTool(toolName) == nil {
+		fmt.Fprintf(stderr, "%s account=%s: unknown tool\n", toolName, *account)
+		return callExitError
+	}
+	if err := initializeApp(); err != nil {
+		fmt.Fprintf(stderr, "%s account=%s: initialization failed: %v\n", toolName, *account, err)
+		return callExitError
+	}
+	log.SetOutput(stderr)
+	return executeCall(registry, toolName, *account, toolArgs, stdout, stderr)
+}
+
+// extractCallToolName removes the positional tool name so Go's flag parser can
+// accept flags both before and after it.
+func extractCallToolName(args []string) (string, []string) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--account" || arg == "--args" || arg == "--args-file" {
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, "--account=") || strings.HasPrefix(arg, "--args=") || strings.HasPrefix(arg, "--args-file=") {
+			continue
+		}
+		if !strings.HasPrefix(arg, "-") {
+			remaining := append([]string(nil), args[:i]...)
+			remaining = append(remaining, args[i+1:]...)
+			return arg, remaining
+		}
+	}
+	return "", args
+}
+
+func executeCall(registry *server.MCPServer, toolName, account string, toolArgs map[string]any, stdout, stderr io.Writer) int {
+	registered := registry.GetTool(toolName)
+	if registered == nil {
+		fmt.Fprintf(stderr, "%s account=%s: unknown tool\n", toolName, account)
+		return callExitError
+	}
+	request := mcp.CallToolRequest{Params: mcp.CallToolParams{Name: toolName, Arguments: toolArgs}}
+	result, err := registered.Handler(context.Background(), request)
+	if err != nil {
+		fmt.Fprintf(stderr, "%s account=%s: %v\n", toolName, account, err)
+		return classifyCallError(err.Error())
+	}
+	if result == nil {
+		fmt.Fprintf(stderr, "%s account=%s: tool returned no result\n", toolName, account)
+		return callExitError
+	}
+	if result.IsError {
+		reason := toolResultText(result)
+		if classifyCallError(reason) == callExitAuthRequired && !strings.Contains(reason, "gsuite-mcp auth "+account) {
+			reason += fmt.Sprintf("; re-authenticate with 'gsuite-mcp auth %s'", account)
+		}
+		fmt.Fprintf(stderr, "%s account=%s: %s\n", toolName, account, reason)
+		return classifyCallError(reason)
+	}
+	if result.StructuredContent != nil {
+		if err := json.NewEncoder(stdout).Encode(result.StructuredContent); err != nil {
+			fmt.Fprintf(stderr, "%s account=%s: encoding result: %v\n", toolName, account, err)
+			return callExitError
+		}
+		return 0
+	}
+	text := toolResultText(result)
+	if text == "" {
+		text = "null"
+	}
+	if _, err := fmt.Fprintln(stdout, text); err != nil {
+		fmt.Fprintf(stderr, "%s account=%s: writing result: %v\n", toolName, account, err)
+		return callExitError
+	}
+	return 0
+}
+
+func toolResultText(result *mcp.CallToolResult) string {
+	for _, content := range result.Content {
+		if textContent, ok := content.(mcp.TextContent); ok {
+			return textContent.Text
+		}
+	}
+	return ""
+}
+
+func classifyCallError(reason string) int {
+	lower := strings.ToLower(reason)
+	if strings.Contains(lower, "auth_expired") || strings.Contains(lower, "invalid_grant") || strings.Contains(lower, "no credentials") || strings.Contains(lower, "re-authenticate") || strings.Contains(lower, "reauth") {
+		return callExitAuthRequired
+	}
+	return callExitError
+}
+
 // printUsage prints CLI help.
 func printUsage() {
 	fmt.Printf(`%s - Google Workspace MCP server with dynamic multi-account support
@@ -191,6 +342,9 @@ Usage:
   %s auth         Authenticate a Google account (opens browser)
   %s accounts     List authenticated accounts
   %s check        Verify setup (config, tokens, API access)
+  %s call <tool> --account <email> (--args '<json>' | --args-file <path>)
+                    Call a registered tool without starting an auth flow
+                    Exit codes: 0 success, 1 tool/argument error, 2 authentication required
 
 No configuration required - just authenticate any Google account on demand.
 When tools request an account without credentials, auth flow is triggered automatically.
@@ -215,7 +369,7 @@ Environment variables:
                             local JSON files (default behaviour).
 
 For more information, see README.md
-`, serverName, serverName, serverName, serverName, serverName, serverName,
+`, serverName, serverName, serverName, serverName, serverName, serverName, serverName,
 		config.DefaultConfigDir(),
 		config.DefaultConfigDir(), config.ConfigPath(), config.CredentialsDir(), config.ClientSecretPath(),
 		config.DefaultOAuthPort)

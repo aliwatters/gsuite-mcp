@@ -322,6 +322,18 @@ gmail_resolve_web_id(id="thread-f:1821570065795440641")
 
 ## Usage Examples
 
+### Non-interactive tool calls
+
+Scripts can invoke registered tools directly. The `call` command does not start a browser or an auth server; authenticate separately with `gsuite-mcp auth <email>` when needed. Results are JSON on stdout, and errors are written to stderr. Exit codes are `0` for success, `1` for tool or argument errors, and `2` when authentication is required.
+
+```bash
+gsuite-mcp call drive_list --account user@example.com --args '{"folder_id":"root"}'
+gsuite-mcp call drive_upload --account user@example.com --args-file upload-args.json
+```
+
+For uploads, pass `file_path` in the JSON arguments to stream a local file without loading it into the argument string. `drive_list` and `drive_search` return `next_page_token` (empty when complete) and `truncated` so scripts can follow every page.
+
+
 ### Multi-Account
 
 All tools accept an optional `account` parameter:
