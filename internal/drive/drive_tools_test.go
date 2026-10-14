@@ -3,6 +3,7 @@ package drive
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"strings"
 	"testing"
@@ -11,6 +12,42 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"google.golang.org/api/drive/v3"
 )
+
+func TestDriveListPaginationMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		nextToken string
+		truncated bool
+	}{
+		{name: "additional page", nextToken: "next-page", truncated: true},
+		{name: "complete", truncated: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixtures := NewDriveTestFixtures()
+			fixtures.MockService.ListFilesFunc = func(_ context.Context, _ *ListFilesOptions) (*drive.FileList, error) {
+				return &drive.FileList{NextPageToken: tc.nextToken}, nil
+			}
+			result, err := TestableDriveList(context.Background(), common.CreateMCPRequest(map[string]any{}), fixtures.Deps)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.IsError || len(result.Content) != 1 {
+				t.Fatalf("unexpected tool result: %#v", result)
+			}
+			content, ok := result.Content[0].(mcp.TextContent)
+			if !ok {
+				t.Fatalf("content type = %T", result.Content[0])
+			}
+			var payload map[string]any
+			if err := json.Unmarshal([]byte(content.Text), &payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload["next_page_token"] != tc.nextToken || payload["truncated"] != tc.truncated {
+				t.Fatalf("pagination metadata = %#v", payload)
+			}
+		})
+	}
+}
 
 // TestDriveServiceCreateFile tests the CreateFile method of the DriveService interface.
 func TestDriveServiceCreateFile(t *testing.T) {

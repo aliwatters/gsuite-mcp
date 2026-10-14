@@ -92,6 +92,7 @@ func TestableDriveSearch(ctx context.Context, request mcp.CallToolRequest, deps 
 		"files":           files,
 		"count":           len(files),
 		"next_page_token": resp.NextPageToken,
+		"truncated":       resp.NextPageToken != "",
 	}
 
 	return common.MarshalToolResult(result)
@@ -377,6 +378,7 @@ func TestableDriveList(ctx context.Context, request mcp.CallToolRequest, deps *D
 		"files":           files,
 		"count":           len(files),
 		"next_page_token": resp.NextPageToken,
+		"truncated":       resp.NextPageToken != "",
 	}
 
 	return common.MarshalToolResult(result)
