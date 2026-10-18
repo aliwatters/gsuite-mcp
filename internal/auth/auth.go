@@ -439,7 +439,7 @@ func (m *Manager) saveTokenForEmail(email string, oauth2Token *oauth2.Token) err
 	}
 
 	path := config.CredentialPathForEmail(email)
-	if err := os.WriteFile(path, data, credentialFileMode); err != nil {
+	if err := writeFileAtomic(path, data, credentialFileMode); err != nil {
 		return fmt.Errorf("writing token: %w", err)
 	}
 
