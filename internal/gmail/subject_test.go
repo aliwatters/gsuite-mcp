@@ -13,7 +13,14 @@ import (
 
 func assertSubject(t *testing.T, raw, want string) string {
 	t.Helper()
-	msg, err := mail.ReadMessage(strings.NewReader(decodeRawEmail(t, raw)))
+	rawMessage := decodeRawEmail(t, raw)
+	headers, _, _ := strings.Cut(rawMessage, "\r\n\r\n")
+	for _, line := range strings.Split(headers, "\r\n") {
+		if len(line) > 998 {
+			t.Errorf("MIME header line exceeds 998 bytes: %d", len(line))
+		}
+	}
+	msg, err := mail.ReadMessage(strings.NewReader(rawMessage))
 	if err != nil {
 		t.Fatal(err)
 	}

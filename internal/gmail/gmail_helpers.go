@@ -225,7 +225,12 @@ func writeEmailHeaders(w io.Writer, msg EmailMessage) {
 		fmt.Fprintf(w, "Bcc: %s\r\n", msg.Bcc)
 	}
 	if msg.Subject != "" {
-		fmt.Fprintf(w, "Subject: %s\r\n", mime.QEncoding.Encode("utf-8", msg.Subject))
+		subject := mime.QEncoding.Encode("utf-8", msg.Subject)
+		if subject != msg.Subject {
+			// Fold between encoded words so long Unicode subjects stay within MIME line limits.
+			subject = strings.ReplaceAll(subject, " ", "\r\n ")
+		}
+		fmt.Fprintf(w, "Subject: %s\r\n", subject)
 	}
 	for key, value := range msg.ExtraHeaders {
 		fmt.Fprintf(w, "%s: %s\r\n", key, value)
