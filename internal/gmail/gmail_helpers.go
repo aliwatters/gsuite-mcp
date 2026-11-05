@@ -225,7 +225,7 @@ func writeEmailHeaders(w io.Writer, msg EmailMessage) {
 		fmt.Fprintf(w, "Bcc: %s\r\n", msg.Bcc)
 	}
 	if msg.Subject != "" {
-		fmt.Fprintf(w, "Subject: %s\r\n", msg.Subject)
+		fmt.Fprintf(w, "Subject: %s\r\n", mime.QEncoding.Encode("utf-8", msg.Subject))
 	}
 	for key, value := range msg.ExtraHeaders {
 		fmt.Fprintf(w, "%s: %s\r\n", key, value)
@@ -387,4 +387,14 @@ func batchModifyLabels(ctx context.Context, svc GmailService, request mcp.CallTo
 	}
 
 	return common.MarshalToolResult(result)
+}
+
+// decodeSubject decodes one RFC 2047 layer from a received header.
+// Keep malformed or unsupported encodings intact rather than losing the subject.
+func decodeSubject(subject string) string {
+	decoded, err := new(mime.WordDecoder).DecodeHeader(subject)
+	if err != nil {
+		return subject
+	}
+	return decoded
 }

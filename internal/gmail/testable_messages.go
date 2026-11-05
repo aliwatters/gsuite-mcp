@@ -240,7 +240,7 @@ func TestableGmailReply(ctx context.Context, request mcp.CallToolRequest, deps *
 		cc = ccOverride
 	}
 
-	subject := origSubject
+	subject := decodeSubject(origSubject)
 	if !strings.HasPrefix(strings.ToLower(subject), "re:") {
 		subject = "Re: " + subject
 	}
