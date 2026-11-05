@@ -122,6 +122,9 @@ func FormatMessageWithOptions(msg *gmail.Message, opts FormatMessageOptions) map
 			headerName := strings.ToLower(h.Name)
 			if _, ok := defaultHeaderNames[headerName]; ok {
 				headers[headerName] = h.Value
+				if headerName == "subject" {
+					headers[headerName] = decodeSubject(h.Value)
+				}
 			} else if headerName == "dkim-signature" {
 				headers[headerName] = "present"
 			}
